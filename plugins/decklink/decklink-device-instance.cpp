@@ -1,4 +1,4 @@
-#include "decklink-device-instance.hpp"
+﻿#include "decklink-device-instance.hpp"
 #include "audio-repack.hpp"
 
 #include "DecklinkInput.hpp"
@@ -314,6 +314,20 @@ bool DeckLinkDeviceInstance::StartOutput(DeckLinkDeviceMode *mode_)
 
 	mode = mode_;
 
+
+	IDeckLinkKeyer *deckLinkKeyer = nullptr;
+	if (device->GetKeyer(&deckLinkKeyer)) {
+
+		int keyerMode = device->GetKeyerMode();
+		if (keyerMode) {
+			deckLinkKeyer->Enable(keyerMode == 1);
+			deckLinkKeyer->SetLevel(255);
+		}
+		else {
+			deckLinkKeyer->Disable();
+		}
+	}
+
 	auto decklinkOutput = dynamic_cast<DeckLinkOutput*>(decklink);
 	if (decklinkOutput == nullptr) {
 		return false;
@@ -321,8 +335,8 @@ bool DeckLinkDeviceInstance::StartOutput(DeckLinkDeviceMode *mode_)
 
 	HRESULT result;
 	result = output->CreateVideoFrame(decklinkOutput->GetWidth(), decklinkOutput->GetHeight(),
-									  decklinkOutput->GetWidth()*2,
-									  bmdFormat8BitYUV, bmdFrameFlagDefault, &decklinkOutputFrame);
+									  decklinkOutput->GetWidth()*4,
+									  bmdFormat8BitBGRA, bmdFrameFlagDefault, &decklinkOutputFrame);
 	if (result != S_OK) {
 		blog(LOG_ERROR ,"failed to make frame 0x%X", result);
 		return false;
@@ -364,7 +378,7 @@ void DeckLinkDeviceInstance::DisplayVideoFrame(video_data *frame)
 
 	uint8_t *outData = frame->data[0];
 
-	memcpy(destData, outData, (decklinkOutput->GetWidth() * decklinkOutput->GetHeight()) * 2);
+	memcpy(destData, outData, (decklinkOutput->GetWidth() * decklinkOutput->GetHeight()) * 4);
 
 	output->DisplayVideoFrameSync(decklinkOutputFrame);
 }

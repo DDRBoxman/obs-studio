@@ -7,6 +7,7 @@
 #define COLOR_SPACE     "color_space"
 #define COLOR_RANGE     "color_range"
 #define BUFFERING       "buffering"
+#define KEYER			"keyer"
 
 #define TEXT_DEVICE                     obs_module_text("Device")
 #define TEXT_MODE                       obs_module_text("Mode")
@@ -26,3 +27,4 @@
 #define TEXT_CHANNEL_FORMAT_5_1CH       obs_module_text("ChannelFormat.5_1ch")
 #define TEXT_CHANNEL_FORMAT_7_1CH       obs_module_text("ChannelFormat.7_1ch")
 #define TEXT_BUFFERING                  obs_module_text("Buffering")
+#define TEXT_ENABLE_KEYER				obs_module_text("Keyer")
