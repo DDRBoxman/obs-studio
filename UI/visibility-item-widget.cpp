@@ -3,6 +3,7 @@
 #include "locked-checkbox.hpp"
 #include "qt-wrappers.hpp"
 #include "obs-app.hpp"
+#include "window-basic-main.hpp"
 #include <QListWidget>
 #include <QLineEdit>
 #include <QHBoxLayout>
@@ -94,6 +95,8 @@ VisibilityItemWidget::VisibilityItemWidget(obs_sceneitem_t *item_)
 			this);
 	signal_handler_connect(signal, "item_visible", OBSSceneItemVisible,
 			this);
+	signal_handler_connect(signal, "item_locked", OBSSceneItemLocked,
+			this);
 
 	connect(vis, SIGNAL(clicked(bool)),
 			this, SLOT(VisibilityClicked(bool)));
@@ -120,6 +123,8 @@ void VisibilityItemWidget::DisconnectItemSignals()
 	signal_handler_disconnect(signal, "item_remove", OBSSceneItemRemove,
 			this);
 	signal_handler_disconnect(signal, "item_visible", OBSSceneItemVisible,
+			this);
+	signal_handler_disconnect(signal, "item_locked", OBSSceneItemLocked,
 			this);
 
 	sceneRemoved = true;
@@ -195,12 +200,16 @@ void VisibilityItemWidget::VisibilityClicked(bool visible)
 		obs_sceneitem_set_visible(item, visible);
 	else
 		obs_source_set_enabled(source, visible);
+
+	QMetaObject::invokeMethod(OBSBasic::Get(), "on_sourceVisibleChanged");
 }
 
 void VisibilityItemWidget::LockClicked(bool locked)
 {
 	if (item)
 		obs_sceneitem_set_locked(item, locked);
+
+	QMetaObject::invokeMethod(OBSBasic::Get(), "on_sourceLockChanged");
 }
 
 void VisibilityItemWidget::SourceEnabled(bool enabled)
