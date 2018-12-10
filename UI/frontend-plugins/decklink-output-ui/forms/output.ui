@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>793</width>
-    <height>292</height>
+    <height>680</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,7 +17,7 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>10</y>
+     <y>50</y>
      <width>751</width>
      <height>221</height>
     </rect>
@@ -28,7 +28,7 @@
    <property name="geometry">
     <rect>
      <x>520</x>
-     <y>250</y>
+     <y>290</y>
      <width>113</width>
      <height>32</height>
     </rect>
@@ -41,13 +41,76 @@
    <property name="geometry">
     <rect>
      <x>650</x>
-     <y>250</y>
+     <y>290</y>
      <width>113</width>
      <height>32</height>
     </rect>
    </property>
    <property name="text">
     <string>Stop</string>
+   </property>
+  </widget>
+  <widget class="QWidget" name="verticalLayoutWidget_2">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>380</y>
+     <width>751</width>
+     <height>221</height>
+    </rect>
+   </property>
+   <layout class="QVBoxLayout" name="previewPropertiesLayout"/>
+  </widget>
+  <widget class="QPushButton" name="stopPreviewOutput">
+   <property name="geometry">
+    <rect>
+     <x>650</x>
+     <y>620</y>
+     <width>113</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Stop</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="startPreviewOutput">
+   <property name="geometry">
+    <rect>
+     <x>520</x>
+     <y>620</y>
+     <width>113</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Start</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>20</y>
+     <width>47</width>
+     <height>13</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Output</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_2">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>350</y>
+     <width>81</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Preview Output</string>
    </property>
   </widget>
  </widget>
