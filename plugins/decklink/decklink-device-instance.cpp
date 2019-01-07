@@ -304,7 +304,7 @@ bool DeckLinkDeviceInstance::StartOutput(DeckLinkDeviceMode *mode_)
 			bmdAudioSampleRate48kHz,
 			bmdAudioSampleType16bitInteger,
 			2,
-			bmdAudioOutputStreamTimestamped);
+			bmdAudioOutputStreamContinuous);
 	if (audioResult != S_OK) {
 		LOG(LOG_ERROR, "Failed to enable audio output");
 		return false;
