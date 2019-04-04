@@ -152,7 +152,7 @@ static void decklink_output_raw_audio(void *data, struct audio_data *frames)
 	if (!prepare_audio(decklink, frames, &in))
 		return;
 
-	decklink->WriteAudio(&in);
+	//decklink->WriteAudio(&in);
 }
 
 static bool decklink_output_device_changed(obs_properties_t *props,

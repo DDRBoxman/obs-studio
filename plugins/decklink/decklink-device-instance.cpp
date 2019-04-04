@@ -388,6 +388,12 @@ bool DeckLinkDeviceInstance::StartOutput(DeckLinkDeviceMode *mode_)
 		return false;
 	}
 
+
+	output->StartScheduledPlayback (0, 60, 1.0);
+
+	mode_->GetFrameRate(&gFrameDuration, &gTimeScale);
+
+
 	return true;
 }
 
@@ -429,7 +435,11 @@ void DeckLinkDeviceInstance::DisplayVideoFrame(video_data *frame)
 	std::copy(outData, outData + (decklinkOutput->GetHeight() *
 		rowBytes), destData);
 
-	output->DisplayVideoFrameSync(decklinkOutputFrame);
+	//output->DisplayVideoFrameSync(decklinkOutputFrame);
+
+	output->ScheduleVideoFrame(decklinkOutputFrame, gTotalFramesScheduled * gFrameDuration, gFrameDuration, gTimeScale);
+	gTotalFramesScheduled++;
+
 }
 
 void DeckLinkDeviceInstance::WriteAudio(audio_data *frames)

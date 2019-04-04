@@ -35,6 +35,10 @@ protected:
 
 	IDeckLinkMutableVideoFrame *decklinkOutputFrame = nullptr;
 
+	BMDTimeValue         gFrameDuration = 0;
+	BMDTimeScale         gTimeScale = 0;
+	unsigned gTotalFramesScheduled = 0;
+
 	void FinalizeStream();
 	void SetupVideoFormat(DeckLinkDeviceMode *mode_);
 
