@@ -10,6 +10,8 @@
 #include <sstream>
 #include <algorithm>
 
+#include <inttypes.h>
+
 static inline enum video_format ConvertPixelFormat(BMDPixelFormat format)
 {
 	switch (format) {
@@ -318,6 +320,9 @@ bool DeckLinkDeviceInstance::StopCapture(void)
 	return true;
 }
 
+#define TIME_BASE INT64_C(1000000 * 1000)
+
+
 bool DeckLinkDeviceInstance::StartOutput(DeckLinkDeviceMode *mode_)
 {
 	if (mode != nullptr)
@@ -389,9 +394,9 @@ bool DeckLinkDeviceInstance::StartOutput(DeckLinkDeviceMode *mode_)
 	}
 
 
-	output->StartScheduledPlayback (0, 60, 1.0);
-
+	output->SetScheduledFrameCompletionCallback(this);
 	mode_->GetFrameRate(&gFrameDuration, &gTimeScale);
+	output->StartScheduledPlayback (os_gettime_ns(), TIME_BASE, 1.0);
 
 
 	return true;
@@ -437,20 +442,75 @@ void DeckLinkDeviceInstance::DisplayVideoFrame(video_data *frame)
 
 	//output->DisplayVideoFrameSync(decklinkOutputFrame);
 
-	output->ScheduleVideoFrame(decklinkOutputFrame, gTotalFramesScheduled * gFrameDuration, gFrameDuration, gTimeScale);
-	gTotalFramesScheduled++;
+	BMDTimeValue stream_frame_time;
+	double playback_speed;
+	output->GetScheduledStreamTime(TIME_BASE, &stream_frame_time, &playback_speed);
 
+	int64_t length = (gFrameDuration * TIME_BASE) / gTimeScale;
+	int64_t timestamp = frame->timestamp;
+
+	output->ScheduleVideoFrame(decklinkOutputFrame, timestamp + outputDrift, length, TIME_BASE);
+
+	int64_t diff = os_gettime_ns() - stream_frame_time;
+	if (maxClockDiff < diff) {
+		maxClockDiff = diff;
+		blog(LOG_ERROR, "clockdiff %lld", diff);
+	}
+
+	if (diff > outputDrift) {
+		outputDrift += 5000000;
+	}
+
+	//blog(LOG_ERROR, "test %lld, %lld, %lld", stream_frame_time, timestamp, os_gettime_ns());
+
+	//gTotalFramesScheduled += 1;
+	// 1000 60000
+
+	//blog(LOG_ERROR ,"audio %d %d %d %d", frame->timestamp, gTotalFramesScheduled * gFrameDuration, gFrameDuration, gTimeScale);
+
+}
+
+HRESULT	DeckLinkDeviceInstance::ScheduledFrameCompleted (IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result)
+{
+	if (result == bmdOutputFrameDropped) {
+		blog(LOG_ERROR, "Dropped Frame");
+	}
+
+	if (result == bmdOutputFrameDisplayedLate) {
+		blog(LOG_ERROR, "Late Frame");
+	}
+	return S_OK;
+}
+
+HRESULT DeckLinkDeviceInstance::ScheduledPlaybackHasStopped ()
+{
+	return S_OK;
 }
 
 void DeckLinkDeviceInstance::WriteAudio(audio_data *frames)
 {
 	uint32_t sampleFramesWritten;
-	output->WriteAudioSamplesSync(frames->data[0],
-			frames->frames,
-			&sampleFramesWritten);
+	//output->ScheduleAudioSamples(frames->data[0], frames->frames, (gTotalFramesScheduled * gFrameDuration), gTimeScale, &sampleFramesWritten);
+	//blog(LOG_ERROR ,"audio %d %d", gFrameDuration, gTimeScale);
+	BMDTimeValue stream_frame_time;
+	double playback_speed;
+	//output->GetScheduledStreamTime(TIME_BASE, &stream_frame_time, &playback_speed);
+	//output->ScheduleAudioSamples(frames->data[0], frames->frames, stream_frame_time, TIME_BASE, NULL);
+	//output->ScheduleAudioSamples(frames->data[0], frames->frames, 0, 0, &sampleFramesWritten);
+
+	output->ScheduleAudioSamples(frames->data[0], frames->frames, frames->timestamp + outputAudioOffset + outputDrift, TIME_BASE, &sampleFramesWritten);
+
+	output->GetScheduledStreamTime(TIME_BASE, &stream_frame_time, &playback_speed);
+
+	if (outputAudioOffset == 0)
+		outputAudioOffset = os_gettime_ns() - frames->timestamp;
+
+	//blog(LOG_ERROR, "test %lld, %lld, %lld", stream_frame_time, frames->timestamp, os_gettime_ns());
+
+	//blog(LOG_ERROR ,"audio %d %d", frames->frames, sampleFramesWritten);
 }
 
-#define TIME_BASE 1000000000
+
 
 HRESULT STDMETHODCALLTYPE DeckLinkDeviceInstance::VideoInputFrameArrived(
 		IDeckLinkVideoInputFrame *videoFrame,
