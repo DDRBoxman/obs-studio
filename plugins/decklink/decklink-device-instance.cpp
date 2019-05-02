@@ -442,24 +442,28 @@ void DeckLinkDeviceInstance::DisplayVideoFrame(video_data *frame)
 
 	//output->DisplayVideoFrameSync(decklinkOutputFrame);
 
-	BMDTimeValue stream_frame_time;
-	double playback_speed;
-	output->GetScheduledStreamTime(TIME_BASE, &stream_frame_time, &playback_speed);
 
 	int64_t length = (gFrameDuration * TIME_BASE) / gTimeScale;
 	int64_t timestamp = frame->timestamp;
 
-	output->ScheduleVideoFrame(decklinkOutputFrame, timestamp + outputDrift, length, TIME_BASE);
+	output->ScheduleVideoFrame(decklinkOutputFrame, timestamp + outputDrift - offset, length, TIME_BASE);
 
-	int64_t diff = os_gettime_ns() - stream_frame_time;
-	if (maxClockDiff < diff) {
-		maxClockDiff = diff;
-		blog(LOG_ERROR, "clockdiff %lld", diff);
+	// deal with clock drift
+	BMDTimeValue stream_frame_time;
+	double playback_speed;
+	output->GetScheduledStreamTime(TIME_BASE, &stream_frame_time, &playback_speed);
+
+	if (timestamp- offset - stream_frame_time > 4000000) {
+		blog(LOG_ERROR, "Fixing offset %lld", offset);
+		offset += 500000;
 	}
 
-	if (diff > outputDrift) {
+
+	/*if (diff - outputDrift > 10000000) {
 		outputDrift += 5000000;
-	}
+	}*/
+
+	//blog(LOG_ERROR, "video %lld", (timestamp + outputDrift - stream_frame_time) / 1000000);
 
 	//blog(LOG_ERROR, "test %lld, %lld, %lld", stream_frame_time, timestamp, os_gettime_ns());
 
@@ -498,12 +502,21 @@ void DeckLinkDeviceInstance::WriteAudio(audio_data *frames)
 	//output->ScheduleAudioSamples(frames->data[0], frames->frames, stream_frame_time, TIME_BASE, NULL);
 	//output->ScheduleAudioSamples(frames->data[0], frames->frames, 0, 0, &sampleFramesWritten);
 
-	output->ScheduleAudioSamples(frames->data[0], frames->frames, frames->timestamp + outputAudioOffset + outputDrift, TIME_BASE, &sampleFramesWritten);
+	output->ScheduleAudioSamples(frames->data[0], frames->frames, frames->timestamp + outputDrift - offset, TIME_BASE, &sampleFramesWritten);
 
 	output->GetScheduledStreamTime(TIME_BASE, &stream_frame_time, &playback_speed);
 
-	if (outputAudioOffset == 0)
-		outputAudioOffset = os_gettime_ns() - frames->timestamp;
+	//if (outputAudioOffset == 0)
+		//outputAudioOffset = os_gettime_ns() - frames->timestamp;
+
+	if (sampleFramesWritten < frames->frames) {
+		blog(LOG_ERROR, "Didn't write enough audio samples %lld %lld", os_gettime_ns(), stream_frame_time);
+		//blog(LOG_ERROR, "Fixing offset %lld", );
+
+		//outputDrift -= 400000000;
+	}
+
+	//blog(LOG_ERROR, "audio %lld", (frames->timestamp + outputDrift - stream_frame_time) / 1000000);
 
 	//blog(LOG_ERROR, "test %lld, %lld, %lld", stream_frame_time, frames->timestamp, os_gettime_ns());
 

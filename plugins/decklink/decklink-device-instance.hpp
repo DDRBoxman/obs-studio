@@ -40,6 +40,7 @@ protected:
 	int64_t outputAudioOffset = 0;
 	int64_t maxClockDiff = 0;
 	int64_t outputDrift = 1000000000;
+	int64_t offset = 0;
 
 	void FinalizeStream();
 	void SetupVideoFormat(DeckLinkDeviceMode *mode_);
