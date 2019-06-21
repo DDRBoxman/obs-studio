@@ -5,6 +5,7 @@
 #include <obs-module.h>
 #include "decklink-device.hpp"
 #include "../../libobs/media-io/video-scaler.h"
+#include <util/circlebuf.h>
 
 class AudioRepacker;
 class DecklinkBase;
@@ -36,6 +37,10 @@ protected:
 	BMDTimeScale            outputTimeScale = 0;
 	int64_t                 outputInitialScheduleOffset = 1000000000;
 	int64_t                 outputDriftOffset = 0;
+
+	struct circlebuf outputFrameBuffer;
+	int prerolledFrames = 0;
+	int bufferSize = 4;
 
 	IDeckLinkMutableVideoFrame *decklinkOutputFrame = nullptr;
 

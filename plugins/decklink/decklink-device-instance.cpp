@@ -391,12 +391,19 @@ bool DeckLinkDeviceInstance::StartOutput(DeckLinkDeviceMode *mode_)
 		return false;
 	}
 
-	output->SetScheduledFrameCompletionCallback(this);
 	mode_->GetFrameRate(&outputFrameDuration, &outputTimeScale);
 
 	outputDriftOffset = 0;
 
-	output->StartScheduledPlayback (os_gettime_ns(), TIME_BASE, 1.0);
+	circlebuf_init(&this->outputFrameBuffer);
+
+	circlebuf_reserve(&this->outputFrameBuffer, bufferSize * (decklinkOutput->GetHeight() * rowBytes));
+
+	output->BeginAudioPreroll();
+
+	struct video_data frame;
+	frame.timestamp = 0;
+	*frame.data = (uint8_t*)calloc((decklinkOutput->GetHeight() * rowBytes), sizeof(uint8_t));
 
 	return true;
 }
@@ -416,6 +423,8 @@ bool DeckLinkDeviceInstance::StopOutput()
 		decklinkOutputFrame->Release();
 		decklinkOutputFrame = nullptr;
 	}
+
+	circlebuf_free(&this->outputFrameBuffer);
 
 	return true;
 }
@@ -454,6 +463,15 @@ void DeckLinkDeviceInstance::DisplayVideoFrame(video_data *frame)
 
 	if (timestamp - outputDriftOffset - stream_frame_time > 4000000) {
 		outputDriftOffset += 500000;
+	}
+
+	if (prerolledFrames == bufferSize) {
+		output->SetScheduledFrameCompletionCallback(this);
+
+		output->StartScheduledPlayback(os_gettime_ns(), TIME_BASE, 1.0);
+	}
+	else {
+		prerolledFrames++;
 	}
 }
 
