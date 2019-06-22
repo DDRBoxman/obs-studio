@@ -397,13 +397,32 @@ bool DeckLinkDeviceInstance::StartOutput(DeckLinkDeviceMode *mode_)
 
 	circlebuf_init(&this->outputFrameBuffer);
 
-	circlebuf_reserve(&this->outputFrameBuffer, bufferSize * (decklinkOutput->GetHeight() * rowBytes));
+	circlebuf_reserve(&this->outputFrameBuffer, bufferSize * sizeof(video_data));
+
+	/*for (int i = 0; i < bufferSize; i++) {
+		struct video_data frame;
+		frame.timestamp = 0;
+
+		frame.data[0] = (uint8_t*) calloc((decklinkOutput->GetHeight() * rowBytes), sizeof(uint8_t));
+
+		circlebuf_push_back(&this->outputFrameBuffer, &frame, sizeof(video_data));
+	}*/
+
+	circlebuf_init(&this->audioOutputBuffer);
+
+	circlebuf_reserve(&this->audioOutputBuffer, bufferSize * sizeof(audio_data));
+
+	/*for (int i = 0; i < bufferSize; i++) {
+		struct audio_data audioFrame;
+		audioFrame.timestamp = 0;
+		audioFrame.frames = 0;
+		//audioFrame.data[0] = (uint8_t*)calloc(, sizeof(uint8_t));
+
+		circlebuf_push_back(&this->audioOutputBuffer, &audioFrame, sizeof(video_data));
+	}*/
+
 
 	output->BeginAudioPreroll();
-
-	struct video_data frame;
-	frame.timestamp = 0;
-	*frame.data = (uint8_t*)calloc((decklinkOutput->GetHeight() * rowBytes), sizeof(uint8_t));
 
 	return true;
 }
@@ -429,49 +448,79 @@ bool DeckLinkDeviceInstance::StopOutput()
 	return true;
 }
 
-void DeckLinkDeviceInstance::DisplayVideoFrame(video_data *frame)
-{
+void DeckLinkDeviceInstance::ScheduleVideoFrame() {
 	auto decklinkOutput = dynamic_cast<DeckLinkOutput*>(decklink);
 	if (decklinkOutput == nullptr)
 		return;
-
-	uint8_t *destData;
-	decklinkOutputFrame->GetBytes((void**)&destData);
-
-	uint8_t *outData = frame->data[0];
 
 	int rowBytes = decklinkOutput->GetWidth() * 2;
 	if (device->GetKeyerMode()) {
 		rowBytes = decklinkOutput->GetWidth() * 4;
 	}
 
+	uint8_t* destData;
+	decklinkOutputFrame->GetBytes((void**)& destData);
+
+	struct video_data renderFrame;
+	circlebuf_pop_front(&this->outputFrameBuffer, &renderFrame, sizeof(video_data));
+
+	uint8_t* outData = renderFrame.data[0];
+
 	std::copy(outData, outData + (decklinkOutput->GetHeight() *
 		rowBytes), destData);
 
+	free(renderFrame.data[0]);
+
 	int64_t length = (outputFrameDuration * TIME_BASE) / outputTimeScale;
-	int64_t timestamp = frame->timestamp;
+	int64_t timestamp = renderFrame.timestamp;
 
 	output->ScheduleVideoFrame(decklinkOutputFrame,
-			timestamp + outputInitialScheduleOffset - outputDriftOffset,
-			length, TIME_BASE);
+		timestamp + outputInitialScheduleOffset - outputDriftOffset,
+		length, TIME_BASE);
 
-	// deal with clock drift
-	BMDTimeValue stream_frame_time;
-	double playback_speed;
-	output->GetScheduledStreamTime(TIME_BASE,
+	if (!prerolledFrames < prerollSize) {
+		// deal with clock drift
+		BMDTimeValue stream_frame_time;
+		double playback_speed;
+		output->GetScheduledStreamTime(TIME_BASE,
 			&stream_frame_time, &playback_speed);
 
-	if (timestamp - outputDriftOffset - stream_frame_time > 4000000) {
-		outputDriftOffset += 500000;
+		if (timestamp - outputDriftOffset - stream_frame_time > 4000000) {
+			outputDriftOffset += 500000;
+		}
+	}
+}
+
+void DeckLinkDeviceInstance::DisplayVideoFrame(video_data *frame)
+{
+	auto decklinkOutput = dynamic_cast<DeckLinkOutput*>(decklink);
+	if (decklinkOutput == nullptr)
+		return;
+
+
+	int rowBytes = decklinkOutput->GetWidth() * 2;
+	if (device->GetKeyerMode()) {
+		rowBytes = decklinkOutput->GetWidth() * 4;
 	}
 
-	if (prerolledFrames == bufferSize) {
-		output->SetScheduledFrameCompletionCallback(this);
+	struct video_data queueFrame;
+	
+	uint8_t* frameData = frame->data[0];
+	queueFrame.data[0] = (uint8_t*)calloc((decklinkOutput->GetHeight() * rowBytes), sizeof(uint8_t));
+	std::copy(frameData, frameData + (decklinkOutput->GetHeight() *
+		rowBytes), queueFrame.data[0]);
 
-		output->StartScheduledPlayback(os_gettime_ns(), TIME_BASE, 1.0);
-	}
-	else {
+	queueFrame.timestamp = frame->timestamp;
+
+	circlebuf_push_back(&this->outputFrameBuffer, &queueFrame, sizeof(video_data));
+
+	 if (prerolledFrames < prerollSize) {
+		ScheduleVideoFrame();
 		prerolledFrames++;
+	}
+	else if (prerolledFrames == prerollSize) {
+		output->SetScheduledFrameCompletionCallback(this);
+		output->StartScheduledPlayback(os_gettime_ns(), TIME_BASE, 1.0);
 	}
 }
 
@@ -486,6 +535,9 @@ HRESULT	DeckLinkDeviceInstance::ScheduledFrameCompleted (
 	if (result == bmdOutputFrameDisplayedLate) {
 		blog(LOG_ERROR, "Late Frame");
 	}
+
+	ScheduleVideoFrame();
+
 	return S_OK;
 }
 
@@ -494,21 +546,27 @@ HRESULT DeckLinkDeviceInstance::ScheduledPlaybackHasStopped()
 	return S_OK;
 }
 
+void DeckLinkDeviceInstance::ScheduleAudioFrame() {
+
+
+}
+
 void DeckLinkDeviceInstance::WriteAudio(audio_data *frames)
 {
 	uint32_t sampleFramesWritten;
 	output->ScheduleAudioSamples(frames->data[0],
-			frames->frames,
-			frames->timestamp + outputInitialScheduleOffset - outputDriftOffset,
-			TIME_BASE,
-			&sampleFramesWritten);
+		frames->frames,
+		frames->timestamp + outputInitialScheduleOffset - outputDriftOffset,
+		TIME_BASE,
+		&sampleFramesWritten);
 
 	if (sampleFramesWritten < frames->frames) {
 		blog(LOG_ERROR,
-				"Didn't write enough audio samples. Sent: %d, Written: %d",
-				frames->frames,
-				sampleFramesWritten);
+			"Didn't write enough audio samples. Sent: %d, Written: %d",
+			frames->frames,
+			sampleFramesWritten);
 	}
+	
 }
 
 HRESULT STDMETHODCALLTYPE DeckLinkDeviceInstance::VideoInputFrameArrived(

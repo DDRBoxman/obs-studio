@@ -10,7 +10,7 @@
 class AudioRepacker;
 class DecklinkBase;
 
-class DeckLinkDeviceInstance : public IDeckLinkVideoOutputCallback, public IDeckLinkInputCallback {
+class DeckLinkDeviceInstance : public IDeckLinkVideoOutputCallback,  public IDeckLinkInputCallback {
 protected:
 	struct obs_source_frame2 currentFrame;
 	struct obs_source_audio currentPacket;
@@ -35,12 +35,18 @@ protected:
 	bool                    swap;
 	BMDTimeValue            outputFrameDuration = 0;
 	BMDTimeScale            outputTimeScale = 0;
-	int64_t                 outputInitialScheduleOffset = 1000000000;
+	int64_t                 outputInitialScheduleOffset = 100000000;
 	int64_t                 outputDriftOffset = 0;
 
 	struct circlebuf outputFrameBuffer;
+	struct circlebuf audioOutputBuffer;
 	int prerolledFrames = 0;
-	int bufferSize = 4;
+	int bufferSize = 1;
+	int prerollSize = 4;
+	int bufferedFrames = 0;
+		 
+	void ScheduleVideoFrame();
+	void ScheduleAudioFrame();
 
 	IDeckLinkMutableVideoFrame *decklinkOutputFrame = nullptr;
 
