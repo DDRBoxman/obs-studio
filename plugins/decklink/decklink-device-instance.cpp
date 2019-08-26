@@ -11,6 +11,8 @@
 #include <sstream>
 #include <algorithm>
 
+#include "OBSVideoFrame.h"
+
 static inline enum video_format ConvertPixelFormat(BMDPixelFormat format)
 {
 	switch (format) {
@@ -127,16 +129,63 @@ void DeckLinkDeviceInstance::HandleVideoFrame(
 	if (videoFrame == nullptr)
 		return;
 
+	IDeckLinkVideoFrameAncillaryPackets *packets;
+
+	if (videoFrame->QueryInterface(IID_IDeckLinkVideoFrameAncillaryPackets, (void**) &packets) == S_OK) {
+		IDeckLinkAncillaryPacketIterator *iterator;
+		packets->GetPacketIterator(&iterator);
+
+		IDeckLinkAncillaryPacket *packet;
+		iterator->Next(&packet);
+
+		if (packet) {
+
+			auto did = packet->GetDID();
+
+			//blog(LOG_ERROR, "did: %x", did);
+
+			auto sdid = packet->GetSDID();
+
+			//blog(LOG_ERROR, "did: %x", sdid);
+
+			auto line = packet->GetLineNumber();
+
+			//blog(LOG_ERROR, "line: %d", line);
+
+			const void *data;
+			uint32_t size;
+			packet->GetBytes(bmdAncillaryPacketFormatUInt8, &data, &size);
+
+			//blog(LOG_ERROR, "size: %d", size);
+
+			//blog(LOG_ERROR, "data: %s", buffer);
+
+			packet->Release();
+		}
+
+		iterator->Release();
+		 packets->Release();
+	}
+
+
+
+	IDeckLinkVideoConversion *frameConverter = CreateVideoConversionInstance();
+
+	IDeckLinkMutableVideoFrame *newFrame = new OBSVideoFrame(videoFrame->GetWidth(),
+			videoFrame->GetHeight());
+
+	frameConverter->ConvertFrame(videoFrame, newFrame);
+
 	void *bytes;
-	if (videoFrame->GetBytes(&bytes) != S_OK) {
+	if (newFrame->GetBytes(&bytes) != S_OK) {
 		LOG(LOG_WARNING, "Failed to get video frame data");
 		return;
 	}
 
 	currentFrame.data[0] = (uint8_t *)bytes;
-	currentFrame.linesize[0] = (uint32_t)videoFrame->GetRowBytes();
-	currentFrame.width = (uint32_t)videoFrame->GetWidth();
-	currentFrame.height = (uint32_t)videoFrame->GetHeight();
+	currentFrame.linesize[0] = (uint32_t)newFrame->GetRowBytes();
+	currentFrame.width = (uint32_t)newFrame->GetWidth();
+	currentFrame.height = (uint32_t)newFrame->GetHeight();
 	currentFrame.timestamp = timestamp;
 
 	obs_source_output_video2(
@@ -189,12 +238,12 @@ void DeckLinkDeviceInstance::SetupVideoFormat(DeckLinkDeviceMode *mode_)
 				    currentFrame.color_range_min,
 				    currentFrame.color_range_max);
 
-#ifdef LOG_SETUP_VIDEO_FORMAT
+//#ifdef LOG_SETUP_VIDEO_FORMAT
 	LOG(LOG_INFO, "Setup video format: %s, %s, %s",
-	    pixelFormat == bmdFormat8BitYUV ? "YUV" : "RGB",
+	    pixelFormat == bmdFormat10BitYUV ? "YUV" : "RGB",
 	    activeColorSpace == VIDEO_CS_709 ? "BT.709" : "BT.601",
 	    colorRange == VIDEO_RANGE_FULL ? "full" : "limited");
-#endif
+//#endif
 }
 
 bool DeckLinkDeviceInstance::StartCapture(DeckLinkDeviceMode *mode_,
@@ -250,7 +299,7 @@ bool DeckLinkDeviceInstance::StartCapture(DeckLinkDeviceMode *mode_,
 	bool isauto = mode_->GetName() == "Auto";
 	if (isauto) {
 		displayMode = bmdModeNTSC;
-		pixelFormat = bmdFormat8BitYUV;
+		pixelFormat = bmdFormat10BitYUV;
 		flags = bmdVideoInputEnableFormatDetection;
 	} else {
 		displayMode = mode_->GetDisplayMode();
@@ -503,7 +552,7 @@ HRESULT STDMETHODCALLTYPE DeckLinkDeviceInstance::VideoInputFormatChanged(
 
 		default:
 		case bmdDetectedVideoInputYCbCr422:
-			pixelFormat = bmdFormat8BitYUV;
+			pixelFormat = bmdFormat10BitYUV;
 			break;
 		}
 	}
