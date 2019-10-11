@@ -208,7 +208,7 @@ void render_display(struct obs_display *display)
 
 	/* -------------------------------------------- */
 
-	render_display_begin(display, cx, cy, size_changed);
+	render_display_begin(display, cx, cy, false);
 
 	pthread_mutex_lock(&display->draw_callbacks_mutex);
 

@@ -75,7 +75,7 @@ char *find_libobs_data_file(const char *file)
 	struct dstr output;
 	dstr_init(&output);
 
-	if (check_path(file, OBS_DATA_PATH "/libobs/", &output))
+	if (check_path(file, "/Users/ddrboxman/Development/obs-studio/build/OBS.app/Contents/Resources/data/libobs/", &output))
 		return output.array;
 
 	if (OBS_INSTALL_PREFIX[0] != 0) {

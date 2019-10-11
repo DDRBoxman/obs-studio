@@ -29,6 +29,8 @@
 #include <IOKit/hid/IOHIDDevice.h>
 #include <IOKit/hid/IOHIDManager.h>
 
+id (*typed_msgSend)(id, SEL) = (void *)objc_msgSend;
+
 const char *get_module_extension(void)
 {
 	return ".so";
@@ -37,11 +39,13 @@ const char *get_module_extension(void)
 static const char *module_bin[] = {
 	"../obs-plugins",
 	OBS_INSTALL_PREFIX "obs-plugins",
+	"/Users/ddrboxman/Development/obs-studio/build/OBS.app/Contents/PlugIns",
 };
 
 static const char *module_data[] = {
 	"../data/obs-plugins/%module%",
 	OBS_INSTALL_DATA_PATH "obs-plugins/%module%",
+	"/Users/ddrboxman/Development/obs-studio/build/OBS.app/Contents/Resources/data/obs-plugins/%module%",
 };
 
 static const int module_patterns_size =
@@ -51,12 +55,14 @@ void add_default_module_paths(void)
 {
 	for (int i = 0; i < module_patterns_size; i++)
 		obs_add_module_path(module_bin[i], module_data[i]);
+
+
 }
 
 char *find_libobs_data_file(const char *file)
 {
 	struct dstr path;
-	dstr_init_copy(&path, OBS_INSTALL_DATA_PATH "/libobs/");
+	dstr_init_copy(&path, "/Users/ddrboxman/Development/obs-studio/build/OBS.app/Contents/Resources/data/libobs/");
 	dstr_cat(&path, file);
 	return path.array;
 }
@@ -113,11 +119,11 @@ static void log_available_memory(void)
 
 static void log_os_name(id pi, SEL UTF8String)
 {
-	unsigned long os_id = (unsigned long)objc_msgSend(
+	unsigned long os_id = (unsigned long)typed_msgSend(
 		pi, sel_registerName("operatingSystem"));
 
-	id os = objc_msgSend(pi, sel_registerName("operatingSystemName"));
-	const char *name = (const char *)objc_msgSend(os, UTF8String);
+	id os = typed_msgSend(pi, sel_registerName("operatingSystemName"));
+	const char *name = (const char *)typed_msgSend(os, UTF8String);
 
 	if (os_id == 5 /*NSMACHOperatingSystem*/) {
 		blog(LOG_INFO, "OS Name: Mac OS X (%s)", name);
@@ -129,9 +135,9 @@ static void log_os_name(id pi, SEL UTF8String)
 
 static void log_os_version(id pi, SEL UTF8String)
 {
-	id vs = objc_msgSend(pi,
+	id vs = typed_msgSend(pi,
 			     sel_registerName("operatingSystemVersionString"));
-	const char *version = (const char *)objc_msgSend(vs, UTF8String);
+	const char *version = (const char *)typed_msgSend(vs, UTF8String);
 
 	blog(LOG_INFO, "OS Version: %s", version ? version : "Unknown");
 }
@@ -139,7 +145,7 @@ static void log_os_version(id pi, SEL UTF8String)
 static void log_os(void)
 {
 	Class NSProcessInfo = objc_getClass("NSProcessInfo");
-	id pi = objc_msgSend((id)NSProcessInfo,
+	id pi = typed_msgSend((id)NSProcessInfo,
 			     sel_registerName("processInfo"));
 
 	SEL UTF8String = sel_registerName("UTF8String");
@@ -1675,7 +1681,7 @@ static bool mouse_button_pressed(obs_key_t key, bool *pressed)
 	Class NSEvent = objc_getClass("NSEvent");
 	SEL pressedMouseButtons = sel_registerName("pressedMouseButtons");
 	NSUInteger buttons =
-		(NSUInteger)objc_msgSend((id)NSEvent, pressedMouseButtons);
+		(NSUInteger)typed_msgSend((id)NSEvent, pressedMouseButtons);
 
 	*pressed = (buttons & (1 << button)) != 0;
 	return true;

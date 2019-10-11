@@ -30,6 +30,18 @@ using namespace std;
 
 bool GetDataFilePath(const char *data, string &output)
 {
+	/*stringstream str;
+
+	NSBundle *myBundle = [NSBundle mainBundle];
+
+	NSString *path = [NSString stringWithFormat:@"data/obs-studio/%@", [NSString stringWithUTF8String:data]];
+
+	NSString *absPath = [myBundle pathForResource:path ofType:nil];
+
+	output = [absPath UTF8String];
+
+	return !access(output.c_str(), R_OK);*/
+
 	stringstream str;
 	str << OBS_DATA_PATH "/obs-studio/" << data;
 	output = str.str();

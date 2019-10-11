@@ -768,6 +768,7 @@ bool OBSApp::InitLocale()
 
 	string englishPath;
 	if (!GetDataFilePath("locale/" DEFAULT_LANG ".ini", englishPath)) {
+		OBSErrorBox(NULL, englishPath.c_str());
 		OBSErrorBox(NULL, "Failed to find locale/" DEFAULT_LANG ".ini");
 		return false;
 	}
