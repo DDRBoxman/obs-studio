@@ -35,24 +35,7 @@ fi
 
 #sudo python ../CI/install/osx/build_app.py --public-key ../CI/install/osx/OBSPublicDSAKey.pem --sparkle-framework ../../sparkle/Sparkle.framework --stable=$STABLE
 
-../CI/install/osx/packageApp
-
-# curl
-cp /usr/local/opt/curl/lib/libcurl.4.dylib ./OBS.app/Contents/Frameworks/
-install_name_tool -change /usr/local/opt/curl/lib/libcurl.4.dylib @executable_path/../Frameworks/libcurl.4.dylib ./OBS.app/Contents/Plugins/rtmp-services.so
-
-# luajit
-install_name_tool -change /tmp/obsdeps/lib/libluajit-5.1.2.dylib @executable_path/../Frameworks/libluajit-5.1.2.dylib ./OBS.app/Contents/Plugins/frontend-tools.so
-
-# jack
-cp /usr/local/opt/jack/lib/libjack.0.dylib ./OBS.app/Contents/Frameworks/
-cp /usr/local/opt/berkeley-db/lib/libdb-18.1.dylib ./OBS.app/Contents/Frameworks/
-install_name_tool -change /usr/local/opt/jack/lib/libjack.0.dylib @executable_path/../Frameworks/libjack.0.dylib ./OBS.app/Contents/Plugins/linux-jack.so
-install_name_tool -change /usr/local/opt/berkeley-db/lib/libdb-18.1.dylib @executable_path/../Frameworks/libdb-18.1.dylib ./OBS.app/Contents/Frameworks/libjack.0.dylib
-
-# speexdsp
-cp /usr/local/opt/speexdsp/lib/libspeexdsp.1.dylib ./OBS.app/Contents/Frameworks/
-install_name_tool -change /usr/local/opt/speexdsp/lib/libspeexdsp.1.dylib @executable_path/../Frameworks/libspeexdsp.1.dylib ./OBS.app/Contents/Plugins/obs-filters.so
+../CI/install/osx/packageApp.sh
 
 # libmbedtls
 cp /usr/local/opt/mbedtls/lib/libmbedtls.12.dylib ./OBS.app/Contents/Frameworks/
