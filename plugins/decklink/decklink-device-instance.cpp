@@ -9,9 +9,12 @@
 #include <util/util_uint64.h>
 
 #include <sstream>
+#include <iomanip>
 #include <algorithm>
 
 #include "OBSVideoFrame.h"
+
+#include <caption/caption.h>
 
 static inline enum video_format ConvertPixelFormat(BMDPixelFormat format)
 {
@@ -123,6 +126,35 @@ void DeckLinkDeviceInstance::HandleAudioPacket(
 		&currentPacket);
 }
 
+uint8_t pos;
+uint8_t subPos = 0x80;
+
+static inline uint8_t readBit(uint8_t *buf) {
+    auto bit = (*(buf + pos) & subPos) == subPos ? 1 : 0;
+
+    subPos >>= 0x1;
+    if (subPos == 0) {
+        subPos = 0x80;
+        pos++;
+    }
+
+    return bit;
+}
+
+static inline uint8_t readBits(uint8_t *buf, int bits) {
+    uint8_t res = 0;
+
+    for (int i = 1; i<=bits; i++) {
+        res <<= 1;
+        res |= readBit(buf);
+    }
+
+    return res;
+}
+
+double captionFrame = 0;
+caption_frame_t frame;
+
 void DeckLinkDeviceInstance::HandleVideoFrame(
 	IDeckLinkVideoInputFrame *videoFrame, const uint64_t timestamp)
 {
@@ -148,23 +180,139 @@ void DeckLinkDeviceInstance::HandleVideoFrame(
 
 			//blog(LOG_ERROR, "did: %x", sdid);
 
-			auto line = packet->GetLineNumber();
+			// Caption data
+			if (did == 0x61 & sdid == 0x01) {
+                auto line = packet->GetLineNumber();
 
-			//blog(LOG_ERROR, "line: %d", line);
+                //blog(LOG_ERROR, "line: %d", line);
 
-			const void *data;
-			uint32_t size;
-			packet->GetBytes(bmdAncillaryPacketFormatUInt8, &data, &size);
+                const void *data;
+                uint32_t size;
+                packet->GetBytes(bmdAncillaryPacketFormatUInt8, &data, &size);
 
-			//blog(LOG_ERROR, "size: %d", size);
+                //blog(LOG_ERROR, "size: %d", size);
 
-			//blog(LOG_ERROR, "data: %s", buffer);
+                //blog(LOG_ERROR, "data: %s", data);
+
+                /*std::ostringstream os;
+
+                os << std::hex << std::setfill('0');
+
+                for (int i=0; i<size; i++) {
+                    os << std::hex << std::setw(2) << static_cast<int>(((uint8_t *) data)[i]) << ",";
+                }
+
+               // blog(LOG_ERROR, "data %s", os.str().c_str());*/
+
+                auto anc = (uint8_t *) data;
+
+                pos = 0;
+                subPos = 0x80;
+                auto header1 = readBits(anc, 8);
+                auto header2 = readBits(anc, 8);
+
+                uint8_t length = readBits(anc, 8);
+                uint8_t frameRate = readBits(anc, 4);
+                //reserved
+                readBits(anc, 4);
+
+                auto cdp_timecode_added = readBits(anc, 1);
+                auto cdp_data_block_added = readBits(anc, 1);
+                auto cdp_service_info_added = readBits(anc, 1);
+                auto cdp_service_info_start = readBits(anc, 1);
+                auto cdp_service_info_changed = readBits(anc, 1);
+                auto cdp_service_info_end = readBits(anc, 1);
+                auto cdp_contains_captions = readBits(anc, 1);
+                //reserved
+                readBits(anc, 1);
+
+                auto cdp_counter = readBits(anc, 8);
+                auto cdp_counter2 = readBits(anc, 8);
+
+                if (cdp_timecode_added) {
+                    auto timecodeSectionID = readBits(anc, 8);
+                    //reserved
+                    readBits(anc, 2);
+                    readBits(anc, 2);
+                    readBits(anc, 4);
+                    // reserved
+                    readBits(anc, 1);
+                    readBits(anc, 3);
+                    readBits(anc, 4);
+                    readBits(anc, 1);
+                    readBits(anc, 3);
+                    readBits(anc, 4);
+                    readBits(anc, 1);
+                    readBits(anc, 1);
+                    readBits(anc, 3);
+                    readBits(anc, 4);
+                }
+
+                if (cdp_contains_captions) {
+                    auto cdp_data_section = readBits(anc, 8);
+                    // 4 flags
+
+                    // 5,6 ?? cdp_counter
+
+                    // 7 * length
+
+                    //
+
+                    // 10 105 114
+                   // blog(LOG_ERROR, "sanity %d %d %d", header1, header2, cdp_data_section);
+
+                   // blog(LOG_ERROR, "contains captions %d", cdp_contains_captions);
+
+                    auto process_em_data_flag = readBits(anc, 1);
+                    auto process_cc_data_flag = readBits(anc, 1);
+                    auto additional_data_flag = readBits(anc, 1);
+
+                    auto cc_count = readBits(anc, 5);
+
+                   /*blog(LOG_ERROR,
+                         "em: %d cc: %d add: %d",
+                         process_em_data_flag,
+                         process_cc_data_flag,
+                         additional_data_flag);*/
+
+                   // blog(LOG_ERROR, "cc_count %d", cc_count);
+
+                    for (int i=0; i<cc_count; i++) {
+                        readBits(anc, 5);
+                        auto valid = readBits(anc, 1);
+                        auto type = readBits(anc, 2);
+                        auto cc_data1 = readBits(anc, 8);
+                        auto cc_data2 = readBits(anc, 8);
+
+                        //NTSC_CC_FIELD_1 = 0, NTSC_CC_FIELD_2 = 1, DTVCC_PACKET_DATA = 2, DTVCC_PACKET_START = 3
+
+                        if (valid && type == 0) {
+
+
+                            //caption_frame_decode(&frame, cc_data, cea708->timestamp);
+                            auto cc_data = ((uint16_t)cc_data1 << 8) | cc_data2;
+                            //eia608_dump(cc_data);
+                            //caption_frame_decode(&frame, cc_data, captionFrame++/30.0);
+
+
+                            if (LIBCAPTION_READY == caption_frame_decode(&frame,cc_data, captionFrame++/30.0)) {
+                                caption_frame_dump(&frame);
+                            }
+
+                            //caption_frame_dump(&frame);
+                        }
+
+                       // blog(LOG_ERROR, "cc_type %d", type);
+                    }
+                }
+
+			}
 
 			packet->Release();
 		}
 
 		iterator->Release();
-		 packets->Release();
+        packets->Release();
 	}
 
 
@@ -254,6 +402,8 @@ bool DeckLinkDeviceInstance::StartCapture(DeckLinkDeviceMode *mode_,
 		return false;
 	if (mode_ == nullptr)
 		return false;
+
+    caption_frame_init(&frame);
 
 	LOG(LOG_INFO, "Starting capture...");
 
