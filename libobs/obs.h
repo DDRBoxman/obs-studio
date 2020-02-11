@@ -36,6 +36,8 @@
 #include "obs-properties.h"
 #include "obs-interaction.h"
 
+#include "../deps/libcaption/caption/caption.h"
+
 struct matrix4;
 
 /* opaque types */
@@ -210,6 +212,12 @@ struct obs_source_audio {
 	uint32_t samples_per_sec;
 
 	uint64_t timestamp;
+};
+
+struct obs_source_cea_708 {
+    const uint8_t *data;
+    uint32_t packets;
+    uint64_t timestamp;
 };
 
 /**
@@ -1175,6 +1183,9 @@ EXPORT void obs_source_output_video(obs_source_t *source,
 EXPORT void obs_source_output_video2(obs_source_t *source,
 				     const struct obs_source_frame2 *frame);
 
+EXPORT void obs_source_output_cea708(obs_source_t *source,
+                    const struct obs_source_cea_708 *captions);
+
 /**
  * Preloads asynchronous video data to allow instantaneous playback
  *
@@ -1839,12 +1850,15 @@ EXPORT uint32_t obs_output_get_height(const obs_output_t *output);
 
 EXPORT const char *obs_output_get_id(const obs_output_t *output);
 
+EXPORT void obs_output_output_caption_frame(obs_output_t *output, caption_frame_t *frame);
+
 #if BUILD_CAPTIONS
 EXPORT void obs_output_output_caption_text1(obs_output_t *output,
 					    const char *text);
 EXPORT void obs_output_output_caption_text2(obs_output_t *output,
 					    const char *text,
 					    double display_duration);
+
 #endif
 
 EXPORT float obs_output_get_congestion(obs_output_t *output);

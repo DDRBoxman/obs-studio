@@ -2796,6 +2796,14 @@ void obs_source_output_video2(obs_source_t *source,
 	obs_source_output_video_internal(source, &new_frame);
 }
 
+void obs_source_output_cea708(obs_source_t *source, const struct obs_source_cea_708 *captions) {
+    if (!captions) {
+        return;
+    }
+
+
+}
+
 static inline bool preload_frame_changed(obs_source_t *source,
 					 const struct obs_source_frame *in)
 {
