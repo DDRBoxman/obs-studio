@@ -77,6 +77,7 @@ add_library(mac-decklink MODULE
 
 target_link_libraries(mac-decklink
 	libobs
+		obs-frontend-api
 	${COREFOUNDATION}
 		caption)
 
