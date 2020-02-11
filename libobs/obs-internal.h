@@ -36,6 +36,8 @@
 
 #include "obs.h"
 
+#include <caption/caption.h>
+
 #define NUM_TEXTURES 2
 #define NUM_CHANNELS 3
 #define MICROSECOND_DEN 1000000
@@ -688,6 +690,9 @@ struct obs_source {
 	uint32_t async_convert_width[MAX_AV_PLANES];
 	uint32_t async_convert_height[MAX_AV_PLANES];
 
+    pthread_mutex_t captions_mutex;
+	DARRAY(uint8_t*) captions;
+
 	/* async video deinterlacing */
 	uint64_t deinterlace_offset;
 	uint64_t deinterlace_frame_ts;
@@ -893,6 +898,11 @@ struct caption_text {
 	struct caption_text *next;
 };
 
+struct obs_caption_frame {
+    caption_frame_t *frame;
+    struct obs_caption_frame *next;
+};
+
 struct pause_data {
 	pthread_mutex_t mutex;
 	uint64_t last_video_ts;
@@ -974,6 +984,10 @@ struct obs_output {
 	double caption_timestamp;
 	struct caption_text *caption_head;
 	struct caption_text *caption_tail;
+
+    pthread_mutex_t caption_frame_mutex;
+    struct obs_caption_frame *caption_frame_head;
+    struct obs_caption_frame *caption_frame_tail;
 
 	bool valid;
 

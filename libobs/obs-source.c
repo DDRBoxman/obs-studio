@@ -2867,6 +2867,12 @@ void obs_source_set_async_rotation(obs_source_t *source, long rotation)
 		source->async_rotation = rotation;
 }
 
+void obs_source_output_cea708(obs_source_t *source, const struct obs_source_cea_708 *captions) {
+    if (!captions) {
+        return;
+    }
+}
+
 static inline bool preload_frame_changed(obs_source_t *source,
 					 const struct obs_source_frame *in)
 {

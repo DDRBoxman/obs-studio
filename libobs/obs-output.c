@@ -1210,7 +1210,7 @@ static const uint8_t nal_start[4] = {0, 0, 0, 1};
 static bool add_caption(struct obs_output *output, struct encoder_packet *out)
 {
 	struct encoder_packet backup = *out;
-	caption_frame_t cf;
+	caption_frame_t *cf;
 	sei_t sei;
 	uint8_t *data;
 	size_t size;
@@ -1227,10 +1227,11 @@ static bool add_caption(struct obs_output *output, struct encoder_packet *out)
 	da_push_back_array(out_data, &ref, sizeof(ref));
 	da_push_back_array(out_data, out->data, out->size);
 
-	caption_frame_init(&cf);
-	caption_frame_from_text(&cf, &output->caption_head->text[0]);
+	//caption_frame_init(&cf);
+	//caption_frame_from_text(&cf, &output->caption_head->text[0]);
+	cf = output->caption_frame_head->frame;
 
-	sei_from_caption_frame(&sei, &cf);
+	sei_from_caption_frame(&sei, cf);
 
 	data = malloc(sei_render_size(&sei));
 	size = sei_render(&sei, data);
@@ -1247,9 +1248,9 @@ static bool add_caption(struct obs_output *output, struct encoder_packet *out)
 
 	sei_free(&sei);
 
-	struct caption_text *next = output->caption_head->next;
-	bfree(output->caption_head);
-	output->caption_head = next;
+	struct obs_caption_frame *next = output->caption_frame_head->next;
+    bfree(output->caption_frame_head);
+    output->caption_frame_head = next;
 	return true;
 }
 #endif
@@ -1275,7 +1276,7 @@ static inline void send_interleaved(struct obs_output *output)
 		double frame_timestamp =
 			(out.pts * out.timebase_num) / (double)out.timebase_den;
 
-		if (output->caption_head &&
+		/*if (output->caption_head &&
 		    output->caption_timestamp <= frame_timestamp) {
 			blog(LOG_DEBUG, "Sending caption: %f \"%s\"",
 			     frame_timestamp, &output->caption_head->text[0]);
@@ -1287,6 +1288,10 @@ static inline void send_interleaved(struct obs_output *output)
 				output->caption_timestamp =
 					frame_timestamp + display_duration;
 			}
+		}*/
+
+		if (output->caption_frame_head) {
+		    add_caption(output, &out);
 		}
 
 		pthread_mutex_unlock(&output->caption_mutex);
@@ -2472,6 +2477,25 @@ const char *obs_output_get_id(const obs_output_t *output)
 {
 	return obs_output_valid(output, "obs_output_get_id") ? output->info.id
 							     : NULL;
+}
+
+void obs_output_output_caption_frame(obs_output_t *output, caption_frame_t *frame) {
+    if (!active(output)) {
+        return;
+    }
+
+    struct obs_caption_frame *next = bzalloc(sizeof(struct obs_caption_frame));
+
+    next->frame = frame;
+
+
+    if (!output->caption_frame_head) {
+        output->caption_frame_head = next;
+    } else {
+        output->caption_frame_tail->next = next;
+    }
+
+    output->caption_frame_tail = next;
 }
 
 #if BUILD_CAPTIONS

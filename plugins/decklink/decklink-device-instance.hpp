@@ -14,6 +14,7 @@ class DeckLinkDeviceInstance : public IDeckLinkInputCallback {
 protected:
 	struct obs_source_frame2 currentFrame;
 	struct obs_source_audio currentPacket;
+	struct obs_source_cea_708 currentCaptions;
 	DecklinkBase *decklink = nullptr;
 	DeckLinkDevice *device = nullptr;
 	DeckLinkDeviceMode *mode = nullptr;

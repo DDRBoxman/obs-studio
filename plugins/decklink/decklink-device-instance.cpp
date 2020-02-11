@@ -15,6 +15,7 @@
 #include "OBSVideoFrame.h"
 
 #include <caption/caption.h>
+#include <obs-frontend-api.h>
 
 static inline enum video_format ConvertPixelFormat(BMDPixelFormat format)
 {
@@ -67,7 +68,7 @@ static inline audio_repack_mode_t ConvertRepackFormat(speaker_layout format,
 
 DeckLinkDeviceInstance::DeckLinkDeviceInstance(DecklinkBase *decklink_,
 					       DeckLinkDevice *device_)
-	: currentFrame(), currentPacket(), decklink(decklink_), device(device_)
+	: currentFrame(), currentPacket(), currentCaptions(), decklink(decklink_), device(device_)
 {
 	currentPacket.samples_per_sec = 48000;
 	currentPacket.speakers = SPEAKERS_STEREO;
@@ -190,20 +191,6 @@ void DeckLinkDeviceInstance::HandleVideoFrame(
                 uint32_t size;
                 packet->GetBytes(bmdAncillaryPacketFormatUInt8, &data, &size);
 
-                //blog(LOG_ERROR, "size: %d", size);
-
-                //blog(LOG_ERROR, "data: %s", data);
-
-                /*std::ostringstream os;
-
-                os << std::hex << std::setfill('0');
-
-                for (int i=0; i<size; i++) {
-                    os << std::hex << std::setw(2) << static_cast<int>(((uint8_t *) data)[i]) << ",";
-                }
-
-               // blog(LOG_ERROR, "data %s", os.str().c_str());*/
-
                 auto anc = (uint8_t *) data;
 
                 pos = 0;
@@ -250,18 +237,6 @@ void DeckLinkDeviceInstance::HandleVideoFrame(
 
                 if (cdp_contains_captions) {
                     auto cdp_data_section = readBits(anc, 8);
-                    // 4 flags
-
-                    // 5,6 ?? cdp_counter
-
-                    // 7 * length
-
-                    //
-
-                    // 10 105 114
-                   // blog(LOG_ERROR, "sanity %d %d %d", header1, header2, cdp_data_section);
-
-                   // blog(LOG_ERROR, "contains captions %d", cdp_contains_captions);
 
                     auto process_em_data_flag = readBits(anc, 1);
                     auto process_cc_data_flag = readBits(anc, 1);
@@ -269,13 +244,12 @@ void DeckLinkDeviceInstance::HandleVideoFrame(
 
                     auto cc_count = readBits(anc, 5);
 
-                   /*blog(LOG_ERROR,
-                         "em: %d cc: %d add: %d",
-                         process_em_data_flag,
-                         process_cc_data_flag,
-                         additional_data_flag);*/
+                   auto *outData = (uint8_t*)bzalloc(sizeof(uint8_t) * cc_count * 3);
+                   memcpy(outData, anc+pos, cc_count*3);
 
-                   // blog(LOG_ERROR, "cc_count %d", cc_count);
+                   currentCaptions.data = outData;
+                   currentCaptions.timestamp = timestamp;
+                   currentCaptions.packets = cc_count;
 
                     for (int i=0; i<cc_count; i++) {
                         readBits(anc, 5);
@@ -288,15 +262,19 @@ void DeckLinkDeviceInstance::HandleVideoFrame(
 
                         if (valid && type == 0) {
 
-
                             //caption_frame_decode(&frame, cc_data, cea708->timestamp);
                             auto cc_data = ((uint16_t)cc_data1 << 8) | cc_data2;
                             //eia608_dump(cc_data);
                             //caption_frame_decode(&frame, cc_data, captionFrame++/30.0);
 
-
                             if (LIBCAPTION_READY == caption_frame_decode(&frame,cc_data, captionFrame++/30.0)) {
                                 caption_frame_dump(&frame);
+
+                                obs_output *output = obs_frontend_get_streaming_output();
+                                if (output) {
+                                    obs_output_output_caption_frame(output, &frame);
+                                    obs_output_release(output);
+                                }
                             }
 
                             //caption_frame_dump(&frame);
@@ -304,6 +282,10 @@ void DeckLinkDeviceInstance::HandleVideoFrame(
 
                        // blog(LOG_ERROR, "cc_type %d", type);
                     }
+
+                    obs_source_output_cea708(static_cast<DeckLinkInput *>(decklink)->GetSource(),
+                                             &currentCaptions);
+                    bfree(outData);
                 }
 
 			}
