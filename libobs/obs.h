@@ -1112,6 +1112,14 @@ EXPORT void obs_source_add_audio_capture_callback(
 EXPORT void obs_source_remove_audio_capture_callback(
 	obs_source_t *source, obs_source_audio_capture_t callback, void *param);
 
+typedef void (*obs_source_caption_t)(void *param, obs_source_t *source,
+                                     const struct obs_source_cea_708 *captions);
+
+EXPORT void obs_source_add_caption_callback(
+        obs_source_t *source, obs_source_caption_t callback, void *param);
+EXPORT void obs_source_remove_caption_callback(
+        obs_source_t *source, obs_source_caption_t callback, void *param);
+
 enum obs_deinterlace_mode {
 	OBS_DEINTERLACE_MODE_DISABLE,
 	OBS_DEINTERLACE_MODE_DISCARD,
