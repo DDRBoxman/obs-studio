@@ -7,9 +7,20 @@
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("decklink-captons", "en-US")
 
+static void connect()
+{
+    obs_output *output = obs_frontend_get_streaming_output();
+    if (output) {
+        //obs_source_add_caption_callback();
+
+        //obs_output_output_caption_text1(output, text.c_str());
+        obs_output_release(output);
+    }
+}
+
 static void save_decklink_caption_data(obs_data_t *save_data, bool saving, void *)
 {
-    /*if (saving) {
+    if (saving) {
         obs_data_t *obj = obs_data_create();
 
         obs_data_set_string(obj, "source",
@@ -31,7 +42,7 @@ static void save_decklink_caption_data(obs_data_t *save_data, bool saving, void 
 
         if (enabled)
             captions->start();
-    }*/
+    }
 }
 
 void addOutputUI(void)
