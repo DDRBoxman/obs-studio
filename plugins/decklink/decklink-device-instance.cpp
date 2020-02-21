@@ -267,7 +267,7 @@ void DeckLinkDeviceInstance::HandleVideoFrame(
                             //eia608_dump(cc_data);
                             //caption_frame_decode(&frame, cc_data, captionFrame++/30.0);
 
-                            if (LIBCAPTION_READY == caption_frame_decode(&frame,cc_data, captionFrame++/30.0)) {
+                           /* if (LIBCAPTION_READY == caption_frame_decode(&frame,cc_data, captionFrame++/30.0)) {
                                 caption_frame_dump(&frame);
 
                                 obs_output *output = obs_frontend_get_streaming_output();
@@ -275,7 +275,7 @@ void DeckLinkDeviceInstance::HandleVideoFrame(
                                     obs_output_output_caption_frame(output, &frame);
                                     obs_output_release(output);
                                 }
-                            }
+                            }*/
 
                             //caption_frame_dump(&frame);
                         }
