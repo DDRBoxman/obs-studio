@@ -182,6 +182,7 @@ static bool obs_source_init(struct obs_source *source)
 	pthread_mutex_init_value(&source->audio_mutex);
 	pthread_mutex_init_value(&source->audio_buf_mutex);
 	pthread_mutex_init_value(&source->audio_cb_mutex);
+	pthread_mutex_init_value(&source->caption_cb_mutex);
 
 	if (pthread_mutexattr_init(&attr) != 0)
 		return false;
@@ -198,6 +199,8 @@ static bool obs_source_init(struct obs_source *source)
 	if (pthread_mutex_init(&source->audio_mutex, NULL) != 0)
 		return false;
 	if (pthread_mutex_init(&source->async_mutex, NULL) != 0)
+		return false;
+	if (pthread_mutex_init(&source->caption_cb_mutex, NULL) != 0)
 		return false;
 
 	if (is_audio_source(source) || is_composite_source(source))
