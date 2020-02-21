@@ -2470,6 +2470,50 @@ const char *obs_output_get_id(const obs_output_t *output)
 							     : NULL;
 }
 
+void obs_output_caption(obs_output_t *output, const struct obs_source_cea_708 *captions) {
+   /* for (int i = 0; i < captions->packets; i++) {
+        readBits(anc, 5);
+        auto valid = readBits(anc, 1);
+        auto type = readBits(anc, 2);
+        auto cc_data1 = readBits(anc, 8);
+        auto cc_data2 = readBits(anc, 8);
+
+//NTSC_CC_FIELD_1 = 0, NTSC_CC_FIELD_2 = 1, DTVCC_PACKET_DATA = 2, DTVCC_PACKET_START = 3
+
+        if (valid && type == 0) {
+
+//caption_frame_decode(&frame, cc_data, cea708->timestamp);
+            auto cc_data = ((uint16_t) cc_data1 << 8) | cc_data2;
+//eia608_dump(cc_data);
+//caption_frame_decode(&frame, cc_data, captionFrame++/30.0);
+
+            if (LIBCAPTION_READY == caption_frame_decode(&frame, cc_data, captionFrame++ / 30.0)) {
+                caption_frame_dump(&frame);
+
+                obs_output *output = obs_frontend_get_streaming_output();
+                if (output) {
+                    obs_output_output_caption_frame(output, &frame);
+                    obs_output_release(output);
+                }
+            }
+
+//caption_frame_dump(&frame);
+        }
+
+// blog(LOG_ERROR, "cc_type %d", type);
+    }*/
+
+    /*for (int i = 0; i < captions->packets; ++i) {
+        data[0] = (cea708->user_data.cc_data[i].marker_bits << 3) | (1 << 2) | 0;
+        data[1] = cea708->user_data.cc_data[i].cc_data >> 8;
+        data[2] = cea708->user_data.cc_data[i].cc_data >> 0;
+        total += 3;
+        data += 3;
+        size -= 3;
+    }*/
+    blog(LOG_DEBUG, "CAPTION!!!");
+}
+
 void obs_output_output_caption_frame(obs_output_t *output, caption_frame_t *frame) {
     if (!active(output)) {
         return;

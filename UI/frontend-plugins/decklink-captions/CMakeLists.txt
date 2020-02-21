@@ -13,11 +13,9 @@ endif()
 
 set(decklink-captions_HEADERS
         decklink-captions.h
-        DecklinkCaptionsUI.h
         )
 set(decklink-captions_SOURCES
         decklink-captions.cpp
-        DecklinkCaptionsUI.cpp
         )
 set(decklink-captions_UI
         forms/captions.ui
