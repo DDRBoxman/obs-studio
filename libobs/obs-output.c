@@ -1221,10 +1221,7 @@ static bool add_caption(struct obs_output *output, struct encoder_packet *out)
 	if (out->priority > 1)
 		return false;
 
-    double frame_timestamp =
-            (out->pts * out->timebase_num) / (double)out->timebase_den;
-
-	sei_init(&sei, frame_timestamp);
+	sei_init(&sei, 0.0);
 
 	da_init(out_data);
 	da_push_back_array(out_data, &ref, sizeof(ref));
@@ -1232,10 +1229,10 @@ static bool add_caption(struct obs_output *output, struct encoder_packet *out)
 
 
     cea708_t cea708;
-    cea708_init(&cea708, frame_timestamp); // set up a new popon frame
+    cea708_init(&cea708, 0); // set up a new popon frame
     void *caption_buf = bzalloc(3 * sizeof(uint8_t));
 
-    blog(LOG_DEBUG, "%f", frame_timestamp);
+   // blog(LOG_DEBUG, "%f", frame_timestamp);
 
 	while (output->caption_data.size > 0) {
         circlebuf_pop_front(&output->caption_data, caption_buf, 3 * sizeof(uint8_t));
@@ -1297,6 +1294,8 @@ static bool add_caption(struct obs_output *output, struct encoder_packet *out)
 }
 #endif
 
+double last_caption_timestamp = 0;
+
 static inline void send_interleaved(struct obs_output *output)
 {
 	struct encoder_packet out = output->interleaved_packets.array[0];
@@ -1315,6 +1314,9 @@ static inline void send_interleaved(struct obs_output *output)
 #if BUILD_CAPTIONS
 		pthread_mutex_lock(&output->caption_mutex);
 
+        double frame_timestamp =
+                (out.pts * out.timebase_num) / (double)out.timebase_den;
+
 		/*if (output->caption_head &&
 		    output->caption_timestamp <= frame_timestamp) {
 			blog(LOG_DEBUG, "Sending caption: %f \"%s\"",
@@ -1331,7 +1333,10 @@ static inline void send_interleaved(struct obs_output *output)
 
 		//if (output->caption_frame_head) {
 		if (output->caption_data.size > 0) {
-		    add_caption(output, &out);
+		    if (last_caption_timestamp < frame_timestamp) {
+		        last_caption_timestamp = frame_timestamp;
+                add_caption(output, &out);
+            }
 	    	}
 		//}
 
