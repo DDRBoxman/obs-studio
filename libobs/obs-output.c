@@ -226,6 +226,7 @@ void obs_output_destroy(obs_output_t *output)
 		os_event_destroy(output->reconnect_stop_event);
 		obs_context_data_free(&output->context);
 		circlebuf_free(&output->delay_data);
+		circlebuf_free(&output->caption_data);
 		if (output->owns_info_id)
 			bfree((void *)output->info.id);
 		if (output->last_error_message)
@@ -1204,6 +1205,26 @@ static inline bool has_higher_opposing_ts(struct obs_output *output,
 }
 
 #if BUILD_CAPTIONS
+libcaption_stauts_t sei_from_cea708_cc_data(sei_t* sei, uint16_t data) {
+    unsigned int i;
+    cea708_t cea708;
+    cea708_init(&cea708, sei->timestamp); // set up a new popon frame
+
+    for (i = 0; i < scc->cc_size; ++i) {
+        if (31 == cea708.user_data.cc_count) {
+            sei_append_708(sei, &cea708);
+        }
+
+        cea708_add_cc_data(&cea708, 1, cc_type_ntsc_cc_field_1, scc->cc_data[i]);
+    }
+
+    if (0 != cea708.user_data.cc_count) {
+        sei_append_708(sei, &cea708);
+    }
+
+    return LIBCAPTION_OK;
+};
+
 static const uint8_t nal_start[4] = {0, 0, 0, 1};
 
 static bool add_caption(struct obs_output *output, struct encoder_packet *out)
@@ -1228,7 +1249,10 @@ static bool add_caption(struct obs_output *output, struct encoder_packet *out)
 
 	//caption_frame_init(&cf);
 	//caption_frame_from_text(&cf, &output->caption_head->text[0]);
-	cf = output->caption_frame_head->frame;
+	//cf = output->caption_frame_head->frame;
+
+	void *caption_buf;
+	circlebuf_pop_front(&output->caption_data, caption_buf, 3 * sizeof(uint8_t));
 
 	sei_from_caption_frame(&sei, cf);
 
@@ -1289,9 +1313,11 @@ static inline void send_interleaved(struct obs_output *output)
 			}
 		}*/
 
-		if (output->caption_frame_head) {
+		//if (output->caption_frame_head) {
+		if (output->caption_data.size > 0) {
 		    add_caption(output, &out);
-		}
+	    	}
+		//}
 
 		pthread_mutex_unlock(&output->caption_mutex);
 #endif
@@ -2511,7 +2537,12 @@ void obs_output_caption(obs_output_t *output, const struct obs_source_cea_708 *c
         data += 3;
         size -= 3;
     }*/
-    blog(LOG_DEBUG, "CAPTION!!!");
+    //blog(LOG_DEBUG, "CAPTION!!!");
+	pthread_mutex_lock(&output->caption_mutex);
+	for (int i = 0; i < captions->packets; i++) {
+		circlebuf_push_back(&output->caption_data, (void*)captions->data[i*3], captions->packets * sizeof(uint8_t));
+	}
+	pthread_mutex_unlock(&output->caption_mutex);
 }
 
 void obs_output_output_caption_frame(obs_output_t *output, caption_frame_t *frame) {
