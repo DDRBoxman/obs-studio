@@ -993,6 +993,7 @@ struct obs_output {
     pthread_mutex_t caption_frame_mutex;
     struct obs_caption_frame *caption_frame_head;
     struct obs_caption_frame *caption_frame_tail;
+    	struct circlebuf caption_data;
 
 	bool valid;
 
