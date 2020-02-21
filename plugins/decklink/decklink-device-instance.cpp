@@ -68,7 +68,11 @@ static inline audio_repack_mode_t ConvertRepackFormat(speaker_layout format,
 
 DeckLinkDeviceInstance::DeckLinkDeviceInstance(DecklinkBase *decklink_,
 					       DeckLinkDevice *device_)
-	: currentFrame(), currentPacket(), currentCaptions(), decklink(decklink_), device(device_)
+	: currentFrame(),
+	  currentPacket(),
+	  currentCaptions(),
+	  decklink(decklink_),
+	  device(device_)
 {
 	currentPacket.samples_per_sec = 48000;
 	currentPacket.speakers = SPEAKERS_STEREO;
@@ -130,27 +134,29 @@ void DeckLinkDeviceInstance::HandleAudioPacket(
 uint8_t pos;
 uint8_t subPos = 0x80;
 
-static inline uint8_t readBit(uint8_t *buf) {
-    auto bit = (*(buf + pos) & subPos) == subPos ? 1 : 0;
+static inline uint8_t readBit(uint8_t *buf)
+{
+	auto bit = (*(buf + pos) & subPos) == subPos ? 1 : 0;
 
-    subPos >>= 0x1;
-    if (subPos == 0) {
-        subPos = 0x80;
-        pos++;
-    }
+	subPos >>= 0x1;
+	if (subPos == 0) {
+		subPos = 0x80;
+		pos++;
+	}
 
-    return bit;
+	return bit;
 }
 
-static inline uint8_t readBits(uint8_t *buf, int bits) {
-    uint8_t res = 0;
+static inline uint8_t readBits(uint8_t *buf, int bits)
+{
+	uint8_t res = 0;
 
-    for (int i = 1; i<=bits; i++) {
-        res <<= 1;
-        res |= readBit(buf);
-    }
+	for (int i = 1; i <= bits; i++) {
+		res <<= 1;
+		res |= readBit(buf);
+	}
 
-    return res;
+	return res;
 }
 
 double captionFrame = 0;
@@ -164,7 +170,8 @@ void DeckLinkDeviceInstance::HandleVideoFrame(
 
 	IDeckLinkVideoFrameAncillaryPackets *packets;
 
-	if (videoFrame->QueryInterface(IID_IDeckLinkVideoFrameAncillaryPackets, (void**) &packets) == S_OK) {
+	if (videoFrame->QueryInterface(IID_IDeckLinkVideoFrameAncillaryPackets,
+				       (void **)&packets) == S_OK) {
 		IDeckLinkAncillaryPacketIterator *iterator;
 		packets->GetPacketIterator(&iterator);
 
@@ -183,91 +190,106 @@ void DeckLinkDeviceInstance::HandleVideoFrame(
 
 			// Caption data
 			if (did == 0x61 & sdid == 0x01) {
-                auto line = packet->GetLineNumber();
+				auto line = packet->GetLineNumber();
 
-                //blog(LOG_ERROR, "line: %d", line);
+				//blog(LOG_ERROR, "line: %d", line);
 
-                const void *data;
-                uint32_t size;
-                packet->GetBytes(bmdAncillaryPacketFormatUInt8, &data, &size);
+				const void *data;
+				uint32_t size;
+				packet->GetBytes(bmdAncillaryPacketFormatUInt8,
+						 &data, &size);
 
-                auto anc = (uint8_t *) data;
+				auto anc = (uint8_t *)data;
 
-                pos = 0;
-                subPos = 0x80;
-                auto header1 = readBits(anc, 8);
-                auto header2 = readBits(anc, 8);
+				pos = 0;
+				subPos = 0x80;
+				auto header1 = readBits(anc, 8);
+				auto header2 = readBits(anc, 8);
 
-                uint8_t length = readBits(anc, 8);
-                uint8_t frameRate = readBits(anc, 4);
-                //reserved
-                readBits(anc, 4);
+				uint8_t length = readBits(anc, 8);
+				uint8_t frameRate = readBits(anc, 4);
+				//reserved
+				readBits(anc, 4);
 
-                auto cdp_timecode_added = readBits(anc, 1);
-                auto cdp_data_block_added = readBits(anc, 1);
-                auto cdp_service_info_added = readBits(anc, 1);
-                auto cdp_service_info_start = readBits(anc, 1);
-                auto cdp_service_info_changed = readBits(anc, 1);
-                auto cdp_service_info_end = readBits(anc, 1);
-                auto cdp_contains_captions = readBits(anc, 1);
-                //reserved
-                readBits(anc, 1);
+				auto cdp_timecode_added = readBits(anc, 1);
+				auto cdp_data_block_added = readBits(anc, 1);
+				auto cdp_service_info_added = readBits(anc, 1);
+				auto cdp_service_info_start = readBits(anc, 1);
+				auto cdp_service_info_changed =
+					readBits(anc, 1);
+				auto cdp_service_info_end = readBits(anc, 1);
+				auto cdp_contains_captions = readBits(anc, 1);
+				//reserved
+				readBits(anc, 1);
 
-                auto cdp_counter = readBits(anc, 8);
-                auto cdp_counter2 = readBits(anc, 8);
+				auto cdp_counter = readBits(anc, 8);
+				auto cdp_counter2 = readBits(anc, 8);
 
-                if (cdp_timecode_added) {
-                    auto timecodeSectionID = readBits(anc, 8);
-                    //reserved
-                    readBits(anc, 2);
-                    readBits(anc, 2);
-                    readBits(anc, 4);
-                    // reserved
-                    readBits(anc, 1);
-                    readBits(anc, 3);
-                    readBits(anc, 4);
-                    readBits(anc, 1);
-                    readBits(anc, 3);
-                    readBits(anc, 4);
-                    readBits(anc, 1);
-                    readBits(anc, 1);
-                    readBits(anc, 3);
-                    readBits(anc, 4);
-                }
+				if (cdp_timecode_added) {
+					auto timecodeSectionID =
+						readBits(anc, 8);
+					//reserved
+					readBits(anc, 2);
+					readBits(anc, 2);
+					readBits(anc, 4);
+					// reserved
+					readBits(anc, 1);
+					readBits(anc, 3);
+					readBits(anc, 4);
+					readBits(anc, 1);
+					readBits(anc, 3);
+					readBits(anc, 4);
+					readBits(anc, 1);
+					readBits(anc, 1);
+					readBits(anc, 3);
+					readBits(anc, 4);
+				}
 
-                if (cdp_contains_captions) {
-                    auto cdp_data_section = readBits(anc, 8);
+				if (cdp_contains_captions) {
+					auto cdp_data_section =
+						readBits(anc, 8);
 
-                    auto process_em_data_flag = readBits(anc, 1);
-                    auto process_cc_data_flag = readBits(anc, 1);
-                    auto additional_data_flag = readBits(anc, 1);
+					auto process_em_data_flag =
+						readBits(anc, 1);
+					auto process_cc_data_flag =
+						readBits(anc, 1);
+					auto additional_data_flag =
+						readBits(anc, 1);
 
-                    auto cc_count = readBits(anc, 5);
+					auto cc_count = readBits(anc, 5);
 
-                   auto *outData = (uint8_t*)bzalloc(sizeof(uint8_t) * cc_count * 3);
-                   memcpy(outData, anc+pos, cc_count*3);
+					auto *outData = (uint8_t *)bzalloc(
+						sizeof(uint8_t) * cc_count * 3);
+					memcpy(outData, anc + pos,
+					       cc_count * 3);
 
-                   currentCaptions.data = outData;
-                   currentCaptions.timestamp = timestamp;
-                   currentCaptions.packets = cc_count;
+					currentCaptions.data = outData;
+					currentCaptions.timestamp = timestamp;
+					currentCaptions.packets = cc_count;
 
-                    for (int i=0; i<cc_count; i++) {
-                        readBits(anc, 5);
-                        auto valid = readBits(anc, 1);
-                        auto type = readBits(anc, 2);
-                        auto cc_data1 = readBits(anc, 8);
-                        auto cc_data2 = readBits(anc, 8);
+					for (int i = 0; i < cc_count; i++) {
+						readBits(anc, 5);
+						auto valid = readBits(anc, 1);
+						auto type = readBits(anc, 2);
+						auto cc_data1 =
+							readBits(anc, 8);
+						auto cc_data2 =
+							readBits(anc, 8);
 
-                        //NTSC_CC_FIELD_1 = 0, NTSC_CC_FIELD_2 = 1, DTVCC_PACKET_DATA = 2, DTVCC_PACKET_START = 3
+						//NTSC_CC_FIELD_1 = 0, NTSC_CC_FIELD_2 = 1, DTVCC_PACKET_DATA = 2, DTVCC_PACKET_START = 3
 
-                        if (valid && type == 0) {
+						if (valid && type == 0) {
 
-                            //caption_frame_decode(&frame, cc_data, cea708->timestamp);
-                            auto cc_data = ((uint16_t)cc_data1 << 8) | cc_data2;
-                            //eia608_dump(cc_data);
-                            //caption_frame_decode(&frame, cc_data, captionFrame++/30.0);
+							//caption_frame_decode(&frame, cc_data, cea708->timestamp);
+							auto cc_data =
+								((uint16_t)
+									 cc_data1
+								 << 8) |
+								cc_data2;
+							//eia608_dump(cc_data);
+							//caption_frame_decode(&frame, cc_data, captionFrame++/30.0);
 
-                           /* if (LIBCAPTION_READY == caption_frame_decode(&frame,cc_data, captionFrame++/30.0)) {
+							/* if (LIBCAPTION_READY == caption_frame_decode(&frame,cc_data, captionFrame++/30.0)) {
                                 caption_frame_dump(&frame);
 
                                 obs_output *output = obs_frontend_get_streaming_output();
@@ -277,32 +299,33 @@ void DeckLinkDeviceInstance::HandleVideoFrame(
                                 }
                             }*/
 
-                            //caption_frame_dump(&frame);
-                        }
+							//caption_frame_dump(&frame);
+						}
 
-                       // blog(LOG_ERROR, "cc_type %d", type);
-                    }
+						// blog(LOG_ERROR, "cc_type %d", type);
+					}
 
-                    obs_source_output_cea708(static_cast<DeckLinkInput *>(decklink)->GetSource(),
-                                             &currentCaptions);
-                    bfree(outData);
-                }
-
+					obs_source_output_cea708(
+						static_cast<DeckLinkInput *>(
+							decklink)
+							->GetSource(),
+						&currentCaptions);
+					bfree(outData);
+				}
 			}
 
 			packet->Release();
 		}
 
 		iterator->Release();
-        packets->Release();
+		packets->Release();
 	}
 
+	IDeckLinkVideoConversion *frameConverter =
+		CreateVideoConversionInstance();
 
-
-	IDeckLinkVideoConversion *frameConverter = CreateVideoConversionInstance();
-
-	IDeckLinkMutableVideoFrame *newFrame = new OBSVideoFrame(videoFrame->GetWidth(),
-			videoFrame->GetHeight());
+	IDeckLinkMutableVideoFrame *newFrame = new OBSVideoFrame(
+		videoFrame->GetWidth(), videoFrame->GetHeight());
 
 	frameConverter->ConvertFrame(videoFrame, newFrame);
 
@@ -368,12 +391,12 @@ void DeckLinkDeviceInstance::SetupVideoFormat(DeckLinkDeviceMode *mode_)
 				    currentFrame.color_range_min,
 				    currentFrame.color_range_max);
 
-//#ifdef LOG_SETUP_VIDEO_FORMAT
+	//#ifdef LOG_SETUP_VIDEO_FORMAT
 	LOG(LOG_INFO, "Setup video format: %s, %s, %s",
 	    pixelFormat == bmdFormat10BitYUV ? "YUV" : "RGB",
 	    activeColorSpace == VIDEO_CS_709 ? "BT.709" : "BT.601",
 	    colorRange == VIDEO_RANGE_FULL ? "full" : "limited");
-//#endif
+	//#endif
 }
 
 bool DeckLinkDeviceInstance::StartCapture(DeckLinkDeviceMode *mode_,
@@ -385,7 +408,7 @@ bool DeckLinkDeviceInstance::StartCapture(DeckLinkDeviceMode *mode_,
 	if (mode_ == nullptr)
 		return false;
 
-    caption_frame_init(&frame);
+	caption_frame_init(&frame);
 
 	LOG(LOG_INFO, "Starting capture...");
 

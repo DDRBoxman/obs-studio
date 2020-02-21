@@ -1228,47 +1228,51 @@ static bool add_caption(struct obs_output *output, struct encoder_packet *out)
 	da_push_back_array(out_data, &ref, sizeof(ref));
 	da_push_back_array(out_data, out->data, out->size);
 
+	cea708_t cea708;
+	cea708_init(&cea708, 0); // set up a new popon frame
+	void *caption_buf = bzalloc(3 * sizeof(uint8_t));
 
-    cea708_t cea708;
-    cea708_init(&cea708, 0); // set up a new popon frame
-    void *caption_buf = bzalloc(3 * sizeof(uint8_t));
-
-   // blog(LOG_DEBUG, "%f", frame_timestamp);
+	// blog(LOG_DEBUG, "%f", frame_timestamp);
 
 	while (output->caption_data.size > 0) {
-        circlebuf_pop_front(&output->caption_data, caption_buf, 3 * sizeof(uint8_t));
+		circlebuf_pop_front(&output->caption_data, caption_buf,
+				    3 * sizeof(uint8_t));
 
-        if ((((uint8_t*)caption_buf)[0] & 0x3) != 0) {
-            // only send cea 608
-            continue;
-        }
+		if ((((uint8_t *)caption_buf)[0] & 0x3) != 0) {
+			// only send cea 608
+			continue;
+		}
 
-        uint16_t captionData = ((uint8_t *)caption_buf)[1];
-        captionData = captionData << 8;
-        captionData += ((uint8_t *)caption_buf)[2];
+		uint16_t captionData = ((uint8_t *)caption_buf)[1];
+		captionData = captionData << 8;
+		captionData += ((uint8_t *)caption_buf)[2];
 
-        // padding
-        if (captionData == 0x8080) {
-            continue;
-        }
+		// padding
+		if (captionData == 0x8080) {
+			continue;
+		}
 
-        if (captionData == 0) {
-            continue;
-        }
+		if (captionData == 0) {
+			continue;
+		}
 
-        if (!eia608_parity_varify(captionData)) {
-            continue;
-        }
+		if (!eia608_parity_varify(captionData)) {
+			continue;
+		}
 
-        eia608_dump(captionData);
+		eia608_dump(captionData);
 
-        //blog(LOG_DEBUG, "cap, %02x %02x", ((uint8_t *)caption_buf)[1], ((uint8_t *)caption_buf)[2]);
+		//blog(LOG_DEBUG, "cap, %02x %02x", ((uint8_t *)caption_buf)[1], ((uint8_t *)caption_buf)[2]);
 
-        cea708_add_cc_data(&cea708, 1, ((uint8_t*)caption_buf)[0] & 0x3, captionData);
+		cea708_add_cc_data(&cea708, 1,
+				   ((uint8_t *)caption_buf)[0] & 0x3,
+				   captionData);
 	}
 
-	sei_message_t* msg = sei_message_new(sei_type_user_data_registered_itu_t_t35, 0, CEA608_MAX_SIZE);
-	msg->size = cea708_render(&cea708, sei_message_data(msg), sei_message_size(msg));
+	sei_message_t *msg = sei_message_new(
+		sei_type_user_data_registered_itu_t_t35, 0, CEA608_MAX_SIZE);
+	msg->size = cea708_render(&cea708, sei_message_data(msg),
+				  sei_message_size(msg));
 	sei_message_append(&sei, msg);
 
 	bfree(caption_buf);
@@ -1315,8 +1319,8 @@ static inline void send_interleaved(struct obs_output *output)
 #if BUILD_CAPTIONS
 		pthread_mutex_lock(&output->caption_mutex);
 
-        double frame_timestamp =
-                (out.pts * out.timebase_num) / (double)out.timebase_den;
+		double frame_timestamp =
+			(out.pts * out.timebase_num) / (double)out.timebase_den;
 
 		/*if (output->caption_head &&
 		    output->caption_timestamp <= frame_timestamp) {
@@ -1334,11 +1338,11 @@ static inline void send_interleaved(struct obs_output *output)
 
 		//if (output->caption_frame_head) {
 		if (output->caption_data.size > 0) {
-		    if (last_caption_timestamp < frame_timestamp) {
-		        last_caption_timestamp = frame_timestamp;
-                add_caption(output, &out);
-            }
-	    	}
+			if (last_caption_timestamp < frame_timestamp) {
+				last_caption_timestamp = frame_timestamp;
+				add_caption(output, &out);
+			}
+		}
 		//}
 
 		pthread_mutex_unlock(&output->caption_mutex);
@@ -2526,8 +2530,10 @@ const char *obs_output_get_id(const obs_output_t *output)
 							     : NULL;
 }
 
-void obs_output_caption(obs_output_t *output, const struct obs_source_cea_708 *captions) {
-   /* for (int i = 0; i < captions->packets; i++) {
+void obs_output_caption(obs_output_t *output,
+			const struct obs_source_cea_708 *captions)
+{
+	/* for (int i = 0; i < captions->packets; i++) {
         readBits(anc, 5);
         auto valid = readBits(anc, 1);
         auto type = readBits(anc, 2);
@@ -2559,7 +2565,7 @@ void obs_output_caption(obs_output_t *output, const struct obs_source_cea_708 *c
 // blog(LOG_ERROR, "cc_type %d", type);
     }*/
 
-    /*for (int i = 0; i < captions->packets; ++i) {
+	/*for (int i = 0; i < captions->packets; ++i) {
         data[0] = (cea708->user_data.cc_data[i].marker_bits << 3) | (1 << 2) | 0;
         data[1] = cea708->user_data.cc_data[i].cc_data >> 8;
         data[2] = cea708->user_data.cc_data[i].cc_data >> 0;
@@ -2570,29 +2576,33 @@ void obs_output_caption(obs_output_t *output, const struct obs_source_cea_708 *c
 
 	pthread_mutex_lock(&output->caption_mutex);
 	for (int i = 0; i < captions->packets; i++) {
-        //blog(LOG_DEBUG, "%d", captions->data[i]);
-		circlebuf_push_back(&output->caption_data, captions->data+(i*3),  3*sizeof(uint8_t));
+		//blog(LOG_DEBUG, "%d", captions->data[i]);
+		circlebuf_push_back(&output->caption_data,
+				    captions->data + (i * 3),
+				    3 * sizeof(uint8_t));
 	}
 	pthread_mutex_unlock(&output->caption_mutex);
 }
 
-void obs_output_output_caption_frame(obs_output_t *output, caption_frame_t *frame) {
-    if (!active(output)) {
-        return;
-    }
+void obs_output_output_caption_frame(obs_output_t *output,
+				     caption_frame_t *frame)
+{
+	if (!active(output)) {
+		return;
+	}
 
-    struct obs_caption_frame *next = bzalloc(sizeof(struct obs_caption_frame));
+	struct obs_caption_frame *next =
+		bzalloc(sizeof(struct obs_caption_frame));
 
-    next->frame = frame;
+	next->frame = frame;
 
+	if (!output->caption_frame_head) {
+		output->caption_frame_head = next;
+	} else {
+		output->caption_frame_tail->next = next;
+	}
 
-    if (!output->caption_frame_head) {
-        output->caption_frame_head = next;
-    } else {
-        output->caption_frame_tail->next = next;
-    }
-
-    output->caption_frame_tail = next;
+	output->caption_frame_tail = next;
 }
 
 #if BUILD_CAPTIONS

@@ -588,8 +588,8 @@ struct audio_cb_info {
 };
 
 struct caption_cb_info {
-    obs_source_caption_t callback;
-    void *param;
+	obs_source_caption_t callback;
+	void *param;
 };
 
 struct obs_source {
@@ -695,8 +695,8 @@ struct obs_source {
 	uint32_t async_convert_width[MAX_AV_PLANES];
 	uint32_t async_convert_height[MAX_AV_PLANES];
 
-    pthread_mutex_t caption_cb_mutex;
-    DARRAY(struct caption_cb_info) caption_cb_list;
+	pthread_mutex_t caption_cb_mutex;
+	DARRAY(struct caption_cb_info) caption_cb_list;
 
 	/* async video deinterlacing */
 	uint64_t deinterlace_offset;
@@ -904,8 +904,8 @@ struct caption_text {
 };
 
 struct obs_caption_frame {
-    caption_frame_t *frame;
-    struct obs_caption_frame *next;
+	caption_frame_t *frame;
+	struct obs_caption_frame *next;
 };
 
 struct pause_data {
@@ -990,10 +990,10 @@ struct obs_output {
 	struct caption_text *caption_head;
 	struct caption_text *caption_tail;
 
-    pthread_mutex_t caption_frame_mutex;
-    struct obs_caption_frame *caption_frame_head;
-    struct obs_caption_frame *caption_frame_tail;
-    	struct circlebuf caption_data;
+	pthread_mutex_t caption_frame_mutex;
+	struct obs_caption_frame *caption_frame_head;
+	struct obs_caption_frame *caption_frame_tail;
+	struct circlebuf caption_data;
 
 	bool valid;
 

@@ -23,9 +23,10 @@ IDeckLinkIterator *CreateDeckLinkIteratorInstance(void)
 IDeckLinkVideoConversion *CreateVideoConversionInstance(void)
 {
 	IDeckLinkVideoConversion *conversion;
-	const HRESULT result =
-		CoCreateInstance(CLSID_CDeckLinkVideoConversion, nullptr, CLSCTX_ALL,
-						IID_IDeckLinkVideoConversion, (void **)&conversion);
+	const HRESULT result = CoCreateInstance(CLSID_CDeckLinkVideoConversion,
+						nullptr, CLSCTX_ALL,
+						IID_IDeckLinkVideoConversion,
+						(void **)&conversion);
 	return result == S_OK ? conversion : nullptr;
 }
 

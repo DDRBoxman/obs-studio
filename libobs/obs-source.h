@@ -189,7 +189,7 @@ enum obs_media_state {
 /**
  * Source type provides cea708 data
  */
-#define OBS_SOURCE_CEA_708 (1<<14)
+#define OBS_SOURCE_CEA_708 (1 << 14)
 
 /** @} */
 
