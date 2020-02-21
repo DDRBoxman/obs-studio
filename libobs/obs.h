@@ -36,8 +36,6 @@
 #include "obs-properties.h"
 #include "obs-interaction.h"
 
-#include "../deps/libcaption/caption/caption.h"
-
 struct matrix4;
 
 /* opaque types */
@@ -1879,9 +1877,6 @@ EXPORT uint32_t obs_output_get_width(const obs_output_t *output);
 EXPORT uint32_t obs_output_get_height(const obs_output_t *output);
 
 EXPORT const char *obs_output_get_id(const obs_output_t *output);
-
-EXPORT void obs_output_output_caption_frame(obs_output_t *output,
-					    caption_frame_t *frame);
 
 EXPORT void obs_output_caption(obs_output_t *output,
 			       const struct obs_source_cea_708 *captions);
