@@ -215,7 +215,7 @@ struct obs_source_audio {
 };
 
 struct obs_source_cea_708 {
-    const uint8_t *data;
+    const uint8_t* data;
     uint32_t packets;
     uint64_t timestamp;
 };
