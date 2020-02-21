@@ -1860,6 +1860,8 @@ EXPORT const char *obs_output_get_id(const obs_output_t *output);
 
 EXPORT void obs_output_output_caption_frame(obs_output_t *output, caption_frame_t *frame);
 
+EXPORT void obs_output_caption(obs_output_t *output, const struct obs_source_cea_708 *captions);
+
 #if BUILD_CAPTIONS
 EXPORT void obs_output_output_caption_text1(obs_output_t *output,
 					    const char *text);
