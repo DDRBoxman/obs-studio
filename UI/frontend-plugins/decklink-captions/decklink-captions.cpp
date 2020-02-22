@@ -59,28 +59,24 @@ DecklinkCaptionsUI::DecklinkCaptionsUI(QWidget *parent)
 
 void DecklinkCaptionsUI::on_source_currentIndexChanged(int)
 {
-	//if (started)
 	captions->stop();
 
 	captions->source_name = ui->source->currentText().toUtf8().constData();
 	captions->source = GetWeakSourceByName(captions->source_name.c_str());
 
-	// if (started)
 	captions->start();
 }
 
 static void caption_callback(void *param, obs_source_t *source,
 			     const struct obs_source_cea_708 *captions)
 {
-	obs_output *output = obs_frontend_get_streaming_output();
-	if (output) {
-		//obs_source_add_caption_callback();
-
-		//obs_output_output_caption_text1(output, text.c_str());
-		obs_output_caption(output, captions);
-
-		obs_output_release(output);
-	}
+    if (obs_frontend_streaming_active()) {
+        obs_output *output = obs_frontend_get_streaming_output();
+        if (output) {
+            obs_output_caption(output, captions);
+            obs_output_release(output);
+        }
+    }
 }
 
 void obs_captions::start()
