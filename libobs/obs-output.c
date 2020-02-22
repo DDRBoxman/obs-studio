@@ -268,6 +268,10 @@ bool obs_output_actual_start(obs_output_t *output)
 		os_atomic_dec_long(&output->delay_restart_refs);
 
 	output->caption_timestamp = 0;
+
+    circlebuf_free(&output->caption_data);
+    circlebuf_init(&output->caption_data);
+
 	return success;
 }
 
@@ -1231,6 +1235,8 @@ static bool add_caption(struct obs_output *output, struct encoder_packet *out)
 	cea708_t cea708;
 	cea708_init(&cea708, 0); // set up a new popon frame
 	void *caption_buf = bzalloc(3 * sizeof(uint8_t));
+
+    //blog(LOG_DEBUG, "size %d", output->caption_data.size);
 
 	while (output->caption_data.size > 0) {
 		circlebuf_pop_front(&output->caption_data, caption_buf,
