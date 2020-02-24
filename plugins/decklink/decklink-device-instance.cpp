@@ -15,7 +15,6 @@
 #include "OBSVideoFrame.h"
 
 #include <caption/caption.h>
-#include <obs-frontend-api.h>
 
 static inline enum video_format ConvertPixelFormat(BMDPixelFormat format)
 {

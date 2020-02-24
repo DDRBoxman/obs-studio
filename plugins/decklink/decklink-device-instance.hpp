@@ -6,6 +6,7 @@
 #include <obs-module.h>
 #include "decklink-device.hpp"
 #include "../../libobs/media-io/video-scaler.h"
+#include "OBSVideoFrame.h"
 
 class AudioRepacker;
 class DecklinkBase;
@@ -35,7 +36,7 @@ protected:
 	speaker_layout channelFormat = SPEAKERS_STEREO;
 	bool swap;
 
-	IDeckLinkMutableVideoFrame *convertFrame = nullptr;
+	OBSVideoFrame *convertFrame = nullptr;
 	IDeckLinkMutableVideoFrame *decklinkOutputFrame = nullptr;
 
 	void FinalizeStream();
