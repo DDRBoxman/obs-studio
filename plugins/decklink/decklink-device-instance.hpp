@@ -35,6 +35,7 @@ protected:
 	speaker_layout channelFormat = SPEAKERS_STEREO;
 	bool swap;
 
+	IDeckLinkMutableVideoFrame *convertFrame = nullptr;
 	IDeckLinkMutableVideoFrame *decklinkOutputFrame = nullptr;
 
 	void FinalizeStream();
