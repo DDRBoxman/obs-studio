@@ -2,6 +2,7 @@
 #include <obs-module.h>
 #include <util/platform.h>
 #include <obs.hpp>
+#include <memory>
 #include "ui_captions.h"
 
 class DecklinkCaptionsUI : public QDialog {
