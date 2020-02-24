@@ -79,7 +79,12 @@ DeckLinkDeviceInstance::DeckLinkDeviceInstance(DecklinkBase *decklink_,
 	currentPacket.format = AUDIO_FORMAT_16BIT;
 }
 
-DeckLinkDeviceInstance::~DeckLinkDeviceInstance() {}
+DeckLinkDeviceInstance::~DeckLinkDeviceInstance()
+{
+	if (convertFrame) {
+		delete convertFrame;
+	}
+}
 
 void DeckLinkDeviceInstance::HandleAudioPacket(
 	IDeckLinkAudioInputPacket *audioPacket, const uint64_t timestamp)
@@ -286,21 +291,18 @@ void DeckLinkDeviceInstance::HandleVideoFrame(
 	IDeckLinkVideoConversion *frameConverter =
 		CreateVideoConversionInstance();
 
-	IDeckLinkMutableVideoFrame *newFrame = new OBSVideoFrame(
-		videoFrame->GetWidth(), videoFrame->GetHeight());
-
-	frameConverter->ConvertFrame(videoFrame, newFrame);
+	frameConverter->ConvertFrame(videoFrame, convertFrame);
 
 	void *bytes;
-	if (newFrame->GetBytes(&bytes) != S_OK) {
+	if (convertFrame->GetBytes(&bytes) != S_OK) {
 		LOG(LOG_WARNING, "Failed to get video frame data");
 		return;
 	}
 
 	currentFrame.data[0] = (uint8_t *)bytes;
-	currentFrame.linesize[0] = (uint32_t)newFrame->GetRowBytes();
-	currentFrame.width = (uint32_t)newFrame->GetWidth();
-	currentFrame.height = (uint32_t)newFrame->GetHeight();
+	currentFrame.linesize[0] = (uint32_t)convertFrame->GetRowBytes();
+	currentFrame.width = (uint32_t)convertFrame->GetWidth();
+	currentFrame.height = (uint32_t)convertFrame->GetHeight();
 	currentFrame.timestamp = timestamp;
 
 	obs_source_output_video2(
@@ -352,6 +354,11 @@ void DeckLinkDeviceInstance::SetupVideoFormat(DeckLinkDeviceMode *mode_)
 				    currentFrame.color_matrix,
 				    currentFrame.color_range_min,
 				    currentFrame.color_range_max);
+
+	if (convertFrame) {
+		delete convertFrame;
+	}
+	convertFrame = new OBSVideoFrame(mode_->GetWidth(), mode_->GetHeight());
 
 	//#ifdef LOG_SETUP_VIDEO_FORMAT
 	LOG(LOG_INFO, "Setup video format: %s, %s, %s",
