@@ -57,9 +57,10 @@ sudo cp -R ./sparkle/Sparkle.framework /Library/Frameworks/Sparkle.framework
 
 # CEF Stuff
 hr "Downloading CEF"
-wget --quiet --retry-connrefused --waitretry=1 https://obs-nightly.s3-us-west-2.amazonaws.com/cef_binary_${CEF_BUILD_VERSION}_macosx64.tar.bz2
-tar -xf ./cef_binary_${CEF_BUILD_VERSION}_macosx64.tar.bz2
-cd ./cef_binary_${CEF_BUILD_VERSION}_macosx64
+wget --quiet --retry-connrefused --waitretry=1 https://obs-nightly.s3-us-west-2.amazonaws.com/cef_binary_+3809_macosx64.tar.bz2
+tar -xf ./cef_binary_+3809_macosx64.tar.bz2
+ls
+cd ./cef_binary_76.1.13+gf19c584+chromium-76.0.3809.132_macosx64_minimal
 # remove a broken test
 sed -i '.orig' '/add_subdirectory(tests\/ceftests)/d' ./CMakeLists.txt
 # target 10.11

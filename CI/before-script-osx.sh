@@ -18,4 +18,4 @@ cmake -DENABLE_SPARKLE_UPDATER=ON \
 -DBUILD_BROWSER=ON \
 -DBROWSER_DEPLOY=ON \
 -DBUILD_CAPTIONS=ON \
--DCEF_ROOT_DIR=$PWD/../../cef_binary_${CEF_BUILD_VERSION}_macosx64 ..
+-DCEF_ROOT_DIR=$PWD/../../cef_binary_76.1.13+gf19c584+chromium-76.0.3809.132_macosx64_minimal ..

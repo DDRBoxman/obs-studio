@@ -59,7 +59,7 @@ install_name_tool -change @rpath/Sparkle.framework/Versions/A/Sparkle @executabl
 # Copy Chromium embedded framework to app Frameworks directory
 hr "Copying Chromium Embedded Framework.framework"
 sudo mkdir -p OBS.app/Contents/Frameworks
-sudo cp -R ../../cef_binary_${CEF_BUILD_VERSION}_macosx64/Release/Chromium\ Embedded\ Framework.framework OBS.app/Contents/Frameworks/
+sudo cp -R ../../cef_binary_76.1.13+gf19c584+chromium-76.0.3809.132_macosx64_minimal/Release/Chromium\ Embedded\ Framework.framework OBS.app/Contents/Frameworks/
 
 install_name_tool -change /usr/local/opt/qt/lib/QtGui.framework/Versions/5/QtGui @executable_path/../Frameworks/QtGui.framework/Versions/5/QtGui ./OBS.app/Contents/Plugins/obs-browser.so
 install_name_tool -change /usr/local/opt/qt/lib/QtCore.framework/Versions/5/QtCore @executable_path/../Frameworks/QtCore.framework/Versions/5/QtCore ./OBS.app/Contents/Plugins/obs-browser.so
