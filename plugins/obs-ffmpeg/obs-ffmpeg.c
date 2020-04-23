@@ -227,6 +227,30 @@ extern void obs_ffmpeg_unload_logging(void);
 
 bool obs_module_load(void)
 {
+	AVHWAccel *first_hwaccel   = av_hwaccel_next(NULL);
+	fprintf(stderr,"%p", first_hwaccel);
+	AVHWAccel *hwaccel = first_hwaccel;
+	AVHWAccel *h264 = NULL;
+	const char * h264_name = "h264_vaapi";
+	while (hwaccel != NULL)
+	{
+		if ( hwaccel != NULL)
+		{
+			fprintf(stderr,"%s ", hwaccel->name);
+			if (strcmp(hwaccel->name, h264_name)== 0)
+			{
+				h264=hwaccel;
+			}
+		}
+		hwaccel=av_hwaccel_next(hwaccel);
+
+		if (hwaccel == first_hwaccel)
+		{
+			break;
+		}
+	}
+	fprintf(stderr,"\n");
+
 	obs_register_source(&ffmpeg_source);
 	obs_register_output(&ffmpeg_output);
 	obs_register_output(&ffmpeg_muxer);
