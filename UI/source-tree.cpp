@@ -1042,6 +1042,9 @@ void SourceTree::SelectItem(obs_sceneitem_t *sceneitem, bool select)
 		selectionModel()->select(
 			index, select ? QItemSelectionModel::Select
 				      : QItemSelectionModel::Deselect);
+
+	OBSBasic *main = reinterpret_cast<OBSBasic *>(App()->GetMainWindow());
+	main->UpdateContextBar();
 }
 
 Q_DECLARE_METATYPE(OBSSceneItem);

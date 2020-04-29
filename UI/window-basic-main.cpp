@@ -2736,8 +2736,6 @@ void OBSBasic::SelectSceneItem(OBSScene scene, OBSSceneItem item, bool select)
 		return;
 
 	ui->sources->SelectItem(item, select);
-
-	this->UpdateContextBar();
 }
 
 void OBSBasic::UpdateContextBar()

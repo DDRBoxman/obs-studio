@@ -571,8 +571,6 @@ private slots:
 
 	void SelectSceneItem(OBSScene scene, OBSSceneItem item, bool select);
 
-	void UpdateContextBar();
-
 	void ActivateAudioSource(OBSSource source);
 	void DeactivateAudioSource(OBSSource source);
 
@@ -801,6 +799,8 @@ public:
 	QIcon GetSourceIcon(const char *id) const;
 	QIcon GetGroupIcon() const;
 	QIcon GetSceneIcon() const;
+
+	void UpdateContextBar();
 
 protected:
 	virtual void closeEvent(QCloseEvent *event) override;
