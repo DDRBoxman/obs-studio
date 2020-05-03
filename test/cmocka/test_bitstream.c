@@ -27,7 +27,7 @@ static void bitstream_test(void **state)
 int main()
 {
 	const struct CMUnitTest tests[] = {
-			cmocka_unit_test(bitstream_test),
+		cmocka_unit_test(bitstream_test),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);

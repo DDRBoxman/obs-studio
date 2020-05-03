@@ -4,7 +4,7 @@
 #include <string.h>
 
 void bitstream_reader_init(struct bitstream_reader *r, uint8_t *data,
-		size_t len)
+			   size_t len)
 {
 	memset(r, 0, sizeof(struct bitstream_reader));
 	r->buf = data;

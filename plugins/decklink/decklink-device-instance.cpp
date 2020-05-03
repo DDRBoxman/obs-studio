@@ -184,25 +184,35 @@ void DeckLinkDeviceInstance::HandleVideoFrame(
 				auto header2 = bitstream_reader_r8(&reader);
 
 				uint8_t length = bitstream_reader_r8(&reader);
-				uint8_t frameRate = bitstream_reader_read_bits(&reader, 4);
+				uint8_t frameRate =
+					bitstream_reader_read_bits(&reader, 4);
 				//reserved
 				bitstream_reader_read_bits(&reader, 4);
 
-				auto cdp_timecode_added = bitstream_reader_read_bits(&reader, 1);
-				auto cdp_data_block_added = bitstream_reader_read_bits(&reader, 1);
-				auto cdp_service_info_added = bitstream_reader_read_bits(&reader, 1);
-				auto cdp_service_info_start = bitstream_reader_read_bits(&reader, 1);
-				auto cdp_service_info_changed = bitstream_reader_read_bits(&reader, 1);
-				auto cdp_service_info_end = bitstream_reader_read_bits(&reader, 1);
-				auto cdp_contains_captions = bitstream_reader_read_bits(&reader, 1);
+				auto cdp_timecode_added =
+					bitstream_reader_read_bits(&reader, 1);
+				auto cdp_data_block_added =
+					bitstream_reader_read_bits(&reader, 1);
+				auto cdp_service_info_added =
+					bitstream_reader_read_bits(&reader, 1);
+				auto cdp_service_info_start =
+					bitstream_reader_read_bits(&reader, 1);
+				auto cdp_service_info_changed =
+					bitstream_reader_read_bits(&reader, 1);
+				auto cdp_service_info_end =
+					bitstream_reader_read_bits(&reader, 1);
+				auto cdp_contains_captions =
+					bitstream_reader_read_bits(&reader, 1);
 				//reserved
 				bitstream_reader_read_bits(&reader, 1);
 
 				auto cdp_counter = bitstream_reader_r8(&reader);
-				auto cdp_counter2 = bitstream_reader_r8(&reader);
+				auto cdp_counter2 =
+					bitstream_reader_r8(&reader);
 
 				if (cdp_timecode_added) {
-					auto timecodeSectionID = bitstream_reader_r8(&reader);
+					auto timecodeSectionID =
+						bitstream_reader_r8(&reader);
 					//reserved
 					bitstream_reader_read_bits(&reader, 2);
 					bitstream_reader_read_bits(&reader, 2);
@@ -221,13 +231,22 @@ void DeckLinkDeviceInstance::HandleVideoFrame(
 				}
 
 				if (cdp_contains_captions) {
-					auto cdp_data_section = bitstream_reader_r8(&reader);
+					auto cdp_data_section =
+						bitstream_reader_r8(&reader);
 
-					auto process_em_data_flag = bitstream_reader_read_bits(&reader, 1);
-					auto process_cc_data_flag = bitstream_reader_read_bits(&reader, 1);
-					auto additional_data_flag = bitstream_reader_read_bits(&reader, 1);
+					auto process_em_data_flag =
+						bitstream_reader_read_bits(
+							&reader, 1);
+					auto process_cc_data_flag =
+						bitstream_reader_read_bits(
+							&reader, 1);
+					auto additional_data_flag =
+						bitstream_reader_read_bits(
+							&reader, 1);
 
-					auto cc_count = bitstream_reader_read_bits(&reader, 5);
+					auto cc_count =
+						bitstream_reader_read_bits(
+							&reader, 5);
 
 					auto *outData = (uint8_t *)bzalloc(
 						sizeof(uint8_t) * cc_count * 3);
