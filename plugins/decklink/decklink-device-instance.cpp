@@ -15,6 +15,7 @@
 #include "OBSVideoFrame.h"
 
 #include <caption/caption.h>
+#include <util/bitstream.h>
 
 static inline enum video_format ConvertPixelFormat(BMDPixelFormat format)
 {
@@ -135,34 +136,6 @@ void DeckLinkDeviceInstance::HandleAudioPacket(
 		&currentPacket);
 }
 
-uint8_t pos;
-uint8_t subPos = 0x80;
-
-static inline uint8_t readBit(uint8_t *buf)
-{
-	auto bit = (*(buf + pos) & subPos) == subPos ? 1 : 0;
-
-	subPos >>= 0x1;
-	if (subPos == 0) {
-		subPos = 0x80;
-		pos++;
-	}
-
-	return bit;
-}
-
-static inline uint8_t readBits(uint8_t *buf, int bits)
-{
-	uint8_t res = 0;
-
-	for (int i = 1; i <= bits; i++) {
-		res <<= 1;
-		res |= readBit(buf);
-	}
-
-	return res;
-}
-
 double captionFrame = 0;
 caption_frame_t frame;
 
@@ -204,67 +177,61 @@ void DeckLinkDeviceInstance::HandleVideoFrame(
 						 &data, &size);
 
 				auto anc = (uint8_t *)data;
+				struct bitstream_reader reader;
+				bitstream_reader_init(&reader, anc, size);
 
-				pos = 0;
-				subPos = 0x80;
-				auto header1 = readBits(anc, 8);
-				auto header2 = readBits(anc, 8);
+				auto header1 = bitstream_reader_r8(&reader);
+				auto header2 = bitstream_reader_r8(&reader);
 
-				uint8_t length = readBits(anc, 8);
-				uint8_t frameRate = readBits(anc, 4);
+				uint8_t length = bitstream_reader_r8(&reader);
+				uint8_t frameRate = bitstream_reader_read_bits(&reader, 4);
 				//reserved
-				readBits(anc, 4);
+				bitstream_reader_read_bits(&reader, 4);
 
-				auto cdp_timecode_added = readBits(anc, 1);
-				auto cdp_data_block_added = readBits(anc, 1);
-				auto cdp_service_info_added = readBits(anc, 1);
-				auto cdp_service_info_start = readBits(anc, 1);
-				auto cdp_service_info_changed =
-					readBits(anc, 1);
-				auto cdp_service_info_end = readBits(anc, 1);
-				auto cdp_contains_captions = readBits(anc, 1);
+				auto cdp_timecode_added = bitstream_reader_read_bits(&reader, 1);
+				auto cdp_data_block_added = bitstream_reader_read_bits(&reader, 1);
+				auto cdp_service_info_added = bitstream_reader_read_bits(&reader, 1);
+				auto cdp_service_info_start = bitstream_reader_read_bits(&reader, 1);
+				auto cdp_service_info_changed = bitstream_reader_read_bits(&reader, 1);
+				auto cdp_service_info_end = bitstream_reader_read_bits(&reader, 1);
+				auto cdp_contains_captions = bitstream_reader_read_bits(&reader, 1);
 				//reserved
-				readBits(anc, 1);
+				bitstream_reader_read_bits(&reader, 1);
 
-				auto cdp_counter = readBits(anc, 8);
-				auto cdp_counter2 = readBits(anc, 8);
+				auto cdp_counter = bitstream_reader_r8(&reader);
+				auto cdp_counter2 = bitstream_reader_r8(&reader);
 
 				if (cdp_timecode_added) {
-					auto timecodeSectionID =
-						readBits(anc, 8);
+					auto timecodeSectionID = bitstream_reader_r8(&reader);
 					//reserved
-					readBits(anc, 2);
-					readBits(anc, 2);
-					readBits(anc, 4);
+					bitstream_reader_read_bits(&reader, 2);
+					bitstream_reader_read_bits(&reader, 2);
+					bitstream_reader_read_bits(&reader, 4);
 					// reserved
-					readBits(anc, 1);
-					readBits(anc, 3);
-					readBits(anc, 4);
-					readBits(anc, 1);
-					readBits(anc, 3);
-					readBits(anc, 4);
-					readBits(anc, 1);
-					readBits(anc, 1);
-					readBits(anc, 3);
-					readBits(anc, 4);
+					bitstream_reader_read_bits(&reader, 1);
+					bitstream_reader_read_bits(&reader, 3);
+					bitstream_reader_read_bits(&reader, 4);
+					bitstream_reader_read_bits(&reader, 1);
+					bitstream_reader_read_bits(&reader, 3);
+					bitstream_reader_read_bits(&reader, 4);
+					bitstream_reader_read_bits(&reader, 1);
+					bitstream_reader_read_bits(&reader, 1);
+					bitstream_reader_read_bits(&reader, 3);
+					bitstream_reader_read_bits(&reader, 4);
 				}
 
 				if (cdp_contains_captions) {
-					auto cdp_data_section =
-						readBits(anc, 8);
+					auto cdp_data_section = bitstream_reader_r8(&reader);
 
-					auto process_em_data_flag =
-						readBits(anc, 1);
-					auto process_cc_data_flag =
-						readBits(anc, 1);
-					auto additional_data_flag =
-						readBits(anc, 1);
+					auto process_em_data_flag = bitstream_reader_read_bits(&reader, 1);
+					auto process_cc_data_flag = bitstream_reader_read_bits(&reader, 1);
+					auto additional_data_flag = bitstream_reader_read_bits(&reader, 1);
 
-					auto cc_count = readBits(anc, 5);
+					auto cc_count = bitstream_reader_read_bits(&reader, 5);
 
 					auto *outData = (uint8_t *)bzalloc(
 						sizeof(uint8_t) * cc_count * 3);
-					memcpy(outData, anc + pos,
+					memcpy(outData, anc + reader.pos,
 					       cc_count * 3);
 
 					currentCaptions.data = outData;

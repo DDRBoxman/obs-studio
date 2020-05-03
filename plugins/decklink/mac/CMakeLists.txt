@@ -39,7 +39,7 @@ set(mac-decklink_HEADERS
 	../audio-repack.h
 	../audio-repack.hpp
 	../util.hpp
-		../OBSVideoFrame.h
+	../OBSVideoFrame.h
 	)
 
 set(mac-decklink_SOURCES
@@ -57,7 +57,7 @@ set(mac-decklink_SOURCES
 	../audio-repack.c
 	platform.cpp
 	../util.cpp
-		../OBSVideoFrame.cpp
+	../OBSVideoFrame.cpp
 	)
 
 list(APPEND decklink_HEADERS ${decklink_UI_HEADERS})
@@ -77,7 +77,7 @@ add_library(mac-decklink MODULE
 
 target_link_libraries(mac-decklink
 	libobs
-		obs-frontend-api
+	obs-frontend-api
 	${COREFOUNDATION}
 	caption)
 set_target_properties(mac-decklink PROPERTIES FOLDER "plugins")
