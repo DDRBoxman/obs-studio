@@ -16,51 +16,55 @@ private:
 public:
 	OBSVideoFrame(long width, long height);
 
-	HRESULT SetFlags(BMDFrameFlags newFlags) override;
+	HRESULT STDMETHODCALLTYPE SetFlags(BMDFrameFlags newFlags) override;
 
-	HRESULT SetTimecode(BMDTimecodeFormat format,
-			    IDeckLinkTimecode *timecode) override;
+	HRESULT STDMETHODCALLTYPE SetTimecode(
+		BMDTimecodeFormat format, IDeckLinkTimecode *timecode) override;
 
-	HRESULT SetTimecodeFromComponents(BMDTimecodeFormat format,
-					  uint8_t hours, uint8_t minutes,
-					  uint8_t seconds, uint8_t frames,
-					  BMDTimecodeFlags flags) override;
+	HRESULT STDMETHODCALLTYPE SetTimecodeFromComponents(
+		BMDTimecodeFormat format, uint8_t hours, uint8_t minutes,
+		uint8_t seconds, uint8_t frames,
+		BMDTimecodeFlags flags) override;
 
 	HRESULT
+	STDMETHODCALLTYPE
 	SetAncillaryData(IDeckLinkVideoFrameAncillary *ancillary) override;
 
-	HRESULT SetTimecodeUserBits(BMDTimecodeFormat format,
-				    BMDTimecodeUserBits userBits) override;
+	HRESULT STDMETHODCALLTYPE
+	SetTimecodeUserBits(BMDTimecodeFormat format,
+			    BMDTimecodeUserBits userBits) override;
 
-	long GetWidth() override;
+	long STDMETHODCALLTYPE GetWidth() override;
 
-	long GetHeight() override;
+	long STDMETHODCALLTYPE GetHeight() override;
 
-	long GetRowBytes() override;
+	long STDMETHODCALLTYPE GetRowBytes() override;
 
-	BMDPixelFormat GetPixelFormat() override;
+	BMDPixelFormat STDMETHODCALLTYPE GetPixelFormat() override;
 
-	BMDFrameFlags GetFlags() override;
+	BMDFrameFlags STDMETHODCALLTYPE GetFlags() override;
 
-	HRESULT GetBytes(void **buffer) override;
+	HRESULT STDMETHODCALLTYPE GetBytes(void **buffer) override;
 
 	//Dummy implementations of remaining virtual methods
-	virtual HRESULT GetTimecode(/* in */ BMDTimecodeFormat format,
-				    /* out */ IDeckLinkTimecode **timecode)
+	virtual HRESULT STDMETHODCALLTYPE
+	GetTimecode(/* in */ BMDTimecodeFormat format,
+		    /* out */ IDeckLinkTimecode **timecode)
 	{
 		return E_NOINTERFACE;
 	};
-	virtual HRESULT
+	virtual HRESULT STDMETHODCALLTYPE
 	GetAncillaryData(/* out */ IDeckLinkVideoFrameAncillary **ancillary)
 	{
 		return E_NOINTERFACE;
 	};
 
 	// IUnknown interface (dummy implementation)
-	virtual HRESULT QueryInterface(REFIID iid, LPVOID *ppv)
+	virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid,
+							 LPVOID *ppv)
 	{
 		return E_NOINTERFACE;
 	}
-	virtual ULONG AddRef() { return 1; }
-	virtual ULONG Release() { return 1; }
+	virtual ULONG STDMETHODCALLTYPE AddRef() { return 1; }
+	virtual ULONG STDMETHODCALLTYPE Release() { return 1; }
 };
