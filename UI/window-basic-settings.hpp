@@ -22,7 +22,9 @@
 #include <QDialog>
 #include <QPointer>
 #include <memory>
+#include <mutex>
 #include <string>
+#include "settings-list-container.hpp"
 
 #include <libff/ff-util.h>
 
@@ -152,6 +154,20 @@ private:
 	std::vector<std::pair<bool, QPointer<OBSHotkeyWidget>>> hotkeys;
 	OBSSignal hotkeyRegistered;
 	OBSSignal hotkeyUnregistered;
+
+
+	SettingsListContainer savedSettings;
+
+	std::mutex mutex;
+	int currentSettingID = -1;
+	int maxServiceSettingID = -1;
+	std::vector<int> availableServiceSettingIDs;
+	int getNewServiceSettingID();
+
+	void populateForm(obs_data_t* settings, const char* type);
+	void populateForm(int id);
+	void saveFormChanges(int selectedServiceID);
+	OBSData getFormChanges();
 
 	uint32_t outputCX = 0;
 	uint32_t outputCY = 0;
@@ -380,4 +396,9 @@ protected:
 public:
 	OBSBasicSettings(QWidget *parent);
 	~OBSBasicSettings();
+
+public slots:
+	void AddService();
+	void RemoveService(int serviceID, int newSelectedID);
+	void DisplaySettings(int serviceID);
 };
