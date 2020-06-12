@@ -212,7 +212,6 @@ set(obs_SOURCES
 	obs-app.cpp
 	window-dock.cpp
 	api-interface.cpp
-	settings-list-container.cpp
 	window-basic-main.cpp
 	window-basic-stats.cpp
 	window-basic-filters.cpp
@@ -242,7 +241,6 @@ set(obs_SOURCES
 	window-remux.cpp
 	auth-base.cpp
 	source-tree.cpp
-	keyed-list-widget.cpp
 	scene-tree.cpp
 	properties-view.cpp
 	focus-list.cpp
@@ -277,7 +275,6 @@ set(obs_HEADERS
 	platform.hpp
 	window-dock.hpp
 	window-main.hpp
-	settings-list-container.hpp
 	window-basic-main.hpp
 	window-basic-stats.hpp
 	window-basic-filters.hpp
@@ -299,7 +296,6 @@ set(obs_HEADERS
 	window-remux.hpp
 	auth-base.hpp
 	source-tree.hpp
-	keyed-list-widget.hpp
 	scene-tree.hpp
 	properties-view.hpp
 	properties-view.moc.hpp

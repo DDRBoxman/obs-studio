@@ -1,8 +1,6 @@
 #include <QMessageBox>
 #include <QUrl>
 
-#include <algorithm>
-
 #include "window-basic-settings.hpp"
 #include "obs-frontend-api.h"
 #include "obs-app.hpp"
@@ -80,20 +78,6 @@ void OBSBasicSettings::InitStreamPage()
 		SLOT(UpdateServerList()));
 	connect(ui->service, SIGNAL(currentIndexChanged(int)), this,
 		SLOT(UpdateKeyLink()));
-
-	connect(ui->actionAddService, SIGNAL(triggered(bool)), this, 
-		SLOT(AddService()));
-	connect(ui->actionRemoveService, SIGNAL(triggered(bool)), ui->savedServicesList, 
-		SLOT(RemoveService()));
-	connect(ui->actionScrollUp, SIGNAL(triggered(bool)), ui->savedServicesList, 
-		SLOT(ScrollUp()));
-	connect(ui->actionScrollDown, SIGNAL(triggered(bool)), ui->savedServicesList, 
-		SLOT(ScrollDown()));
-
-	connect(ui->savedServicesList, SIGNAL(RemovedKey(int, int)), this,
-		SLOT(RemoveService(int, int)));
-	connect(ui->savedServicesList, SIGNAL(SelectedServiceKey(int)), this,
-		SLOT(DisplaySettings(int)));
 }
 
 void OBSBasicSettings::LoadStream1Settings()
@@ -101,9 +85,70 @@ void OBSBasicSettings::LoadStream1Settings()
 	obs_service_t *service_obj = main->GetService();
 	const char *type = obs_service_get_type(service_obj);
 
+	loading = true;
+
 	obs_data_t *settings = obs_service_get_settings(service_obj);
 
-	populateForm(settings, type);
+	const char *service = obs_data_get_string(settings, "service");
+	const char *server = obs_data_get_string(settings, "server");
+	const char *key = obs_data_get_string(settings, "key");
+
+	if (strcmp(type, "rtmp_custom") == 0) {
+		ui->service->setCurrentIndex(0);
+		ui->customServer->setText(server);
+
+		bool use_auth = obs_data_get_bool(settings, "use_auth");
+		const char *username =
+			obs_data_get_string(settings, "username");
+		const char *password =
+			obs_data_get_string(settings, "password");
+		ui->authUsername->setText(QT_UTF8(username));
+		ui->authPw->setText(QT_UTF8(password));
+		ui->useAuth->setChecked(use_auth);
+	} else {
+		int idx = ui->service->findText(service);
+		if (idx == -1) {
+			if (service && *service)
+				ui->service->insertItem(1, service);
+			idx = 1;
+		}
+		ui->service->setCurrentIndex(idx);
+
+		bool bw_test = obs_data_get_bool(settings, "bwtest");
+		ui->bandwidthTestEnable->setChecked(bw_test);
+
+		idx = config_get_int(main->Config(), "Twitch", "AddonChoice");
+		ui->twitchAddonDropdown->setCurrentIndex(idx);
+
+		idx = config_get_int(main->Config(), "Mixer", "AddonChoice");
+		ui->mixerAddonDropdown->setCurrentIndex(idx);
+	}
+
+	UpdateServerList();
+
+	if (strcmp(type, "rtmp_common") == 0) {
+		int idx = ui->server->findData(server);
+		if (idx == -1) {
+			if (server && *server)
+				ui->server->insertItem(0, server, server);
+			idx = 0;
+		}
+		ui->server->setCurrentIndex(idx);
+	}
+
+	ui->key->setText(key);
+
+	lastService.clear();
+	on_service_currentIndexChanged(0);
+
+	obs_data_release(settings);
+
+	UpdateKeyLink();
+
+	bool streamActive = obs_frontend_streaming_active();
+	ui->streamPage->setEnabled(!streamActive);
+
+	loading = false;
 }
 
 void OBSBasicSettings::SaveStream1Settings()
@@ -115,7 +160,60 @@ void OBSBasicSettings::SaveStream1Settings()
 	OBSData hotkeyData = obs_hotkeys_save_service(oldService);
 	obs_data_release(hotkeyData);
 
-	OBSData settings = getFormChanges();
+	OBSData settings = obs_data_create();
+	obs_data_release(settings);
+
+	if (!customServer) {
+		obs_data_set_string(settings, "service",
+				    QT_TO_UTF8(ui->service->currentText()));
+		obs_data_set_string(
+			settings, "server",
+			QT_TO_UTF8(ui->server->currentData().toString()));
+	} else {
+		obs_data_set_string(settings, "server",
+				    QT_TO_UTF8(ui->customServer->text()));
+		obs_data_set_bool(settings, "use_auth",
+				  ui->useAuth->isChecked());
+		if (ui->useAuth->isChecked()) {
+			obs_data_set_string(
+				settings, "username",
+				QT_TO_UTF8(ui->authUsername->text()));
+			obs_data_set_string(settings, "password",
+					    QT_TO_UTF8(ui->authPw->text()));
+		}
+	}
+
+	obs_data_set_bool(settings, "bwtest",
+			  ui->bandwidthTestEnable->isChecked());
+
+	if (!!auth && strcmp(auth->service(), "Twitch") == 0) {
+		bool choiceExists = config_has_user_value(
+			main->Config(), "Twitch", "AddonChoice");
+		int currentChoice =
+			config_get_int(main->Config(), "Twitch", "AddonChoice");
+		int newChoice = ui->twitchAddonDropdown->currentIndex();
+
+		config_set_int(main->Config(), "Twitch", "AddonChoice",
+			       newChoice);
+
+		if (choiceExists && currentChoice != newChoice)
+			forceAuthReload = true;
+	}
+	if (!!auth && strcmp(auth->service(), "Mixer") == 0) {
+		bool choiceExists = config_has_user_value(
+			main->Config(), "Mixer", "AddonChoice");
+		int currentChoice =
+			config_get_int(main->Config(), "Mixer", "AddonChoice");
+		int newChoice = ui->mixerAddonDropdown->currentIndex();
+
+		config_set_int(main->Config(), "Mixer", "AddonChoice",
+			       newChoice);
+
+		if (choiceExists && currentChoice != newChoice)
+			forceAuthReload = true;
+	}
+
+	obs_data_set_string(settings, "key", QT_TO_UTF8(ui->key->text()));
 
 	OBSService newService = obs_service_create(
 		service_id, "default_service", settings, hotkeyData);
@@ -483,273 +581,4 @@ void OBSBasicSettings::on_useAuth_toggled()
 	ui->authUsername->setVisible(use_auth);
 	ui->authPwLabel->setVisible(use_auth);
 	ui->authPwWidget->setVisible(use_auth);
-}
-
-void OBSBasicSettings::AddService() {
-	std::lock_guard<std::mutex> lock(mutex);
-
-	OBSData newServiceSettings = obs_data_create();
-
-	QString serviceName = "New Service ";
-	int newID = getNewServiceSettingID();
-	serviceName += std::to_string(newID).c_str();
-
-	obs_data_set_int(newServiceSettings, "id", (long long)newID);
-	obs_data_set_string(newServiceSettings, "name", serviceName.toLocal8Bit().data());
-	obs_data_set_string(newServiceSettings, "type", "rtmp_common");
-	
-	savedSettings.add(newServiceSettings);
-	
-	populateForm(newID);
-	currentSettingID = newID;
-
-	ui->savedServicesList->AddNewService(serviceName, newID);
-}
-
-void OBSBasicSettings::RemoveService(int serviceID, int newSelectedID) {
-	std::lock_guard<std::mutex> lock(mutex);
-
-	savedSettings.remove(serviceID);
-
-	if (newSelectedID != -1) {
-		populateForm(newSelectedID);
-		currentSettingID = newSelectedID;
-	}
-	else {
-		QMessageBox* emptyNotice = new QMessageBox(this);
-        emptyNotice->setIcon(QMessageBox::Warning);
-        emptyNotice->setWindowModality(Qt::WindowModal);
-        emptyNotice->setWindowTitle("Notice");
-        emptyNotice->setText("You have removed all saved services.");
-        emptyNotice->exec();
-	}
-}
-
-void OBSBasicSettings::DisplaySettings(int serviceID) {
-	std::lock_guard<std::mutex> lock(mutex);
-	saveFormChanges(currentSettingID);
-	populateForm(serviceID);
-	currentSettingID = serviceID;
-	
-}
-
-int OBSBasicSettings::getNewServiceSettingID() {
-	if (availableServiceSettingIDs.empty()) {
-        maxServiceSettingID++;
-        return maxServiceSettingID;
-    } else {
-        int newID = -availableServiceSettingIDs.front();
-        std::pop_heap(availableServiceSettingIDs.begin(), 
-			availableServiceSettingIDs.end()); 
-		availableServiceSettingIDs.pop_back();
-        return newID;
-    }
-}
-
-void OBSBasicSettings::populateForm(obs_data_t* settings, const char* type) {
-	
-	loading = true;
-	
-	const char *service = obs_data_get_string(settings, "service");
-	const char *server = obs_data_get_string(settings, "server");
-	const char *key = obs_data_get_string(settings, "key");
-
-	if (strcmp(type, "rtmp_custom") == 0) {
-		ui->service->setCurrentIndex(0);
-		ui->customServer->setText(server);
-
-		bool use_auth = obs_data_get_bool(settings, "use_auth");
-		const char *username =
-			obs_data_get_string(settings, "username");
-		const char *password =
-			obs_data_get_string(settings, "password");
-		ui->authUsername->setText(QT_UTF8(username));
-		ui->authPw->setText(QT_UTF8(password));
-		ui->useAuth->setChecked(use_auth);
-	} else {
-		int idx = ui->service->findText(service);
-		if (idx == -1) {
-			if (service && *service)
-				ui->service->insertItem(1, service);
-			idx = 1;
-		}
-		ui->service->setCurrentIndex(idx);
-
-		bool bw_test = obs_data_get_bool(settings, "bwtest");
-		ui->bandwidthTestEnable->setChecked(bw_test);
-
-		idx = config_get_int(main->Config(), "Twitch", "AddonChoice");
-		ui->twitchAddonDropdown->setCurrentIndex(idx);
-
-		idx = config_get_int(main->Config(), "Mixer", "AddonChoice");
-		ui->mixerAddonDropdown->setCurrentIndex(idx);
-	}
-
-	UpdateServerList();
-
-	if (strcmp(type, "rtmp_common") == 0) {
-		int idx = ui->server->findData(server);
-		if (idx == -1) {
-			if (server && *server)
-				ui->server->insertItem(0, server, server);
-			idx = 0;
-		}
-		ui->server->setCurrentIndex(idx);
-	}
-
-	ui->key->setText(key);
-
-	lastService.clear();
-	on_service_currentIndexChanged(0);
-	obs_data_release(settings);
-
-	UpdateKeyLink();
-
-	bool streamActive = obs_frontend_streaming_active();
-	ui->streamPage->setEnabled(!streamActive);
-
-	loading = false;
-}
-
-void OBSBasicSettings::populateForm(int id) {
-	
-	OBSData settings = savedSettings.getSettings(id);
-	
-	loading = true;
-
-	const char *type = obs_data_get_string(settings, "type");
-	const char *name = obs_data_get_string(settings, "name");
-	const char *service = obs_data_get_string(settings, "service");
-	const char *server = obs_data_get_string(settings, "server");
-	const char *key = obs_data_get_string(settings, "key");
-
-	QString serviceName = name;
-	ui->serviceNameInput->setText(name);
-
-	if (strcmp(type, "rtmp_custom") == 0) {
-		ui->service->setCurrentIndex(0);
-		ui->customServer->setText(server);
-
-		bool use_auth = obs_data_get_bool(settings, "use_auth");
-		const char *username =
-			obs_data_get_string(settings, "username");
-		const char *password =
-			obs_data_get_string(settings, "password");
-		ui->authUsername->setText(QT_UTF8(username));
-		ui->authPw->setText(QT_UTF8(password));
-		ui->useAuth->setChecked(use_auth);
-	} else {
-		int idx = ui->service->findText(service);
-		if (idx == -1) {
-			if (service && *service)
-				ui->service->insertItem(1, service);
-			idx = 1;
-		}
-		ui->service->setCurrentIndex(idx);
-
-		bool bw_test = obs_data_get_bool(settings, "bwtest");
-		ui->bandwidthTestEnable->setChecked(bw_test);
-
-		idx = config_get_int(main->Config(), "Twitch", "AddonChoice");
-		ui->twitchAddonDropdown->setCurrentIndex(idx);
-
-		idx = config_get_int(main->Config(), "Mixer", "AddonChoice");
-		ui->mixerAddonDropdown->setCurrentIndex(idx);
-	}
-
-	UpdateServerList();
-
-	if (strcmp(type, "rtmp_common") == 0) {
-		int idx = ui->server->findData(server);
-		if (idx == -1) {
-			if (server && *server)
-				ui->server->insertItem(0, server, server);
-			idx = 0;
-		}
-		ui->server->setCurrentIndex(idx);
-	}
-
-	ui->key->setText(key);
-
-	lastService.clear();
-	on_service_currentIndexChanged(0);
-
-	obs_data_release(settings);
-
-	UpdateKeyLink();
-
-	bool streamActive = obs_frontend_streaming_active();
-	ui->streamPage->setEnabled(!streamActive);
-
-	loading = false;
-}
-
-OBSData OBSBasicSettings::getFormChanges() {
-
-	OBSData settings = obs_data_create();
-	obs_data_release(settings);
-	
-	bool customServer = IsCustomService();
-
-	obs_data_set_string(settings, "name",
-			QT_TO_UTF8(ui->serviceNameInput->text()));
-
-	if (!customServer) {
-		obs_data_set_string(settings, "service",
-					QT_TO_UTF8(ui->service->currentText()));
-		obs_data_set_string(
-			settings, "server",
-			QT_TO_UTF8(ui->server->currentData().toString()));
-	} else {
-		obs_data_set_string(settings, "server",
-					QT_TO_UTF8(ui->customServer->text()));
-		obs_data_set_bool(settings, "use_auth",
-				ui->useAuth->isChecked());
-		if (ui->useAuth->isChecked()) {
-			obs_data_set_string(
-				settings, "username",
-				QT_TO_UTF8(ui->authUsername->text()));
-			obs_data_set_string(settings, "password",
-						QT_TO_UTF8(ui->authPw->text()));
-		}
-	}
-
-	obs_data_set_bool(settings, "bwtest",
-			ui->bandwidthTestEnable->isChecked());
-
-	if (!!auth && strcmp(auth->service(), "Twitch") == 0) {
-		bool choiceExists = config_has_user_value(
-			main->Config(), "Twitch", "AddonChoice");
-		int currentChoice =
-			config_get_int(main->Config(), "Twitch", "AddonChoice");
-		int newChoice = ui->twitchAddonDropdown->currentIndex();
-
-		config_set_int(main->Config(), "Twitch", "AddonChoice",
-				newChoice);
-
-		if (choiceExists && currentChoice != newChoice)
-			forceAuthReload = true;
-	}
-	if (!!auth && strcmp(auth->service(), "Mixer") == 0) {
-		bool choiceExists = config_has_user_value(
-			main->Config(), "Mixer", "AddonChoice");
-		int currentChoice =
-			config_get_int(main->Config(), "Mixer", "AddonChoice");
-		int newChoice = ui->mixerAddonDropdown->currentIndex();
-
-		config_set_int(main->Config(), "Mixer", "AddonChoice",
-				newChoice);
-
-		if (choiceExists && currentChoice != newChoice)
-			forceAuthReload = true;
-	}
-
-	obs_data_set_string(settings, "key", QT_TO_UTF8(ui->key->text()));
-
-	return settings;
-}
-
-void OBSBasicSettings::saveFormChanges(int selectedServiceID) {
-	
-	savedSettings.setSettings(selectedServiceID, getFormChanges());
 }
