@@ -217,6 +217,8 @@ private:
 	os_cpu_usage_info_t *cpuUsageInfo = nullptr;
 
 	OBSService service;
+	obs_frontend_service_list *services;
+
 	std::unique_ptr<BasicOutputHandler> outputHandler;
 	bool streamingStopping = false;
 	bool recordingStopping = false;

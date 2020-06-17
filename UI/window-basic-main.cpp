@@ -1080,6 +1080,7 @@ retryScene:
 }
 
 #define SERVICE_PATH "service.json"
+#define TEST_SERVICE_PATH "test-service.json"
 
 void OBSBasic::SaveService()
 {
@@ -1087,11 +1088,20 @@ void OBSBasic::SaveService()
 		return;
 
 	char serviceJsonPath[512];
+	char serviceJsonPathMultiple[512];
+
 	int ret = GetProfilePath(serviceJsonPath, sizeof(serviceJsonPath),
 				 SERVICE_PATH);
 	if (ret <= 0)
 		return;
+	
+	ret = GetProfilePath(serviceJsonPathMultiple, sizeof(serviceJsonPathMultiple),
+				 TEST_SERVICE_PATH);
+	
+	if (ret <= 0)
+		return;
 
+	// save old
 	obs_data_t *data = obs_data_create();
 	obs_data_t *settings = obs_service_get_settings(service);
 
@@ -1102,6 +1112,33 @@ void OBSBasic::SaveService()
 		blog(LOG_WARNING, "Failed to save service");
 
 	obs_data_release(settings);
+	obs_data_release(data);
+
+	// save new
+	data = obs_data_create();
+	obs_data_array_t *settingsContainer = obs_data_array_create();
+
+	for (int i = 0; i < services->services.num; i++) {
+		OBSService service = services->services.array[i];
+		settings = obs_data_create();
+		
+		obs_data_set_obj(settings, "settings", obs_service_get_settings(service));
+		obs_data_set_string(settings, "type", obs_service_get_type(service));
+		obs_data_set_int(settings, "id", obs_service_get_setting_id(service));
+		obs_data_set_string(settings, "name", obs_service_get_nickname(service));
+
+		obs_data_array_push_back(settingsContainer, settings);
+
+		obs_data_release(settings);
+		obs_service_release(service);
+	}
+
+	obs_data_set_array(data, "services", settingsContainer);
+	
+	if (!obs_data_save_json_safe(data, serviceJsonPathMultiple, "tmp", "bak"))
+		blog(LOG_WARNING, "Failed to save multiple services");
+
+	obs_data_array_release(settingsContainer);
 	obs_data_release(data);
 }
 
