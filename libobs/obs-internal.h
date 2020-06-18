@@ -1120,9 +1120,6 @@ struct obs_service {
 	struct obs_service_info info;
 	struct obs_weak_service *control;
 
-	const char* nickname;
-	int setting_id;
-
 	/* indicates ownership of the info.id buffer */
 	bool owns_info_id;
 

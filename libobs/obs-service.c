@@ -172,20 +172,6 @@ const char *obs_service_get_type(const obs_service_t *service)
 		       : NULL;
 }
 
-const char *obs_service_get_nickname(const obs_service_t *service)
-{
-	return obs_service_valid(service, "obs_service_get_name")
-		       ? service->nickname
-		       : NULL;
-}
-
-int obs_service_get_setting_id(const obs_service_t *service)
-{
-	return obs_service_valid(service, "obs_service_get_type")
-		       ? service->setting_id
-		       : -1;
-}
-
 void obs_service_update(obs_service_t *service, obs_data_t *settings)
 {
 	if (!obs_service_valid(service, "obs_service_update"))

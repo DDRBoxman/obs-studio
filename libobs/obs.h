@@ -2153,12 +2153,6 @@ EXPORT obs_properties_t *obs_service_properties(const obs_service_t *service);
 /** Gets the service type */
 EXPORT const char *obs_service_get_type(const obs_service_t *service);
 
-/** Gets the user-defined name for the service*/
-EXPORT const char *obs_service_get_nickname(const obs_service_t *service);
-
-/** Gets the service's unique id*/
-EXPORT int obs_service_get_setting_id(const obs_service_t *service);
-
 /** Updates the settings of the service context */
 EXPORT void obs_service_update(obs_service_t *service, obs_data_t *settings);
 
