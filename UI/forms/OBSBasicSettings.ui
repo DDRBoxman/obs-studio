@@ -5587,11 +5587,11 @@
    <slots>
     <signal>RemovedID(int)</signal>
     <signal>SelectedServiceID(int)</signal>
-    <slot>AddNewService(QString,int)</slot>
-    <slot>RemoveService()</slot>
+    <slot>AddNewItem(QString,int)</slot>
+    <slot>RemoveItem()</slot>
     <slot>ScrollUp()</slot>
     <slot>ScrollDown()</slot>
-    <slot>UpdateServiceName(QString,int)</slot>
+    <slot>UpdateItemName(QString,int)</slot>
    </slots>
   </customwidget>
  </customwidgets>

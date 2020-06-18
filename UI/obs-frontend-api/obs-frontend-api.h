@@ -59,11 +59,6 @@ struct obs_frontend_source_list {
 	DARRAY(obs_source_t *) sources;
 };
 
-struct obs_frontend_service_list {
-	DARRAY(obs_service_t *) services;
-	int currentSetting;
-};
-
 static inline void
 obs_frontend_source_list_free(struct obs_frontend_source_list *source_list)
 {
@@ -71,15 +66,6 @@ obs_frontend_source_list_free(struct obs_frontend_source_list *source_list)
 	for (size_t i = 0; i < num; i++)
 		obs_source_release(source_list->sources.array[i]);
 	da_free(source_list->sources);
-}
-
-static inline void
-obs_frontend_service_list_free(struct obs_frontend_service_list *service_list)
-{
-	size_t num = service_list->services.num;
-	for (size_t i = 0; i < num; i++)
-		obs_service_release(service_list->services.array[i]);
-	da_free(service_list->services);
 }
 
 #endif //!SWIG

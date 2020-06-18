@@ -17,9 +17,9 @@ class KeyedListWidget : public QListWidget {
         }
         virtual ~KeyedListWidget() { ; }
     public slots:
-        void AddNewService(QString alias, int key);
-        void UpdateServiceName(QString alias);
-        void RemoveService();
+        void AddNewItem(QString alias, int key);
+        void UpdateItemName(QString alias);
+        void RemoveItem();
         void ScrollUp();
         void ScrollDown();
 

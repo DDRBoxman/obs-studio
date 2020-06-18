@@ -4,18 +4,18 @@
 #include <QDialog>
 #include <QMessageBox>
 
-void KeyedListWidget::AddNewService(QString alias, int key) {
+void KeyedListWidget::AddNewItem(QString alias, int key) {
     QListWidgetItem* service = new QListWidgetItem(alias, this);
     service->setData(Qt::UserRole, key);
     addItem(service);
     setCurrentItem(service);
 }
 
-void KeyedListWidget::UpdateServiceName(QString alias) {
+void KeyedListWidget::UpdateItemName(QString alias) {
     currentItem()->setText(alias);
 }
 
-void KeyedListWidget::RemoveService() {
+void KeyedListWidget::RemoveItem() {
     
     if (currentRow() != -1) {
         // remove service

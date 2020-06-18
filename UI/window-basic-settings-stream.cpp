@@ -84,7 +84,7 @@ void OBSBasicSettings::InitStreamPage()
 	connect(ui->actionAddService, SIGNAL(triggered(bool)), this, 
 		SLOT(AddService()));
 	connect(ui->actionRemoveService, SIGNAL(triggered(bool)), ui->savedServicesList, 
-		SLOT(RemoveService()));
+		SLOT(RemoveItem()));
 	connect(ui->actionScrollUp, SIGNAL(triggered(bool)), ui->savedServicesList, 
 		SLOT(ScrollUp()));
 	connect(ui->actionScrollDown, SIGNAL(triggered(bool)), ui->savedServicesList, 
@@ -94,6 +94,9 @@ void OBSBasicSettings::InitStreamPage()
 		SLOT(RemoveService(int, int)));
 	connect(ui->savedServicesList, SIGNAL(SelectedServiceKey(int)), this,
 		SLOT(DisplaySettings(int)));
+
+	connect(ui->serviceNameInput, SIGNAL(textEdited(QString)), ui->savedServicesList, 
+		SLOT(UpdateItemName(QString)));
 }
 
 void OBSBasicSettings::LoadStream1Settings()
@@ -488,6 +491,9 @@ void OBSBasicSettings::on_useAuth_toggled()
 void OBSBasicSettings::AddService() {
 	std::lock_guard<std::mutex> lock(mutex);
 
+	if (ui->savedServicesList->count() != 0)
+		saveFormChanges(currentSettingID);
+
 	OBSData newServiceSettings = obs_data_create();
 
 	QString serviceName = "New Service ";
@@ -503,7 +509,7 @@ void OBSBasicSettings::AddService() {
 	populateForm(newID);
 	currentSettingID = newID;
 
-	ui->savedServicesList->AddNewService(serviceName, newID);
+	ui->savedServicesList->AddNewItem(serviceName, newID);
 }
 
 void OBSBasicSettings::RemoveService(int serviceID, int newSelectedID) {
@@ -530,7 +536,6 @@ void OBSBasicSettings::DisplaySettings(int serviceID) {
 	saveFormChanges(currentSettingID);
 	populateForm(serviceID);
 	currentSettingID = serviceID;
-	
 }
 
 int OBSBasicSettings::getNewServiceSettingID() {
@@ -687,9 +692,10 @@ void OBSBasicSettings::populateForm(int id) {
 OBSData OBSBasicSettings::getFormChanges() {
 
 	OBSData settings = obs_data_create();
-	obs_data_release(settings);
 	
 	bool customServer = IsCustomService();
+	const char *service_type = customServer ? "rtmp_custom" : "rtmp_common";
+	obs_data_set_string(settings, "type", service_type);
 
 	obs_data_set_string(settings, "name",
 			QT_TO_UTF8(ui->serviceNameInput->text()));
