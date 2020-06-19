@@ -4,14 +4,14 @@
 #include <QDialog>
 #include <QMessageBox>
 
-void KeyedListWidget::AddNewItem(QString alias, int key) {
+void KeyedListWidget::AddNewItem(const QString &alias, int key) {
     QListWidgetItem* service = new QListWidgetItem(alias, this);
     service->setData(Qt::UserRole, key);
     addItem(service);
     setCurrentItem(service);
 }
 
-void KeyedListWidget::UpdateItemName(QString alias) {
+void KeyedListWidget::UpdateItemName(const QString &alias) {
     currentItem()->setText(alias);
 }
 

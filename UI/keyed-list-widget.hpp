@@ -12,13 +12,13 @@ class KeyedListWidget : public QListWidget {
 
     public:
         KeyedListWidget(QWidget *parent = nullptr) : QListWidget(parent) {
-            QObject::connect(this, SIGNAL(itemClicked(QListWidgetItem*)), \
+            QObject::connect(this, SIGNAL(itemClicked(QListWidgetItem*)),
                 this, SLOT(SelectionChanged(QListWidgetItem*)));
         }
-        virtual ~KeyedListWidget() { ; }
+        virtual ~KeyedListWidget() {}
     public slots:
-        void AddNewItem(QString alias, int key);
-        void UpdateItemName(QString alias);
+        void AddNewItem(const QString &alias, int key);
+        void UpdateItemName(const QString &alias);
         void RemoveItem();
         void ScrollUp();
         void ScrollDown();
