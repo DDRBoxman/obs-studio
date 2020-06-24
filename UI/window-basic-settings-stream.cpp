@@ -91,7 +91,7 @@ void OBSBasicSettings::InitStreamPage()
 		SLOT(ScrollDown()));
 
 	connect(ui->savedServicesList, SIGNAL(RemovedKey(int, int)), this,
-		SLOT(RemoveService(int, int)));
+		SLOT(RemoveService(int)));
 	connect(ui->savedServicesList, SIGNAL(SelectedServiceKey(int)), this,
 		SLOT(DisplaySettings(int)));
 
@@ -106,7 +106,7 @@ void OBSBasicSettings::LoadStream1Settings()
 
 	obs_data_t *settings = obs_service_get_settings(service_obj);
 
-	populateForm(settings, type);
+	PopulateForm(settings, type);
 }
 
 void OBSBasicSettings::SaveStream1Settings()
@@ -118,7 +118,7 @@ void OBSBasicSettings::SaveStream1Settings()
 	OBSData hotkeyData = obs_hotkeys_save_service(oldService);
 	obs_data_release(hotkeyData);
 
-	OBSData settings = getFormChanges();
+	OBSData settings = GetFormChanges();
 
 	OBSService newService = obs_service_create(
 		service_id, "default_service", settings, hotkeyData);
@@ -492,33 +492,38 @@ void OBSBasicSettings::AddService() {
 	std::lock_guard<std::mutex> lock(mutex);
 
 	if (ui->savedServicesList->count() != 0)
-		saveFormChanges(currentSettingID);
+		SaveFormChanges(currentSettingID);
 
 	OBSData newServiceSettings = obs_data_create();
 
 	QString serviceName = "New Service ";
-	int newID = getNewServiceSettingID();
+	int newID = GetNewServiceSettingID();
 	serviceName += std::to_string(newID).c_str();
 
 	obs_data_set_int(newServiceSettings, "id", (long long)newID);
 	obs_data_set_string(newServiceSettings, "name", serviceName.toLocal8Bit().data());
 	obs_data_set_string(newServiceSettings, "type", "rtmp_common");
 	
-	savedSettings.add(newServiceSettings);
-	
-	populateForm(newID);
+	savedSettings.Add(newServiceSettings);
+
+	PopulateForm(newID);
 	currentSettingID = newID;
 
 	ui->savedServicesList->AddNewItem(serviceName, newID);
 }
 
-void OBSBasicSettings::RemoveService(int serviceID, int newSelectedID) {
+void OBSBasicSettings::RemoveService(int serviceID) {
 	std::lock_guard<std::mutex> lock(mutex);
 
-	savedSettings.remove(serviceID);
+	int newSelectedID = -1;
+
+	if (ui->savedServicesList->count() != 0)
+        newSelectedID = ui->savedServicesList->currentItem()->data(Qt::UserRole).toInt();
+
+	savedSettings.Remove(serviceID);
 
 	if (newSelectedID != -1) {
-		populateForm(newSelectedID);
+		PopulateForm(newSelectedID);
 		currentSettingID = newSelectedID;
 	}
 	else {
@@ -533,12 +538,12 @@ void OBSBasicSettings::RemoveService(int serviceID, int newSelectedID) {
 
 void OBSBasicSettings::DisplaySettings(int serviceID) {
 	std::lock_guard<std::mutex> lock(mutex);
-	saveFormChanges(currentSettingID);
-	populateForm(serviceID);
+	SaveFormChanges(currentSettingID);
+	PopulateForm(serviceID);
 	currentSettingID = serviceID;
 }
 
-int OBSBasicSettings::getNewServiceSettingID() {
+int OBSBasicSettings::GetNewServiceSettingID() {
 	if (availableServiceSettingIDs.empty()) {
         maxServiceSettingID++;
         return maxServiceSettingID;
@@ -551,7 +556,7 @@ int OBSBasicSettings::getNewServiceSettingID() {
     }
 }
 
-void OBSBasicSettings::populateForm(obs_data_t* settings, const char* type) {
+void OBSBasicSettings::PopulateForm(obs_data_t* settings, const char* type) {
 	
 	loading = true;
 	
@@ -616,9 +621,9 @@ void OBSBasicSettings::populateForm(obs_data_t* settings, const char* type) {
 	loading = false;
 }
 
-void OBSBasicSettings::populateForm(int id) {
+void OBSBasicSettings::PopulateForm(int id) {
 	
-	OBSData settings = savedSettings.getSettings(id);
+	OBSData settings = savedSettings.GetSettings(id);
 	
 	loading = true;
 
@@ -689,7 +694,7 @@ void OBSBasicSettings::populateForm(int id) {
 	loading = false;
 }
 
-OBSData OBSBasicSettings::getFormChanges() {
+OBSData OBSBasicSettings::GetFormChanges() {
 
 	OBSData settings = obs_data_create();
 	
@@ -755,7 +760,7 @@ OBSData OBSBasicSettings::getFormChanges() {
 	return settings;
 }
 
-void OBSBasicSettings::saveFormChanges(int selectedServiceID) {
+void OBSBasicSettings::SaveFormChanges(int selectedServiceID) {
 	
-	savedSettings.setSettings(selectedServiceID, getFormChanges());
+	savedSettings.SetSetting(selectedServiceID, GetFormChanges());
 }

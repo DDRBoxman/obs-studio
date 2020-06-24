@@ -1,35 +1,34 @@
 #include "settings-list-container.hpp"
 
 SettingsListContainer::SettingsListContainer(std::vector<OBSData> settingsList) {
-    
     for (unsigned i = 0; i < settingsList.size(); i++) {
-        add(settingsList[i]);
+        Add(settingsList[i]);
     }
 }
-OBSData SettingsListContainer::getSettings(int id) const {
+OBSData SettingsListContainer::GetSettings(int id) const {
     return settings.at(id);
 }
 
-std::vector<int> SettingsListContainer::getOrder() const {
+std::vector<int> SettingsListContainer::GetOrder() const {
     return orderedIDList;
 }
 
-int SettingsListContainer::getCount() const {
+int SettingsListContainer::GetCount() const {
     return orderedIDList.size(); 
 }
 
-const SettingsListContainer& SettingsListContainer::setSettings(int settingID, OBSData newSetting) {
+const SettingsListContainer& SettingsListContainer::SetSetting(int settingID, OBSData newSetting) {
+    // obs_data_release(settings[settingID]);
     settings[settingID] = newSetting; 
     return *this;
 }
 
-const SettingsListContainer& SettingsListContainer::setOrder(std::vector<int> newOrder) {
+const SettingsListContainer& SettingsListContainer::SetOrder(const std::vector<int>& newOrder) {
     orderedIDList = newOrder; 
     return *this;
 }
 
-int SettingsListContainer::add(OBSData setting) {
-
+int SettingsListContainer::Add(const OBSData& setting) {
     int id = obs_data_get_int(setting, "id");
 
     if (settings.find(id) == settings.end()) {
@@ -40,18 +39,17 @@ int SettingsListContainer::add(OBSData setting) {
     return id;
 }
 
-void SettingsListContainer::remove(int settingID) {
-    
-    auto pos = settings.find(settingID);
+void SettingsListContainer::Remove(int settingID) {
+    bool elementFound = false;
 
-    if (pos != settings.end()) {
-        settings.erase(pos);
-
-        for (auto i = orderedIDList.begin(); i != orderedIDList.end(); i++) {
-            if (*i == settingID) {
-                orderedIDList.erase(i);
-                break;
-            }
+    for (auto i = orderedIDList.begin(); i != orderedIDList.end(); i++) {
+        if (*i == settingID) {
+            orderedIDList.erase(i);
+            elementFound = true;
+            break;
         }
     }
+
+    if (elementFound)
+        settings.erase(settingID);
 }

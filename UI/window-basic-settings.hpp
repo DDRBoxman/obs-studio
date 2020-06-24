@@ -162,12 +162,12 @@ private:
 	int currentSettingID = -1;
 	int maxServiceSettingID = -1;
 	std::vector<int> availableServiceSettingIDs;
-	int getNewServiceSettingID();
+	int GetNewServiceSettingID();
 
-	void populateForm(obs_data_t* settings, const char* type);
-	void populateForm(int id);
-	void saveFormChanges(int selectedServiceID);
-	OBSData getFormChanges();
+	void PopulateForm(obs_data_t* settings, const char* type);
+	void PopulateForm(int id);
+	void SaveFormChanges(int selectedServiceID);
+	OBSData GetFormChanges();
 
 	uint32_t outputCX = 0;
 	uint32_t outputCY = 0;
@@ -399,6 +399,6 @@ public:
 
 public slots:
 	void AddService();
-	void RemoveService(int serviceID, int newSelectedID);
+	void RemoveService(int serviceID);
 	void DisplaySettings(int serviceID);
 };

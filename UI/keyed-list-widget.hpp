@@ -7,6 +7,8 @@
 #include <QListWidgetItem>
 #include <QAbstractItemView>
 
+#define NONE_SELECTED -1
+
 class KeyedListWidget : public QListWidget {
     Q_OBJECT
 
