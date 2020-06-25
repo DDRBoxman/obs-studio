@@ -217,10 +217,16 @@ private:
 	os_cpu_usage_info_t *cpuUsageInfo = nullptr;
 
 	OBSService service;
+	OBSDataArray otherServices;
+	int selectedServiceSettingID = -1;
+
 	std::unique_ptr<BasicOutputHandler> outputHandler;
 	bool streamingStopping = false;
 	bool recordingStopping = false;
 	bool replayBufferStopping = false;
+
+	std::vector<int> availableServiceIDList;
+	int maxUsedServiceID = -1;
 
 	gs_vertbuffer_t *box = nullptr;
 	gs_vertbuffer_t *boxLeft = nullptr;
@@ -711,6 +717,8 @@ private:
 	bool LowDiskSpace();
 	void DiskSpaceMessage();
 
+	OBSService ServicefromJsonObj(OBSData data);
+
 	OBSSource prevFTBSource = nullptr;
 
 public:
@@ -727,6 +735,17 @@ public:
 
 	obs_service_t *GetService();
 	void SetService(obs_service_t *service);
+
+	OBSDataArray GetOtherServices();
+	void SetService(const OBSService &defaultService, const OBSDataArray &otherSettings);
+
+	int GetSelectedSettingID() { 
+		return selectedServiceSettingID; 
+	}
+
+	void SetSelectedSettingID(int id) { 
+		selectedServiceSettingID = id; 
+	}
 
 	int GetTransitionDuration();
 

@@ -1079,58 +1079,77 @@ retryScene:
 	}
 }
 
-#define SERVICE_PATH "service.json"
+OBSService OBSBasic::ServicefromJsonObj(OBSData data) {
+	const char *type = obs_data_get_string(data, "type");
+	OBSData hotkeyData = obs_data_get_obj(data, "hotkey-data");
+	
+	return obs_service_create(type, "default_service", data, hotkeyData);
+}
 
-void OBSBasic::SaveService()
-{
+#define SERVICE_PATH "service.json"
+#define TEST_SERVICE_PATH "test-service.json"
+
+void OBSBasic::SaveService() {
 	if (!service)
 		return;
 
 	char serviceJsonPath[512];
 	int ret = GetProfilePath(serviceJsonPath, sizeof(serviceJsonPath),
-				 SERVICE_PATH);
+				 TEST_SERVICE_PATH);
 	if (ret <= 0)
 		return;
 
-	obs_data_t *data = obs_data_create();
-	obs_data_t *settings = obs_service_get_settings(service);
+	OBSDataArray servicesContainer = obs_data_array_create();
+	obs_data_array_release(servicesContainer);
 
-	obs_data_set_string(data, "type", obs_service_get_type(service));
-	obs_data_set_obj(data, "settings", settings);
+	obs_data_array_push_back(servicesContainer, obs_service_get_settings(service));
 
-	if (!obs_data_save_json_safe(data, serviceJsonPath, "tmp", "bak"))
-		blog(LOG_WARNING, "Failed to save service");
+	if (otherServices) {
+		for (int i = 0; i < obs_data_array_count(otherServices); i++) {
+			OBSData serviceData = obs_data_array_item(otherServices, i);
+			obs_data_release(serviceData);
+			obs_data_array_push_back(servicesContainer, serviceData);
+		}
+	}
 
-	obs_data_release(settings);
-	obs_data_release(data);
+	OBSData settingList = obs_data_create();
+	obs_data_release(settingList);
+
+	obs_data_set_array(settingList, "services", servicesContainer);
+
+	if (!obs_data_save_json_safe(settingList, serviceJsonPath, "tmp", "bak"))
+	    	blog(LOG_WARNING, "Failed to save service");
 }
 
-bool OBSBasic::LoadService()
-{
+bool OBSBasic::LoadService() {
 	const char *type;
 
 	char serviceJsonPath[512];
 	int ret = GetProfilePath(serviceJsonPath, sizeof(serviceJsonPath),
-				 SERVICE_PATH);
+				 TEST_SERVICE_PATH);
 	if (ret <= 0)
 		return false;
 
-	obs_data_t *data =
-		obs_data_create_from_json_file_safe(serviceJsonPath, "bak");
+	OBSData serviceData = obs_data_create_from_json_file_safe(serviceJsonPath, "bak");
+	obs_data_release(serviceData);
 
-	obs_data_set_default_string(data, "type", "rtmp_common");
-	type = obs_data_get_string(data, "type");
+	if (!serviceData)
+		return false;
+	
+	OBSDataArray services = obs_data_get_array(serviceData, "services");
+	obs_data_array_release(otherServices);
+	otherServices = obs_data_array_create();
+	obs_data_array_release(otherServices);
 
-	obs_data_t *settings = obs_data_get_obj(data, "settings");
-	obs_data_t *hotkey_data = obs_data_get_obj(data, "hotkeys");
+	for (int i = 0; i < obs_data_array_count(services); i++) {
+		OBSData data = obs_data_array_item(services, i);
+		obs_data_release(data);
 
-	service = obs_service_create(type, "default_service", settings,
-				     hotkey_data);
-	obs_service_release(service);
-
-	obs_data_release(hotkey_data);
-	obs_data_release(settings);
-	obs_data_release(data);
+		if (i == 0)
+			service = ServicefromJsonObj(data);
+		else
+			obs_data_array_push_back(otherServices, data);
+	}
 
 	return !!service;
 }
@@ -3577,10 +3596,23 @@ obs_service_t *OBSBasic::GetService()
 	return service;
 }
 
+OBSDataArray OBSBasic::GetOtherServices()
+{
+	if (!otherServices)
+		otherServices = obs_data_array_create();
+	
+	return otherServices;
+}
+
 void OBSBasic::SetService(obs_service_t *newService)
 {
 	if (newService)
 		service = newService;
+}
+
+void OBSBasic::SetService(const OBSService &defaultService, const OBSDataArray &otherSettings) {
+	SetService(defaultService);
+	otherServices = otherSettings;
 }
 
 int OBSBasic::GetTransitionDuration()

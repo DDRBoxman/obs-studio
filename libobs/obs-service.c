@@ -193,6 +193,19 @@ obs_data_t *obs_service_get_settings(const obs_service_t *service)
 	return service->context.settings;
 }
 
+int obs_service_get_setting_id(const obs_service_t *service) {
+	if (!obs_service_valid(service, "obs_service_update"))
+		return -1;
+
+	return service->setting_id;
+}
+
+void obs_service_set_setting_id(obs_service_t *service, int id) {
+	if (!obs_service_valid(service, "obs_service_update"))
+		return;
+	service->setting_id = id;
+}
+
 signal_handler_t *obs_service_get_signal_handler(const obs_service_t *service)
 {
 	return obs_service_valid(service, "obs_service_get_signal_handler")

@@ -99,39 +99,68 @@ void OBSBasicSettings::InitStreamPage()
 		SLOT(UpdateItemName(QString)));
 }
 
-void OBSBasicSettings::LoadStream1Settings()
-{
-	obs_service_t *service_obj = main->GetService();
-	const char *type = obs_service_get_type(service_obj);
-
-	obs_data_t *settings = obs_service_get_settings(service_obj);
-
-	PopulateForm(settings, type);
+OBSData OBSBasicSettings::ServiceToSettingData(const OBSService& service) {
+	OBSData serviceSetting = obs_service_get_settings(service);
+	obs_data_set_obj(serviceSetting, "hotkey-data", obs_hotkeys_save_service(service));
+	return serviceSetting;
 }
 
-void OBSBasicSettings::SaveStream1Settings()
-{
-	bool customServer = IsCustomService();
-	const char *service_id = customServer ? "rtmp_custom" : "rtmp_common";
+void OBSBasicSettings::LoadStream1Settings() {
+	OBSData data = ServiceToSettingData(main->GetService());
+	
+	savedSettings.Add(data);
+	ui->savedServicesList->AddNewItem(obs_data_get_string(data, "name"), 
+		obs_data_get_int(data, "id"));
+	
+	OBSDataArray otherSettings = main->GetOtherServices();
 
-	obs_service_t *oldService = main->GetService();
-	OBSData hotkeyData = obs_hotkeys_save_service(oldService);
-	obs_data_release(hotkeyData);
+	for(int i = 0; i < obs_data_array_count(otherSettings); i++) {
+		OBSData dataOther = obs_data_array_item(otherSettings, i);
+		obs_data_release(dataOther);
 
-	OBSData settings = GetFormChanges();
+		savedSettings.Add(dataOther);
+		ui->savedServicesList->AddNewItem(obs_data_get_string(dataOther, "name"), 
+			obs_data_get_int(dataOther, "id"));
+	}
 
-	OBSService newService = obs_service_create(
-		service_id, "default_service", settings, hotkeyData);
-	obs_service_release(newService);
+	currentSettingID = main->GetSelectedSettingID();
+	if (currentSettingID == -1)
+		currentSettingID = savedSettings.GetIdAtIndex(0);
+	
+	PopulateForm(currentSettingID);
+}
 
-	if (!newService)
-		return;
+void OBSBasicSettings::SaveStream1Settings() {
+	if (ui->savedServicesList->count() != 0) {
+		int currentID = ui->savedServicesList->currentItem()->
+			data(Qt::UserRole).toInt();
+		SaveFormChanges(currentID);
+	}
 
-	main->SetService(newService);
+	OBSService defaultService;
+	OBSDataArray settingsData = obs_data_array_create();
+
+	for (int i = 0; i < savedSettings.GetCount(); i++) {
+		int id = savedSettings.GetIdAtIndex(i);
+		OBSData settings = savedSettings.GetSettings(id);
+
+		if (i == 0) {
+			const char* type = obs_data_get_string(settings, "type");
+			const char* name = obs_data_get_string(settings, "name");
+			int id = obs_data_get_int(settings, "id");
+
+			OBSData hotkeyData = obs_data_get_obj(settings, "hotkey-data");
+
+			defaultService = obs_service_create(type, name, settings, hotkeyData);
+			obs_service_set_setting_id((obs_service_t *) defaultService, id);
+		}  
+		else
+			obs_data_array_push_back(settingsData, settings);
+	}
+
+	main->SetService(defaultService, settingsData);
+	main->SetSelectedSettingID(currentSettingID);
 	main->SaveService();
-	main->auth = auth;
-	if (!!main->auth)
-		main->auth->LoadUI();
 }
 
 void OBSBasicSettings::UpdateKeyLink()
@@ -510,6 +539,9 @@ void OBSBasicSettings::AddService() {
 	currentSettingID = newID;
 
 	ui->savedServicesList->AddNewItem(serviceName, newID);
+	
+	stream1Changed = true;
+	EnableApplyButton(true);
 }
 
 void OBSBasicSettings::RemoveService(int serviceID) {
@@ -518,9 +550,10 @@ void OBSBasicSettings::RemoveService(int serviceID) {
 	int newSelectedID = -1;
 
 	if (ui->savedServicesList->count() != 0)
-        newSelectedID = ui->savedServicesList->currentItem()->data(Qt::UserRole).toInt();
+	        newSelectedID = ui->savedServicesList->currentItem()->data(Qt::UserRole).toInt();
 
 	savedSettings.Remove(serviceID);
+	ReleaseServiceSettingID(serviceID);
 
 	if (newSelectedID != -1) {
 		PopulateForm(newSelectedID);
@@ -528,12 +561,15 @@ void OBSBasicSettings::RemoveService(int serviceID) {
 	}
 	else {
 		QMessageBox* emptyNotice = new QMessageBox(this);
-        emptyNotice->setIcon(QMessageBox::Warning);
-        emptyNotice->setWindowModality(Qt::WindowModal);
-        emptyNotice->setWindowTitle("Notice");
-        emptyNotice->setText("You have removed all saved services.");
-        emptyNotice->exec();
+		emptyNotice->setIcon(QMessageBox::Warning);
+		emptyNotice->setWindowModality(Qt::WindowModal);
+		emptyNotice->setWindowTitle("Notice");
+		emptyNotice->setText("You have removed all saved services.");
+		emptyNotice->exec();
 	}
+
+	stream1Changed = true;
+	EnableApplyButton(true);
 }
 
 void OBSBasicSettings::DisplaySettings(int serviceID) {
@@ -544,81 +580,24 @@ void OBSBasicSettings::DisplaySettings(int serviceID) {
 }
 
 int OBSBasicSettings::GetNewServiceSettingID() {
-	if (availableServiceSettingIDs.empty()) {
-        maxServiceSettingID++;
-        return maxServiceSettingID;
-    } else {
-        int newID = -availableServiceSettingIDs.front();
-        std::pop_heap(availableServiceSettingIDs.begin(), 
-			availableServiceSettingIDs.end()); 
+	if (availableServiceSettingIDs.size() == 0) {
+		maxServiceSettingID++;
+		return maxServiceSettingID;
+	} else {
+		std::pop_heap(availableServiceSettingIDs.begin(), availableServiceSettingIDs.end());
+		int id = -1 * availableServiceSettingIDs[availableServiceSettingIDs.size() - 1];
 		availableServiceSettingIDs.pop_back();
-        return newID;
-    }
+
+		if (id > maxServiceSettingID)
+			maxServiceSettingID = id;
+
+		return id;
+	}
 }
 
-void OBSBasicSettings::PopulateForm(obs_data_t* settings, const char* type) {
-	
-	loading = true;
-	
-	const char *service = obs_data_get_string(settings, "service");
-	const char *server = obs_data_get_string(settings, "server");
-	const char *key = obs_data_get_string(settings, "key");
-
-	if (strcmp(type, "rtmp_custom") == 0) {
-		ui->service->setCurrentIndex(0);
-		ui->customServer->setText(server);
-
-		bool use_auth = obs_data_get_bool(settings, "use_auth");
-		const char *username =
-			obs_data_get_string(settings, "username");
-		const char *password =
-			obs_data_get_string(settings, "password");
-		ui->authUsername->setText(QT_UTF8(username));
-		ui->authPw->setText(QT_UTF8(password));
-		ui->useAuth->setChecked(use_auth);
-	} else {
-		int idx = ui->service->findText(service);
-		if (idx == -1) {
-			if (service && *service)
-				ui->service->insertItem(1, service);
-			idx = 1;
-		}
-		ui->service->setCurrentIndex(idx);
-
-		bool bw_test = obs_data_get_bool(settings, "bwtest");
-		ui->bandwidthTestEnable->setChecked(bw_test);
-
-		idx = config_get_int(main->Config(), "Twitch", "AddonChoice");
-		ui->twitchAddonDropdown->setCurrentIndex(idx);
-
-		idx = config_get_int(main->Config(), "Mixer", "AddonChoice");
-		ui->mixerAddonDropdown->setCurrentIndex(idx);
-	}
-
-	UpdateServerList();
-
-	if (strcmp(type, "rtmp_common") == 0) {
-		int idx = ui->server->findData(server);
-		if (idx == -1) {
-			if (server && *server)
-				ui->server->insertItem(0, server, server);
-			idx = 0;
-		}
-		ui->server->setCurrentIndex(idx);
-	}
-
-	ui->key->setText(key);
-
-	lastService.clear();
-	on_service_currentIndexChanged(0);
-	obs_data_release(settings);
-
-	UpdateKeyLink();
-
-	bool streamActive = obs_frontend_streaming_active();
-	ui->streamPage->setEnabled(!streamActive);
-
-	loading = false;
+int OBSBasicSettings::ReleaseServiceSettingID(int id) {
+	availableServiceSettingIDs.push_back(-id); 
+	std::push_heap(availableServiceSettingIDs.begin(), availableServiceSettingIDs.end());
 }
 
 void OBSBasicSettings::PopulateForm(int id) {
@@ -761,6 +740,11 @@ OBSData OBSBasicSettings::GetFormChanges() {
 }
 
 void OBSBasicSettings::SaveFormChanges(int selectedServiceID) {
-	
-	savedSettings.SetSetting(selectedServiceID, GetFormChanges());
+	OBSData formChanges = GetFormChanges();
+
+	obs_data_set_obj(formChanges, "hotkey-data",
+	obs_data_get_obj(savedSettings.GetSettings(selectedServiceID), "hotkey-data"));
+	obs_data_set_int(formChanges, "id", selectedServiceID);
+
+	savedSettings.SetSetting(selectedServiceID, formChanges);
 }

@@ -155,16 +155,18 @@ private:
 	OBSSignal hotkeyRegistered;
 	OBSSignal hotkeyUnregistered;
 
-
 	SettingsListContainer savedSettings;
 
 	std::mutex mutex;
 	int currentSettingID = -1;
+
 	int maxServiceSettingID = -1;
 	std::vector<int> availableServiceSettingIDs;
-	int GetNewServiceSettingID();
 
-	void PopulateForm(obs_data_t* settings, const char* type);
+	int GetNewServiceSettingID();
+	int ReleaseServiceSettingID(int id);
+
+	OBSData ServiceToSettingData(const OBSService& service);
 	void PopulateForm(int id);
 	void SaveFormChanges(int selectedServiceID);
 	OBSData GetFormChanges();
