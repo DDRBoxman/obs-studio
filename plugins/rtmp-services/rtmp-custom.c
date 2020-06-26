@@ -121,3 +121,20 @@ struct obs_service_info rtmp_custom_service = {
 	.get_username = rtmp_custom_username,
 	.get_password = rtmp_custom_password,
 };
+
+void register_rtmp_custom(char* id)
+{
+	struct obs_service_info rtmp_custom_service = {
+		.id = id,
+		.get_name = rtmp_custom_name,
+		.create = rtmp_custom_create,
+		.destroy = rtmp_custom_destroy,
+		.update = rtmp_custom_update,
+		.get_properties = rtmp_custom_properties,
+		.get_url = rtmp_custom_url,
+		.get_key = rtmp_custom_key,
+		.get_username = rtmp_custom_username,
+		.get_password = rtmp_custom_password,
+	};
+	obs_register_service(&rtmp_custom_service);
+}
