@@ -70,6 +70,8 @@
 #include <fstream>
 #include <sstream>
 
+#include <algorithm>
+
 #include <QScreen>
 #include <QWindow>
 
@@ -1081,13 +1083,51 @@ retryScene:
 
 OBSService OBSBasic::ServicefromJsonObj(OBSData data) {
 	const char *type = obs_data_get_string(data, "type");
+	const char *name = obs_data_get_string(data, "name"); 
 	OBSData hotkeyData = obs_data_get_obj(data, "hotkey-data");
 	
-	return obs_service_create(type, "default_service", data, hotkeyData);
+	return obs_service_create(type, name, data, hotkeyData);
+}
+
+std::vector<int> OBSBasic::GetFreeServiceIDs(std::vector<int> usedIDList) {
+	std::sort(usedIDList.begin(), usedIDList.end());
+
+	std::vector<int> ret;
+
+	if (usedIDList.size() == 0) {
+		for (int id = 0; id < RTMP_SERVICE_NUM_LIMIT; id++)
+			ret.push_back(id);
+	} else {
+		ret = GetFreeServiceIDsHelper(usedIDList);
+	}
+	std::make_heap(ret.begin(), ret.end(), std::greater<int>());
+	return ret;
+}
+
+std::vector<int> OBSBasic::GetFreeServiceIDsHelper(const std::vector<int> &usedIDList) {
+	std::vector<int> ret;
+
+	for (unsigned i = 0; i < usedIDList.size(); i++) {
+		if (i == 0) {
+			for (int j = 0; j < usedIDList[i]; j++)
+				ret.push_back(j);
+		}
+		else {
+		for (int j = usedIDList[i - 1] + 1; j < usedIDList[i]; j++)
+			ret.push_back(j);
+
+			if (i == (usedIDList.size() - 1)) {
+				for (int j = usedIDList[i] + 1; 
+				    j < RTMP_SERVICE_NUM_LIMIT; j++)
+					ret.push_back(j);
+			}
+		}
+	}
+	
+	return ret;
 }
 
 #define SERVICE_PATH "service.json"
-#define TEST_SERVICE_PATH "test-service.json"
 
 void OBSBasic::SaveService() {
 	if (!service)
@@ -1095,21 +1135,17 @@ void OBSBasic::SaveService() {
 
 	char serviceJsonPath[512];
 	int ret = GetProfilePath(serviceJsonPath, sizeof(serviceJsonPath),
-				 TEST_SERVICE_PATH);
+				 SERVICE_PATH);
 	if (ret <= 0)
 		return;
 
 	OBSDataArray servicesContainer = obs_data_array_create();
 	obs_data_array_release(servicesContainer);
 
-	obs_data_array_push_back(servicesContainer, obs_service_get_settings(service));
-
-	if (otherServices) {
-		for (int i = 0; i < obs_data_array_count(otherServices); i++) {
-			OBSData serviceData = obs_data_array_item(otherServices, i);
-			obs_data_release(serviceData);
-			obs_data_array_push_back(servicesContainer, serviceData);
-		}
+	for (unsigned i = 0; i < services.size(); i++) {
+		OBSData serviceData = obs_service_get_settings(services[i]);
+		obs_data_release(serviceData);
+		obs_data_array_push_back(servicesContainer, serviceData);
 	}
 
 	OBSData settingList = obs_data_create();
@@ -1122,11 +1158,11 @@ void OBSBasic::SaveService() {
 }
 
 bool OBSBasic::LoadService() {
-	const char *type;
+	std::vector<int> usedServiceIDs;
 
 	char serviceJsonPath[512];
 	int ret = GetProfilePath(serviceJsonPath, sizeof(serviceJsonPath),
-				 TEST_SERVICE_PATH);
+				 SERVICE_PATH);
 	if (ret <= 0)
 		return false;
 
@@ -1136,20 +1172,23 @@ bool OBSBasic::LoadService() {
 	if (!serviceData)
 		return false;
 	
-	OBSDataArray services = obs_data_get_array(serviceData, "services");
-	obs_data_array_release(otherServices);
-	otherServices = obs_data_array_create();
-	obs_data_array_release(otherServices);
+	OBSDataArray loadedServices = obs_data_get_array(serviceData, "services");
 
-	for (int i = 0; i < obs_data_array_count(services); i++) {
-		OBSData data = obs_data_array_item(services, i);
+	for (unsigned i = 0; 
+	     (i < obs_data_array_count(loadedServices)) && (i < RTMP_SERVICE_NUM_LIMIT); 
+	     i++) {
+		OBSData data = obs_data_array_item(loadedServices, i);
 		obs_data_release(data);
-
+		usedServiceIDs.push_back(obs_data_get_int(data, "id"));
+		OBSService tmp = ServicefromJsonObj(data);
+		
 		if (i == 0)
-			service = ServicefromJsonObj(data);
-		else
-			obs_data_array_push_back(otherServices, data);
+			service = tmp;
+		
+		services.push_back(tmp);
 	}
+
+	availableServiceIDs = GetFreeServiceIDs(usedServiceIDs);
 
 	return !!service;
 }
@@ -1161,10 +1200,14 @@ bool OBSBasic::InitService()
 	if (LoadService())
 		return true;
 
-	service = obs_service_create("rtmp_common", "default_service", nullptr,
+	service = obs_service_create("rtmp_common.0", "Default Service", nullptr,
 				     nullptr);
 	if (!service)
 		return false;
+	
+	obs_service_set_setting_id(service, 0);
+
+	services.push_back(service);
 	obs_service_release(service);
 
 	return true;
@@ -3604,8 +3647,7 @@ OBSDataArray OBSBasic::GetOtherServices()
 	return otherServices;
 }
 
-void OBSBasic::SetService(obs_service_t *newService)
-{
+void OBSBasic::SetService(obs_service_t *newService) {
 	if (newService)
 		service = newService;
 }
@@ -3613,6 +3655,18 @@ void OBSBasic::SetService(obs_service_t *newService)
 void OBSBasic::SetService(const OBSService &defaultService, const OBSDataArray &otherSettings) {
 	SetService(defaultService);
 	otherServices = otherSettings;
+}
+
+void OBSBasic::SetServices(std::vector<OBSService> newServices) {
+	services = newServices;
+
+	if (newServices.size() == 0) {
+		service = obs_service_create("rtmp_common.0", "Default Service", nullptr, nullptr);
+		obs_service_set_setting_id(service, 0);
+		services.push_back(service);
+	} else {
+		service = services[0];
+	}
 }
 
 int OBSBasic::GetTransitionDuration()
@@ -5281,7 +5335,7 @@ void OBSBasic::StartStreaming()
 		}
 
 		QMessageBox::critical(this, QTStr("Output.StartStreamFailed"),
-				      message);
+				message);
 		return;
 	}
 

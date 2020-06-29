@@ -16,8 +16,7 @@ MODULE_EXPORT const char *obs_module_description(void)
 	return "OBS core RTMP services";
 }
 
-#define RTMP_COMMON_SERVICE_NUM_LIMIT 20
-#define RTMP_CUSTOM_SERVICE_NUM_LIMIT 20
+#define RTMP_SERVICE_NUM_LIMIT 20
 
 #define RTMP_SERVICES_LOG_STR "[rtmp-services plugin] "
 #define RTMP_SERVICES_VER_STR "rtmp-services plugin (libobs " OBS_VERSION ")"
@@ -104,21 +103,22 @@ bool obs_module_load(void)
 	bfree(local_dir);
 	bfree(cache_dir);
 #endif
-	const int name_len = 32;
+	const size_t name_len = 32;
 
 	obs_register_service(&rtmp_common_service);
 	obs_register_service(&rtmp_custom_service);
 
-	for (int i = 0; i < RTMP_COMMON_SERVICE_NUM_LIMIT; i++) {
-		char tmp[name_len];
-		sprintf(tmp, "rtmp-common.%d", i);
-		register_rtmp_common(tmp);
+	char *service_type;
+	for (int i = 0; i < RTMP_SERVICE_NUM_LIMIT; i++) {
+		service_type = malloc(name_len);
+		sprintf(service_type, "rtmp_common.%d", i);
+		register_rtmp_common(service_type);
 	}
 
-	for (int i = 0; i < RTMP_CUSTOM_SERVICE_NUM_LIMIT; i++) {
-		char tmp[name_len];
-		sprintf(tmp, "rtmp-custom.%d", i);
-		register_rtmp_custom(tmp);
+	for (int i = 0; i < RTMP_SERVICE_NUM_LIMIT; i++) {
+		service_type = malloc(name_len);
+		sprintf(service_type, "rtmp_custom.%d", i);
+		register_rtmp_custom(service_type);
 	}
 
 	return true;

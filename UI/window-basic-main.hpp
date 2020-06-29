@@ -69,6 +69,7 @@ class OBSBasicStats;
 #define SIMPLE_ENCODER_AMD "amd"
 
 #define PREVIEW_EDGE_SIZE 10
+#define RTMP_SERVICE_NUM_LIMIT 20
 
 struct BasicOutputHandler;
 
@@ -218,6 +219,10 @@ private:
 
 	OBSService service;
 	OBSDataArray otherServices;
+	std::vector<OBSService> services;
+
+	std::vector<int> availableServiceIDs;
+
 	int selectedServiceSettingID = -1;
 
 	std::unique_ptr<BasicOutputHandler> outputHandler;
@@ -225,7 +230,6 @@ private:
 	bool recordingStopping = false;
 	bool replayBufferStopping = false;
 
-	std::vector<int> availableServiceIDList;
 	int maxUsedServiceID = -1;
 
 	gs_vertbuffer_t *box = nullptr;
@@ -718,7 +722,8 @@ private:
 	void DiskSpaceMessage();
 
 	OBSService ServicefromJsonObj(OBSData data);
-
+	std::vector<int> GetFreeServiceIDs(std::vector<int> usedIDList);
+	std::vector<int> GetFreeServiceIDsHelper(const std::vector<int> &usedIDList);
 	OBSSource prevFTBSource = nullptr;
 
 public:
@@ -735,9 +740,12 @@ public:
 
 	obs_service_t *GetService();
 	void SetService(obs_service_t *service);
+	void SetServices(std::vector<OBSService> newServices);
 
 	OBSDataArray GetOtherServices();
 	void SetService(const OBSService &defaultService, const OBSDataArray &otherSettings);
+
+	std::vector<OBSService> GetServices() const { return services; }
 
 	int GetSelectedSettingID() { 
 		return selectedServiceSettingID; 
@@ -745,6 +753,14 @@ public:
 
 	void SetSelectedSettingID(int id) { 
 		selectedServiceSettingID = id; 
+	}
+
+	std::vector<int> GetAvailableIDsHeap() {
+		return availableServiceIDs;
+	}
+
+	void SetAvailableIDsHeap(const std::vector<int> availableIDs) {
+		availableServiceIDs = availableIDs;
 	}
 
 	int GetTransitionDuration();

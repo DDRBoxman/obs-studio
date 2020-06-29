@@ -46,6 +46,8 @@ class OBSHotkeyWidget;
 #define VOLUME_METER_DECAY_MEDIUM 11.76
 #define VOLUME_METER_DECAY_SLOW 8.57
 
+#define RTMP_SERVICE_NUM_LIMIT 20
+
 class SilentUpdateCheckBox : public QCheckBox {
 	Q_OBJECT
 
@@ -164,12 +166,12 @@ private:
 	std::vector<int> availableServiceSettingIDs;
 
 	int GetNewServiceSettingID();
-	int ReleaseServiceSettingID(int id);
+	void ReleaseServiceSettingID(int id);
 
 	OBSData ServiceToSettingData(const OBSService& service);
 	void PopulateForm(int id);
 	void SaveFormChanges(int selectedServiceID);
-	OBSData GetFormChanges();
+	OBSData GetFormChanges(int id);
 
 	uint32_t outputCX = 0;
 	uint32_t outputCY = 0;
@@ -324,6 +326,7 @@ private:
 	QIcon GetAdvancedIcon() const;
 
 	int CurrentFLVTrack();
+	void AddEmptyServiceSetting(int id, bool isDefault);
 
 private slots:
 	void on_theme_activated(int idx);
