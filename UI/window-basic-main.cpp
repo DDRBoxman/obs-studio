@@ -1082,11 +1082,15 @@ retryScene:
 }
 
 OBSService OBSBasic::ServicefromJsonObj(OBSData data) {
+	int id = obs_data_get_int(data, "id");
 	const char *type = obs_data_get_string(data, "type");
 	const char *name = obs_data_get_string(data, "name"); 
 	OBSData hotkeyData = obs_data_get_obj(data, "hotkey-data");
 	
-	return obs_service_create(type, name, data, hotkeyData);
+	OBSService ret = obs_service_create(type, name, data, hotkeyData);
+	obs_service_set_setting_id(ret, id);
+
+	return ret;
 }
 
 std::vector<int> OBSBasic::GetFreeServiceIDs(std::vector<int> usedIDList) {
@@ -5320,7 +5324,7 @@ void OBSBasic::StartStreaming()
 		sysTrayStream->setText(ui->streamButton->text());
 	}
 
-	if (!outputHandler->StartStreaming(service)) {
+	if (!outputHandler->StartStreaming(services)) {
 		QString message =
 			!outputHandler->lastError.empty()
 				? QTStr(outputHandler->lastError.c_str())
