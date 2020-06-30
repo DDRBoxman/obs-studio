@@ -5450,7 +5450,7 @@ void OBSBasic::StopStreaming()
 {
 	SaveProject();
 
-	if (outputHandler->StreamingActive())
+	if (outputHandler->Active())
 		outputHandler->StopStreaming(streamingStopping);
 
 	OnDeactivate();
@@ -5556,7 +5556,7 @@ void OBSBasic::StreamingStart()
 	ui->streamButton->setText(QTStr("Basic.Main.StopStreaming"));
 	ui->streamButton->setEnabled(true);
 	ui->streamButton->setChecked(true);
-	ui->statusbar->StreamStarted(outputHandler->streamOutput);
+	ui->statusbar->StreamStarted(outputHandler->streamOutputs[0]);
 
 	if (sysTrayStream) {
 		sysTrayStream->setText(ui->streamButton->text());
@@ -6025,7 +6025,7 @@ void OBSBasic::ReplayBufferStop(int code)
 
 void OBSBasic::on_streamButton_clicked()
 {
-	if (outputHandler->StreamingActive()) {
+	if (outputHandler->Active()) {
 		bool confirm = config_get_bool(GetGlobalConfig(), "BasicWindow",
 					       "WarnBeforeStoppingStream");
 

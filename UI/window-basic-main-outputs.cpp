@@ -248,6 +248,14 @@ struct SimpleOutput : BasicOutputHandler {
 	virtual bool StreamingActive() const override;
 	virtual bool RecordingActive() const override;
 	virtual bool ReplayBufferActive() const override;
+
+	void DisconnectSignals();
+	void ConnectToSignals(const OBSOutput &output);
+	bool UpdateEncoders(const OBSOutput &output);
+	void SetStreamOutputConfig();
+	bool StartStreamOutputs();
+	bool StartStreamOutputs(int retryDelay, int maxRetries, bool useDelay, 
+				int delaySec, int preserveDelay);
 };
 
 void SimpleOutput::LoadRecordingPreset_Lossless()
@@ -831,115 +839,68 @@ bool SimpleOutput::StartStreaming(obs_service_t *service)
 	return false;
 }
 
-bool SimpleOutput::StartStreaming(const std::vector<OBSService> &services) {
-	if (!Active())
-		SetupOutputs();
+void SimpleOutput::DisconnectSignals() {
+	streamDelayStarting.Disconnect();
+	streamStopping.Disconnect();
+	startStreaming.Disconnect();
+	stopStreaming.Disconnect();
+}
 
-	Auth *auth = main->GetAuth();
-	if (auth)
-		auth->OnStreamConfig();
+void SimpleOutput::ConnectToSignals(const OBSOutput &output) {
+	streamDelayStarting.Connect(
+		obs_output_get_signal_handler(output), "starting",
+		OBSStreamStarting, this);
+	streamStopping.Connect(
+		obs_output_get_signal_handler(output), "stopping",
+		OBSStreamStopping, this);
 
-	/* --------------------- */
+	startStreaming.Connect(
+		obs_output_get_signal_handler(output), "start",
+		OBSStartStreaming, this);
+	stopStreaming.Connect(
+		obs_output_get_signal_handler(output), "stop",
+		OBSStopStreaming, this);
+}
 
-	/* XXX: this is messy and disgusting and should be refactored */
-	for (auto &service : services) {
-		if (activeServices.find(obs_service_get_setting_id(service)) != activeServices.end())
-			continue;
-	
-		const char *type = obs_service_get_output_type(service);
-		if (!type) {
-			type = "rtmp_output";
-			const char *url = obs_service_get_url(service);
-			if (url != NULL &&
-			strncmp(url, RTMP_PROTOCOL, strlen(RTMP_PROTOCOL)) != 0) {
-				type = "ffmpeg_mpegts_muxer";
-			}
-		}
+bool SimpleOutput::UpdateEncoders(const OBSOutput &output) {
+	bool isEncoded = obs_output_get_flags(output) & OBS_OUTPUT_ENCODED;
 
-		streamDelayStarting.Disconnect();
-		streamStopping.Disconnect();
-		startStreaming.Disconnect();
-		stopStreaming.Disconnect();
-
-		OBSOutput output = obs_output_create(type, "simple_stream", nullptr,
-						nullptr);
-		if (!output) {
-			blog(LOG_WARNING,
-			"Creation of stream output type '%s' "
-			"failed!",
-			type);
+	if (isEncoded) {
+		const char *codec =
+			obs_output_get_supported_audio_codecs(output);
+		if (!codec) {
+			blog(LOG_WARNING, "Failed to load audio codec");
 			return false;
 		}
-		obs_output_release(output);
 
-		streamDelayStarting.Connect(
-			obs_output_get_signal_handler(output), "starting",
-			OBSStreamStarting, this);
-		streamStopping.Connect(
-			obs_output_get_signal_handler(output), "stopping",
-			OBSStreamStopping, this);
+		if (strcmp(codec, "aac") != 0) {
+			const char *id =
+				FindAudioEncoderFromCodec(codec);
+			int audioBitrate = GetAudioBitrate();
+			obs_data_t *settings = obs_data_create();
+			obs_data_set_int(settings, "bitrate", audioBitrate);
 
-		startStreaming.Connect(
-			obs_output_get_signal_handler(output), "start",
-			OBSStartStreaming, this);
-		stopStreaming.Connect(
-			obs_output_get_signal_handler(output), "stop",
-			OBSStopStreaming, this);
-
-		bool isEncoded = obs_output_get_flags(output) &
-				OBS_OUTPUT_ENCODED;
-
-		if (isEncoded) {
-			const char *codec =
-				obs_output_get_supported_audio_codecs(
-					output);
-			if (!codec) {
-				blog(LOG_WARNING, "Failed to load audio codec");
+			aacStreaming = obs_audio_encoder_create(
+				id, "alt_audio_enc", nullptr, 0,
+				nullptr);
+			obs_encoder_release(aacStreaming);
+			if (!aacStreaming)
 				return false;
-			}
 
-			if (strcmp(codec, "aac") != 0) {
-				const char *id =
-					FindAudioEncoderFromCodec(codec);
-				int audioBitrate = GetAudioBitrate();
-				obs_data_t *settings = obs_data_create();
-				obs_data_set_int(settings, "bitrate",
-						audioBitrate);
+			obs_encoder_update(aacStreaming, settings);
+			obs_encoder_set_audio(aacStreaming, obs_get_audio());
 
-				aacStreaming = obs_audio_encoder_create(
-					id, "alt_audio_enc", nullptr, 0,
-					nullptr);
-				obs_encoder_release(aacStreaming);
-				if (!aacStreaming)
-					return false;
-
-				obs_encoder_update(aacStreaming, settings);
-				obs_encoder_set_audio(aacStreaming,
-						obs_get_audio());
-
-				obs_data_release(settings);
-			}
+			obs_data_release(settings);
 		}
-
-		activeServices.insert(obs_service_get_setting_id(service));
-
-		obs_output_set_video_encoder(output, h264Streaming);
-		obs_output_set_audio_encoder(output, aacStreaming, 0);
-		obs_output_set_service(output, service);
-
-		streamOutputs.push_back(output);
 	}
 
-	bool reconnect = config_get_bool(main->Config(), "Output", "Reconnect");
-	int retryDelay =
-		config_get_uint(main->Config(), "Output", "RetryDelay");
-	int maxRetries =
-		config_get_uint(main->Config(), "Output", "MaxRetries");
-	bool useDelay =
-		config_get_bool(main->Config(), "Output", "DelayEnable");
-	int delaySec = config_get_int(main->Config(), "Output", "DelaySec");
-	bool preserveDelay =
-		config_get_bool(main->Config(), "Output", "DelayPreserve");
+	obs_output_set_video_encoder(output, h264Streaming);
+	obs_output_set_audio_encoder(output, aacStreaming, 0);
+
+	return true;
+}
+
+void SimpleOutput::SetStreamOutputConfig() {
 	const char *bindIP =
 		config_get_string(main->Config(), "Output", "BindIP");
 	bool enableNewSocketLoop = config_get_bool(main->Config(), "Output",
@@ -949,22 +910,41 @@ bool SimpleOutput::StartStreaming(const std::vector<OBSService> &services) {
 	bool enableDynBitrate =
 		config_get_bool(main->Config(), "Output", "DynamicBitrate");
 
-	obs_data_t *settings = obs_data_create();
-	obs_data_set_string(settings, "bind_ip", bindIP);
-	obs_data_set_bool(settings, "new_socket_loop_enabled",
-			  enableNewSocketLoop);
-	obs_data_set_bool(settings, "low_latency_mode_enabled",
-			  enableLowLatencyMode);
-	obs_data_set_bool(settings, "dyn_bitrate", enableDynBitrate);
-
-	for (auto &output : streamOutputs)
+	for (auto &output : streamOutputs) {
+		obs_data_t *settings = obs_data_create();
+		obs_data_set_string(settings, "bind_ip", bindIP);
+		obs_data_set_bool(settings, "new_socket_loop_enabled",
+				enableNewSocketLoop);
+		obs_data_set_bool(settings, "low_latency_mode_enabled",
+				enableLowLatencyMode);
+		obs_data_set_bool(settings, "dyn_bitrate", enableDynBitrate);
 		obs_output_update(output, settings);
 
-	obs_data_release(settings);
-	
+		obs_data_release(settings);
+	}
+
+}
+
+bool SimpleOutput::StartStreamOutputs() {
+	bool reconnect = config_get_bool(main->Config(), "Output", "Reconnect");
+	int retryDelay = config_get_uint(main->Config(), "Output", "RetryDelay");
+	int maxRetries =
+		config_get_uint(main->Config(), "Output", "MaxRetries");
+	bool useDelay =
+		config_get_bool(main->Config(), "Output", "DelayEnable");
+	int delaySec = config_get_int(main->Config(), "Output", "DelaySec");
+	bool preserveDelay =
+		config_get_bool(main->Config(), "Output", "DelayPreserve");
+
 	if (!reconnect)
 		maxRetries = 0;
 
+	return StartStreamOutputs(retryDelay, maxRetries, useDelay, 
+				  delaySec, preserveDelay);
+}
+
+bool SimpleOutput::StartStreamOutputs(int retryDelay, int maxRetries, bool useDelay, 
+				      int delaySec, int preserveDelay) {
 	int errors = 0;
 
 	for (auto &output : streamOutputs) {
@@ -972,9 +952,12 @@ bool SimpleOutput::StartStreaming(const std::vector<OBSService> &services) {
 			     	     preserveDelay ? OBS_OUTPUT_DELAY_PRESERVE : 0);
 		obs_output_set_reconnect_settings(output, maxRetries, retryDelay);
 
-		if (!obs_output_start(output)) {
-			const char *error = obs_output_get_last_error(output);
-			bool hasLastError = error && *error;
+		obs_output_start(output);
+
+		const char *error = obs_output_get_last_error(output);
+		bool hasLastError = error && *error;
+		
+		if (hasLastError) {
 			if (hasLastError)
 				lastError = error;
 			else
@@ -989,6 +972,55 @@ bool SimpleOutput::StartStreaming(const std::vector<OBSService> &services) {
 	}
 
 	return errors == 0;
+}
+
+bool SimpleOutput::StartStreaming(const std::vector<OBSService> &services) {
+	if (!Active())
+		SetupOutputs();
+
+	Auth *auth = main->GetAuth();
+	if (auth)
+		auth->OnStreamConfig();
+
+	/* --------------------- */
+	DisconnectSignals();
+
+	for (auto &service : services) {
+		if (activeServices.find(obs_service_get_setting_id(service)) != activeServices.end())
+			continue;
+	
+		const char *type = obs_service_get_output_type(service);
+		if (!type) {
+			type = "rtmp_output";
+			const char *url = obs_service_get_url(service);
+			if (url != NULL &&
+			strncmp(url, RTMP_PROTOCOL, strlen(RTMP_PROTOCOL)) != 0) {
+				type = "ffmpeg_mpegts_muxer";
+			}
+		}
+
+		OBSOutput output = obs_output_create(type, "simple_stream", nullptr, nullptr);
+		
+		if (!output) { 
+			blog(LOG_WARNING, "Creation of stream output type '%s' "
+			"failed!", type);
+			return false;
+		}
+
+		obs_output_release(output);
+
+		ConnectToSignals(output);
+		if (!UpdateEncoders(output))
+			return false;
+
+		obs_output_set_service(output, service);
+
+		activeServices.insert(obs_service_get_setting_id(service));
+		streamOutputs.push_back(output);
+	}
+
+	SetStreamOutputConfig();
+	return StartStreamOutputs();
 }
 
 static void remove_reserved_file_characters(string &s)
@@ -1174,10 +1206,12 @@ bool SimpleOutput::StartReplayBuffer()
 
 void SimpleOutput::StopStreaming(bool force)
 {
-	if (force)
-		obs_output_force_stop(streamOutput);
-	else
-		obs_output_stop(streamOutput);
+	for (auto &output : streamOutputs) {
+		if (force)
+			obs_output_force_stop(output);
+		else
+			obs_output_stop(output);
+	}
 }
 
 void SimpleOutput::StopRecording(bool force)
