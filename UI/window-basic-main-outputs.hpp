@@ -48,6 +48,13 @@ struct BasicOutputHandler {
 	virtual bool RecordingActive() const = 0;
 	virtual bool ReplayBufferActive() const { return false; }
 
+	virtual void DisconnectSignals();
+	virtual void ConnectToSignals(const OBSOutput &output);
+	virtual void SetStreamOutputConfig();
+	virtual bool StartStreamOutputs();
+	virtual bool StartStreamOutputs(int retryDelay, int maxRetries, bool useDelay, 
+				      int delaySec, int preserveDelay);
+
 	virtual void Update() = 0;
 
 	inline bool Active() const

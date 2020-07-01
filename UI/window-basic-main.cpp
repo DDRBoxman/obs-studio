@@ -5450,7 +5450,7 @@ void OBSBasic::StopStreaming()
 {
 	SaveProject();
 
-	if (outputHandler->Active())
+	if (outputHandler->StreamingActive())
 		outputHandler->StopStreaming(streamingStopping);
 
 	OnDeactivate();
@@ -6025,7 +6025,7 @@ void OBSBasic::ReplayBufferStop(int code)
 
 void OBSBasic::on_streamButton_clicked()
 {
-	if (outputHandler->Active()) {
+	if (outputHandler->StreamingActive()) {
 		bool confirm = config_get_bool(GetGlobalConfig(), "BasicWindow",
 					       "WarnBeforeStoppingStream");
 
