@@ -894,6 +894,8 @@ struct obs_output {
 	/* indicates ownership of the info.id buffer */
 	bool owns_info_id;
 
+	int id_num;
+
 	bool received_video;
 	bool received_audio;
 	volatile bool data_active;

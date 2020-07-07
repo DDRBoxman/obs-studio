@@ -27,6 +27,9 @@
 #define MODULE_EXTERN extern
 #endif
 
+#define RTMP_STREAM_OUTPUT_NUM_LIMIT 20
+#define STREAM_OUTPUT_NAME_LENGTH 32
+
 /**
  * @file
  * @brief This file is used by modules for module declaration and module

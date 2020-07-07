@@ -587,6 +587,26 @@ struct obs_output_info ffmpeg_mpegts_muxer = {
 	.get_connect_time_ms = ffmpeg_mpegts_mux_connect_time,
 };
 
+void register_ffmpeg_mpegts_muxer(char* id) {
+	struct obs_output_info ffmpeg_mpegts_muxer = {
+		.id = id,
+		.flags = OBS_OUTPUT_AV | OBS_OUTPUT_ENCODED | 
+		        OBS_OUTPUT_MULTI_TRACK | OBS_OUTPUT_SERVICE,
+		.encoded_video_codecs = "h264",
+		.encoded_audio_codecs = "aac",
+		.get_name = ffmpeg_mpegts_mux_getname,
+		.create = ffmpeg_mux_create,
+		.destroy = ffmpeg_mux_destroy,
+		.start = ffmpeg_mux_start,
+		.stop = ffmpeg_mux_stop,
+		.encoded_packet = ffmpeg_mux_data,
+		.get_total_bytes = ffmpeg_mux_total_bytes,
+		.get_properties = ffmpeg_mux_properties,
+		.get_connect_time_ms = ffmpeg_mpegts_mux_connect_time,
+	};
+
+	obs_register_output(&ffmpeg_mpegts_muxer);
+}
 /* ------------------------------------------------------------------------ */
 
 static const char *replay_buffer_getname(void *type)
