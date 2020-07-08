@@ -1093,7 +1093,7 @@ OBSService OBSBasic::ServicefromJsonObj(OBSData data) {
 	return ret;
 }
 
-std::vector<int> OBSBasic::GetFreeServiceIDs(std::vector<int> usedIDList) {
+std::vector<int> OBSBasic::GetFreeIDs(std::vector<int> usedIDList) {
 	std::sort(usedIDList.begin(), usedIDList.end());
 
 	std::vector<int> ret;
@@ -1102,13 +1102,13 @@ std::vector<int> OBSBasic::GetFreeServiceIDs(std::vector<int> usedIDList) {
 		for (int id = 0; id < RTMP_SERVICE_NUM_LIMIT; id++)
 			ret.push_back(id);
 	} else {
-		ret = GetFreeServiceIDsHelper(usedIDList);
+		ret = GetFreeIDsHelper(usedIDList);
 	}
 	std::make_heap(ret.begin(), ret.end(), std::greater<int>());
 	return ret;
 }
 
-std::vector<int> OBSBasic::GetFreeServiceIDsHelper(const std::vector<int> &usedIDList) {
+std::vector<int> OBSBasic::GetFreeIDsHelper(const std::vector<int> &usedIDList) {
 	std::vector<int> ret;
 
 	for (unsigned i = 0; i < usedIDList.size(); i++) {
@@ -1131,15 +1131,16 @@ std::vector<int> OBSBasic::GetFreeServiceIDsHelper(const std::vector<int> &usedI
 	return ret;
 }
 
-#define SERVICE_PATH "service.json"
+#define STREAM_OUTPUTS_PATH "stream-outputs.json"
+#define SERVICES_PATH "service.json"
 
 void OBSBasic::SaveService() {
-	if (!service)
+	if (services.size() == 0)
 		return;
 
 	char serviceJsonPath[512];
 	int ret = GetProfilePath(serviceJsonPath, sizeof(serviceJsonPath),
-				 SERVICE_PATH);
+				 SERVICES_PATH);
 	if (ret <= 0)
 		return;
 
@@ -1166,7 +1167,7 @@ bool OBSBasic::LoadService() {
 
 	char serviceJsonPath[512];
 	int ret = GetProfilePath(serviceJsonPath, sizeof(serviceJsonPath),
-				 SERVICE_PATH);
+				 SERVICES_PATH);
 	if (ret <= 0)
 		return false;
 
@@ -1192,7 +1193,7 @@ bool OBSBasic::LoadService() {
 		services.push_back(tmp);
 	}
 
-	availableServiceIDs = GetFreeServiceIDs(usedServiceIDs);
+	availableServiceIDs = GetFreeIDs(usedServiceIDs);
 
 	return !!service;
 }
@@ -1213,6 +1214,126 @@ bool OBSBasic::InitService()
 
 	services.push_back(service);
 	obs_service_release(service);
+
+	return true;
+}
+
+void OBSBasic::SaveStreamOutputs() {
+	if (streamOutputSettings.size() == 0)
+		return;
+
+	char outputJsonPath[512];
+	int ret = GetProfilePath(outputJsonPath, sizeof(outputJsonPath),
+				 STREAM_OUTPUTS_PATH);
+	if (ret <= 0)
+		return;
+
+	OBSDataArray outputsContainer = obs_data_array_create();
+	obs_data_array_release(outputsContainer);
+
+	for (auto i = streamOutputSettings.begin(); 
+	     i !=streamOutputSettings.end(); i++) {
+		obs_data_set_int(i->second, "id_num", i->first);
+		obs_data_array_push_back(outputsContainer, i->second);
+	}
+
+	OBSData settingList = obs_data_create();
+	obs_data_release(settingList);
+
+	obs_data_set_string(settingList, "output_mode", outputMode);
+	obs_data_set_array(settingList, "outputs", outputsContainer);
+
+	if (!obs_data_save_json_safe(settingList, outputJsonPath, "tmp", "bak"))
+	    	blog(LOG_WARNING, "Failed to save service");
+}
+
+bool OBSBasic::LoadStreamOutputs() {
+	std::vector<int> usedOutputIDs;
+
+	char outputJsonPath[512];
+	int ret = GetProfilePath(outputJsonPath, sizeof(outputJsonPath),
+				 STREAM_OUTPUTS_PATH);
+	if (ret <= 0)
+		return false;
+
+	OBSData outputsData = 
+		obs_data_create_from_json_file_safe(outputJsonPath, "bak");
+	obs_data_release(outputsData);
+
+	if (!outputsData)
+		return false;
+
+	strcpy(outputMode, obs_data_get_string(outputsData, "output_mode"));
+	OBSDataArray loadedOutputs = obs_data_get_array(outputsData, "outputs");
+
+	for (unsigned i = 0; (i < obs_data_array_count(loadedOutputs)); i++) {
+		OBSData data = obs_data_array_item(loadedOutputs, i);
+		obs_data_release(data);
+		int outputID = obs_data_get_int(data, "id");
+		usedOutputIDs.push_back(outputID);
+
+		streamOutputSettings.insert({outputID, data});
+	}
+
+	availableOutputIDs = GetFreeIDs(usedOutputIDs);
+
+	return streamOutputSettings.size() == 0;
+}
+
+bool OBSBasic::InitStreamOutputs()
+{
+	if (LoadStreamOutputs())
+		return true;
+	
+	return SetDefaultOutputSetting();
+}
+
+bool OBSBasic::SetDefaultOutputSetting() {
+	int videoBitrate =
+		config_get_uint(basicConfig, "SimpleOutput", "VBitrate");
+	const char *streamEnc = config_get_string(
+		basicConfig, "SimpleOutput", "StreamEncoder");
+	int audioBitrate =
+		config_get_uint(basicConfig, "SimpleOutput", "ABitrate");
+	bool advanced =
+		config_get_bool(basicConfig, "SimpleOutput", "UseAdvanced");
+	bool enforceBitrate = config_get_bool(basicConfig, "SimpleOutput",
+					      "EnforceBitrate");
+
+	const char *preset =
+		config_get_string(basicConfig, "SimpleOutput", "Preset");
+	const char *qsvPreset =
+		config_get_string(basicConfig, "SimpleOutput", "QSVPreset");
+	const char *nvPreset = config_get_string(basicConfig, "SimpleOutput",
+						 "NVENCPreset");
+	const char *amdPreset =
+		config_get_string(basicConfig, "SimpleOutput", "AMDPreset");
+
+	const char *custom = config_get_string(basicConfig, "SimpleOutput",
+						"x264Settings");
+
+	OBSData outputSetting = obs_data_create();
+
+	if (!outputSetting)
+		return false;
+	
+	obs_data_set_string(outputSetting, "stream_encoder", streamEnc);
+	
+	obs_data_set_int(outputSetting, "video_bitrate", videoBitrate);
+	obs_data_set_int(outputSetting, "audio_bitrate", audioBitrate);
+
+	obs_data_set_bool(outputSetting, "use_advanced", advanced);
+	obs_data_set_bool(outputSetting, "enforce_bitrate", enforceBitrate);
+
+	obs_data_set_string(outputSetting, "preset", preset);
+	obs_data_set_string(outputSetting, "QSVPreset", qsvPreset);
+	obs_data_set_string(outputSetting, "NVENCPreset", nvPreset);
+	obs_data_set_string(outputSetting, "AMDPreset", amdPreset);
+	obs_data_set_string(outputSetting, "x264Settings", custom);
+	obs_data_set_string(outputSetting, "name", "Default Output");
+
+	streamOutputSettings.insert({0, outputSetting});
+	outputMode = "simple";
 
 	return true;
 }
@@ -1701,7 +1822,9 @@ void OBSBasic::OBSInit()
 	CreateHotkeys();
 
 	if (!InitService())
-		throw "Failed to initialize service";
+		throw "Failed to initialize services";
+	if (!InitStreamOutputs())
+		throw "Failed to initialize outputs";
 
 	InitPrimitives();
 
@@ -3643,22 +3766,9 @@ obs_service_t *OBSBasic::GetService()
 	return service;
 }
 
-OBSDataArray OBSBasic::GetOtherServices()
-{
-	if (!otherServices)
-		otherServices = obs_data_array_create();
-	
-	return otherServices;
-}
-
 void OBSBasic::SetService(obs_service_t *newService) {
 	if (newService)
 		service = newService;
-}
-
-void OBSBasic::SetService(const OBSService &defaultService, const OBSDataArray &otherSettings) {
-	SetService(defaultService);
-	otherServices = otherSettings;
 }
 
 void OBSBasic::SetServices(std::vector<OBSService> newServices) {

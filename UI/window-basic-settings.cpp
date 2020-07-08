@@ -1553,12 +1553,7 @@ static inline bool IsSurround(const char *speakers)
 
 void OBSBasicSettings::LoadSimpleOutputSettings()
 {
-	const char *path =
-		config_get_string(main->Config(), "SimpleOutput", "FilePath");
-	bool noSpace = config_get_bool(main->Config(), "SimpleOutput",
-				       "FileNameWithoutSpace");
-	const char *format =
-		config_get_string(main->Config(), "SimpleOutput", "RecFormat");
+	/* Streaming section */
 	int videoBitrate =
 		config_get_uint(main->Config(), "SimpleOutput", "VBitrate");
 	const char *streamEnc = config_get_string(
@@ -1569,6 +1564,7 @@ void OBSBasicSettings::LoadSimpleOutputSettings()
 		config_get_bool(main->Config(), "SimpleOutput", "UseAdvanced");
 	bool enforceBitrate = config_get_bool(main->Config(), "SimpleOutput",
 					      "EnforceBitrate");
+
 	const char *preset =
 		config_get_string(main->Config(), "SimpleOutput", "Preset");
 	const char *qsvPreset =
@@ -1577,10 +1573,20 @@ void OBSBasicSettings::LoadSimpleOutputSettings()
 						 "NVENCPreset");
 	const char *amdPreset =
 		config_get_string(main->Config(), "SimpleOutput", "AMDPreset");
+
 	const char *custom = config_get_string(main->Config(), "SimpleOutput",
-					       "x264Settings");
+						"x264Settings");
+
+	/* Recording section */
+	const char *path =
+		config_get_string(main->Config(), "SimpleOutput", "FilePath");
+	bool noSpace = config_get_bool(main->Config(), "SimpleOutput",
+				       "FileNameWithoutSpace");
 	const char *recQual =
 		config_get_string(main->Config(), "SimpleOutput", "RecQuality");
+	const char *format =
+		config_get_string(main->Config(), "SimpleOutput", "RecFormat");
+
 	const char *recEnc =
 		config_get_string(main->Config(), "SimpleOutput", "RecEncoder");
 	const char *muxCustom = config_get_string(

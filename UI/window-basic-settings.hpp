@@ -157,7 +157,9 @@ private:
 	OBSSignal hotkeyRegistered;
 	OBSSignal hotkeyUnregistered;
 
-	SettingsListContainer savedSettings;
+	SettingsListContainer savedServiceSettings;
+	SettingsListContainer savedOutputSettings;
+	bool outputMode;
 
 	std::mutex mutex;
 	int currentSettingID = -1;

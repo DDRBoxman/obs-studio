@@ -111,14 +111,14 @@ void OBSBasicSettings::LoadStream1Settings() {
 
 	for(unsigned i = 0; i < services.size(); i++) {
 		OBSData data = ServiceToSettingData(services[i]);
-		savedSettings.Add(data);
+		savedServiceSettings.Add(data);
 		ui->savedServicesList->AddNewItem(obs_data_get_string(data, "name"), 
 						  obs_data_get_int(data, "id"));
 	}
 
 	currentSettingID = main->GetSelectedSettingID();
 	if (currentSettingID == -1)
-		currentSettingID = savedSettings.GetIdAtIndex(0);
+		currentSettingID = savedServiceSettings.GetIdAtIndex(0);
 	
 	PopulateForm(currentSettingID);
 }
@@ -133,9 +133,9 @@ void OBSBasicSettings::SaveStream1Settings() {
 	OBSService defaultService;
 	std::vector<OBSService> services;
 
-	for (int i = 0; i < savedSettings.GetCount(); i++) {
-		int id = savedSettings.GetIdAtIndex(i);
-		OBSData settings = savedSettings.GetSettings(id);
+	for (int i = 0; i < savedServiceSettings.GetCount(); i++) {
+		int id = savedServiceSettings.GetIdAtIndex(i);
+		OBSData settings = savedServiceSettings.GetSettings(id);
 		
 		const char* type = obs_data_get_string(settings, "type");
 		const char* name = obs_data_get_string(settings, "name");
@@ -523,7 +523,7 @@ void OBSBasicSettings::AddEmptyServiceSetting(int id, bool isDefault) {
 	obs_data_set_string(data, "name", serviceName);
 	obs_data_set_string(data, "type", type);
 
-	savedSettings.Add(data);
+	savedServiceSettings.Add(data);
 
 	PopulateForm(id);
 	currentSettingID = id;
@@ -534,7 +534,7 @@ void OBSBasicSettings::AddEmptyServiceSetting(int id, bool isDefault) {
 void OBSBasicSettings::AddService() {
 	std::lock_guard<std::mutex> lock(mutex);
 
-	if (savedSettings.GetCount() >= RTMP_SERVICE_NUM_LIMIT) {
+	if (savedServiceSettings.GetCount() >= RTMP_SERVICE_NUM_LIMIT) {
 		QMessageBox* fullNotice = new QMessageBox(this);
 		fullNotice->setIcon(QMessageBox::Warning);
 		fullNotice->setWindowModality(Qt::WindowModal);
@@ -563,7 +563,7 @@ void OBSBasicSettings::RemoveService(int serviceID) {
 	if (ui->savedServicesList->count() != 0)
 	        newSelectedID = ui->savedServicesList->currentItem()->data(Qt::UserRole).toInt();
 
-	savedSettings.Remove(serviceID);
+	savedServiceSettings.Remove(serviceID);
 	ReleaseServiceSettingID(serviceID);
 
 	if (newSelectedID != -1) {
@@ -620,7 +620,7 @@ void OBSBasicSettings::ReleaseServiceSettingID(int id) {
 
 void OBSBasicSettings::PopulateForm(int id) {
 	
-	OBSData settings = savedSettings.GetSettings(id);
+	OBSData settings = savedServiceSettings.GetSettings(id);
 	
 	loading = true;
 
@@ -766,8 +766,8 @@ void OBSBasicSettings::SaveFormChanges(int selectedServiceID) {
 	OBSData formChanges = GetFormChanges(selectedServiceID);
 
 	obs_data_set_obj(formChanges, "hotkey-data",
-	obs_data_get_obj(savedSettings.GetSettings(selectedServiceID), "hotkey-data"));
+	obs_data_get_obj(savedServiceSettings.GetSettings(selectedServiceID), "hotkey-data"));
 	obs_data_set_int(formChanges, "id", selectedServiceID);
 
-	savedSettings.SetSetting(selectedServiceID, formChanges);
+	savedServiceSettings.SetSetting(selectedServiceID, formChanges);
 }

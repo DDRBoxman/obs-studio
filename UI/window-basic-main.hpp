@@ -28,6 +28,7 @@
 #include <QStyledItemDelegate>
 #include <obs.hpp>
 #include <vector>
+#include <map>
 #include <memory>
 #include "window-main.hpp"
 #include "window-basic-interaction.hpp"
@@ -218,10 +219,14 @@ private:
 	os_cpu_usage_info_t *cpuUsageInfo = nullptr;
 
 	OBSService service;
-	OBSDataArray otherServices;
 	std::vector<OBSService> services;
 
+	OBSData defaultOutputSettings;
+	std::map<int, OBSData> streamOutputSettings;
+	char* outputMode;
+
 	std::vector<int> availableServiceIDs;
+	std::vector<int> availableOutputIDs;
 
 	int selectedServiceSettingID = -1;
 
@@ -321,6 +326,7 @@ private:
 	void ClearHotkeys();
 
 	bool InitService();
+	bool InitStreamOutputs();
 
 	bool InitBasicConfigDefaults();
 	void InitBasicConfigDefaults2();
@@ -722,8 +728,11 @@ private:
 	void DiskSpaceMessage();
 
 	OBSService ServicefromJsonObj(OBSData data);
-	std::vector<int> GetFreeServiceIDs(std::vector<int> usedIDList);
-	std::vector<int> GetFreeServiceIDsHelper(const std::vector<int> &usedIDList);
+	std::vector<int> GetFreeIDs(std::vector<int> usedIDList);
+	std::vector<int> GetFreeIDsHelper(const std::vector<int> &usedIDList);
+
+	bool SetDefaultOutputSetting();
+
 	OBSSource prevFTBSource = nullptr;
 
 public:
@@ -741,9 +750,6 @@ public:
 	obs_service_t *GetService();
 	void SetService(obs_service_t *service);
 	void SetServices(std::vector<OBSService> newServices);
-
-	OBSDataArray GetOtherServices();
-	void SetService(const OBSService &defaultService, const OBSDataArray &otherSettings);
 
 	std::vector<OBSService> GetServices() const { return services; }
 
@@ -802,6 +808,9 @@ public:
 
 	void SaveService();
 	bool LoadService();
+
+	void SaveStreamOutputs();
+	bool LoadStreamOutputs();
 
 	inline Auth *GetAuth() { return auth.get(); }
 
