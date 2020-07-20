@@ -83,19 +83,19 @@ void OBSBasicSettings::InitStreamPage()
 
 	connect(ui->actionAddService, SIGNAL(triggered(bool)), this, 
 		SLOT(AddService()));
-	connect(ui->actionRemoveService, SIGNAL(triggered(bool)), ui->savedServicesList, 
+	connect(ui->actionRemoveService, SIGNAL(triggered(bool)), ui->servicesList, 
 		SLOT(RemoveItem()));
-	connect(ui->actionScrollUp, SIGNAL(triggered(bool)), ui->savedServicesList, 
+	connect(ui->actionScrollUp, SIGNAL(triggered(bool)), ui->servicesList, 
 		SLOT(ScrollUp()));
-	connect(ui->actionScrollDown, SIGNAL(triggered(bool)), ui->savedServicesList, 
+	connect(ui->actionScrollDown, SIGNAL(triggered(bool)), ui->servicesList, 
 		SLOT(ScrollDown()));
 
-	connect(ui->savedServicesList, SIGNAL(RemovedKey(int, int)), this,
+	connect(ui->servicesList, SIGNAL(RemovedKey(int, int)), this,
 		SLOT(RemoveService(int)));
-	connect(ui->savedServicesList, SIGNAL(SelectedServiceKey(int)), this,
+	connect(ui->servicesList, SIGNAL(SelectedServiceKey(int)), this,
 		SLOT(DisplayServiceSettings(int)));
 
-	connect(ui->serviceNameInput, SIGNAL(textEdited(QString)), ui->savedServicesList, 
+	connect(ui->serviceNameInput, SIGNAL(textEdited(QString)), ui->servicesList, 
 		SLOT(UpdateItemName(QString)));
 }
 
@@ -112,7 +112,7 @@ void OBSBasicSettings::LoadStream1Settings() {
 	for(unsigned i = 0; i < services.size(); i++) {
 		OBSData data = ServiceToSettingData(services[i]);
 		savedServiceSettings.Add(data);
-		ui->savedServicesList->AddNewItem(obs_data_get_string(data, "name"), 
+		ui->servicesList->AddNewItem(obs_data_get_string(data, "name"), 
 						  obs_data_get_int(data, "id"));
 	}
 
@@ -124,8 +124,8 @@ void OBSBasicSettings::LoadStream1Settings() {
 }
 
 void OBSBasicSettings::SaveStream1Settings() {
-	if (ui->savedServicesList->count() != 0) {
-		int currentID = ui->savedServicesList->currentItem()->
+	if (ui->servicesList->count() != 0) {
+		int currentID = ui->servicesList->currentItem()->
 			data(Qt::UserRole).toInt();
 		SaveStreamSettingsChanges(currentID);
 	}
@@ -528,7 +528,7 @@ void OBSBasicSettings::AddEmptyServiceSetting(int id, bool isDefault) {
 	PopulateStreamSettingsForm(id);
 	currentSettingID = id;
 
-	ui->savedServicesList->AddNewItem(serviceName, id);
+	ui->servicesList->AddNewItem(serviceName, id);
 }
 
 void OBSBasicSettings::AddService() {
@@ -544,7 +544,7 @@ void OBSBasicSettings::AddService() {
 		return;
 	}
 
-	if (ui->savedServicesList->count() != 0)
+	if (ui->servicesList->count() != 0)
 		SaveStreamSettingsChanges(currentSettingID);
 
 	int newID = GetNewSettingID(freeServiceIDs, maxServiceID);
@@ -560,8 +560,8 @@ void OBSBasicSettings::RemoveService(int serviceID) {
 
 	int newSelectedID = -1;
 
-	if (ui->savedServicesList->count() != 0)
-	        newSelectedID = ui->savedServicesList->currentItem()->
+	if (ui->servicesList->count() != 0)
+	        newSelectedID = ui->servicesList->currentItem()->
 			 			data(Qt::UserRole).toInt();
 
 	savedServiceSettings.Remove(serviceID);

@@ -799,7 +799,7 @@
           <number>0</number>
          </property>
          <item>
-          <widget class="QWidget" name="serviceList" native="true">
+          <widget class="QWidget" name="widget_95" native="true">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
              <horstretch>0</horstretch>
@@ -823,7 +823,7 @@
              <number>5</number>
             </property>
             <item>
-             <widget class="QLabel" name="savedServicesListLabel">
+             <widget class="QLabel" name="servicesListLabel">
               <property name="minimumSize">
                <size>
                 <width>0</width>
@@ -836,7 +836,7 @@
              </widget>
             </item>
             <item>
-             <widget class="KeyedListWidget" name="savedServicesList">
+             <widget class="KeyedListWidget" name="servicesList">
               <property name="dragDropMode">
                <enum>QAbstractItemView::InternalMove</enum>
               </property>
