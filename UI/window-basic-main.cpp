@@ -1233,14 +1233,12 @@ void OBSBasic::SaveStreamOutputs() {
 
 	for (auto i = streamOutputSettings.begin(); 
 	     i !=streamOutputSettings.end(); i++) {
-		obs_data_set_int(i->second, "id_num", i->first);
 		obs_data_array_push_back(outputsContainer, i->second);
 	}
 
 	OBSData settingList = obs_data_create();
 	obs_data_release(settingList);
 
-	obs_data_set_string(settingList, "output_mode", outputMode);
 	obs_data_set_array(settingList, "outputs", outputsContainer);
 
 	if (!obs_data_save_json_safe(settingList, outputJsonPath, "tmp", "bak"))
@@ -1248,7 +1246,7 @@ void OBSBasic::SaveStreamOutputs() {
 }
 
 bool OBSBasic::LoadStreamOutputs() {
-	std::vector<int> usedOutputIDs;
+	usedOutputIDs.clear();
 
 	char outputJsonPath[512];
 	int ret = GetProfilePath(outputJsonPath, sizeof(outputJsonPath),
@@ -1263,16 +1261,16 @@ bool OBSBasic::LoadStreamOutputs() {
 	if (!outputsData)
 		return false;
 
-	strcpy(outputMode, obs_data_get_string(outputsData, "output_mode"));
 	OBSDataArray loadedOutputs = obs_data_get_array(outputsData, "outputs");
+	obs_data_array_release(loadedOutputs);
 
-	for (unsigned i = 0; (i < obs_data_array_count(loadedOutputs)); i++) {
-		OBSData data = obs_data_array_item(loadedOutputs, i);
-		obs_data_release(data);
-		int outputID = obs_data_get_int(data, "id");
+	for (unsigned i = 0; i < obs_data_array_count(loadedOutputs); i++) {
+		OBSData temp = obs_data_array_item(loadedOutputs, i);
+		obs_data_release(temp);
+
+		int outputID = obs_data_get_int(temp, "id_num");
 		usedOutputIDs.push_back(outputID);
-
-		streamOutputSettings.insert({outputID, data});
+		streamOutputSettings.insert({outputID, temp});
 	}
 
 	availableOutputIDs = GetFreeIDs(usedOutputIDs);
@@ -1280,8 +1278,9 @@ bool OBSBasic::LoadStreamOutputs() {
 	return streamOutputSettings.size() == 0;
 }
 
-bool OBSBasic::InitStreamOutputs()
-{
+bool OBSBasic::InitStreamOutputs() {
+	ProfileScope("OBSBasic::InitStreamOutputs");
+
 	if (LoadStreamOutputs())
 		return true;
 	
@@ -1333,7 +1332,6 @@ bool OBSBasic::SetDefaultOutputSetting() {
 	obs_data_set_string(outputSetting, "name", "Default Output");
 
 	streamOutputSettings.insert({0, outputSetting});
-	outputMode = "simple";
 
 	return true;
 }

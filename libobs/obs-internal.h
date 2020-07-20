@@ -1123,6 +1123,7 @@ struct obs_service {
 	struct obs_weak_service *control;
 
 	int setting_id;
+	int output_id;
 	/* indicates ownership of the info.id buffer */
 	bool owns_info_id;
 

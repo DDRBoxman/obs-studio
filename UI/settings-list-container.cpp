@@ -39,16 +39,11 @@ int SettingsListContainer::Add(const OBSData& setting) {
 }
 
 void SettingsListContainer::Remove(int settingID) {
-        bool elementFound = false;
-
         for (auto i = orderedIDList.begin(); i != orderedIDList.end(); i++) {
                 if (*i == settingID) {
                         orderedIDList.erase(i);
-                        elementFound = true;
+                        settings.erase(settingID);
                         break;
                 }
         }
-
-        if (elementFound)
-                settings.erase(settingID);
 }

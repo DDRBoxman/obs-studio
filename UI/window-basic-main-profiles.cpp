@@ -355,6 +355,7 @@ void OBSBasic::ResetProfileData()
 	ResetVideo();
 	service = nullptr;
 	InitService();
+	InitStreamOutputs();
 	ResetOutputs();
 	ClearHotkeys();
 	CreateHotkeys();
@@ -519,6 +520,8 @@ void OBSBasic::on_actionImportProfile_triggered()
 				    profileDir + "/basic.ini");
 			QFile::copy(dir + "/service.json",
 				    profileDir + "/service.json");
+			QFile::copy(dir + "/stream-outputs.json",
+				    profileDir + "/stream-outputs.json");
 			QFile::copy(dir + "/streamEncoder.json",
 				    profileDir + "/streamEncoder.json");
 			QFile::copy(dir + "/recordEncoder.json",
@@ -560,6 +563,9 @@ void OBSBasic::on_actionExportProfile_triggered()
 
 			if (QFile::exists(outputDir + "/service.json"))
 				QFile::remove(outputDir + "/service.json");
+			
+			if (QFile::exists(outputDir + "/stream-outputs.json"))
+				QFile::remove(outputDir + "/stream-outputs.json");
 
 			if (QFile::exists(outputDir + "/streamEncoder.json"))
 				QFile::remove(outputDir +
@@ -574,6 +580,8 @@ void OBSBasic::on_actionExportProfile_triggered()
 			    outputDir + "/basic.ini");
 		QFile::copy(inputPath + currentProfile + "/service.json",
 			    outputDir + "/service.json");
+		QFile::copy(inputPath + currentProfile + "/stream-outputs.json",
+			    outputDir + "/stream-outputs.json");
 		QFile::copy(inputPath + currentProfile + "/streamEncoder.json",
 			    outputDir + "/streamEncoder.json");
 		QFile::copy(inputPath + currentProfile + "/recordEncoder.json",

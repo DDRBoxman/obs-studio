@@ -159,21 +159,42 @@ private:
 
 	SettingsListContainer savedServiceSettings;
 	SettingsListContainer savedOutputSettings;
-	bool outputMode;
 
-	std::mutex mutex;
+	/*-----------------*/
+	std::map<int, QString> streamOutputNames;
+	std::map<int, OBSData> streamOutputChanges;
+	std::vector<int> freeStreamOutputIDs;
+	bool streamOutputSettingChanged = false;
+	int maxStreamOutputID = -1;
+	int firstLoad = true;
+	/*-----------------*/
+
+	std::mutex streamMutex;
+	std::mutex outputMutex;
+
 	int currentSettingID = -1;
 
-	int maxServiceSettingID = -1;
-	std::vector<int> availableServiceSettingIDs;
+	int maxServiceID = -1;
+	std::vector<int> freeServiceIDs;
 
-	int GetNewServiceSettingID();
-	void ReleaseServiceSettingID(int id);
+	int GetNewSettingID(std::vector<int>& idHeap, int& maxId);
+	void ReleaseSettingID(std::vector<int>& idHeap, int id);
 
 	OBSData ServiceToSettingData(const OBSService& service);
-	void PopulateForm(int id);
-	void SaveFormChanges(int selectedServiceID);
-	OBSData GetFormChanges(int id);
+	void PopulateStreamSettingsForm(int id);
+	void SaveStreamSettingsChanges(int selectedServiceID);
+	OBSData GetStreamFormChanges(int id);
+
+	void PopulateStreamOutputList(KeyedListWidget* list, 
+				      const std::vector<int>& idOrder);
+	void PopulateSimpleStreamOutputForm(int id);
+	void PopulateAdvStreamOutputForm(int id);
+	void SaveStreamOutputFormChanges();
+	void GetSimpleStreamOutputChanges();
+	void GetAdvStreamOutputChanges();
+
+	void PopulateSimpleRecordingSettings();
+	void PopulateSimpleRBufSettings();
 
 	uint32_t outputCX = 0;
 	uint32_t outputCY = 0;
@@ -245,6 +266,9 @@ private:
 						     const char *path,
 						     bool changed = false);
 
+	OBSPropertiesView *CreateEncoderPropertyView(const char *encoder,
+						     OBSData props,
+						     bool changed = false);
 	/* general */
 	void LoadLanguageList();
 	void LoadThemeList();
@@ -280,6 +304,11 @@ private:
 	void SetAdvOutputFFmpegEnablement(ff_codec_type encoderType,
 					  bool enabled,
 					  bool enableEncode = false);
+
+	void GetStreamOutputSettings();
+	void UpdateStreamOutputComboBox();
+
+	const std::vector<int> GetStreamOutputOrder();
 
 	/* audio */
 	void LoadListValues(QComboBox *widget, obs_property_t *prop, int index);
@@ -329,6 +358,13 @@ private:
 
 	int CurrentFLVTrack();
 	void AddEmptyServiceSetting(int id, bool isDefault);
+	void AddDefaultOutputSetting(int id);
+	OBSData GetDefaultOutput(const char* outputName, int id);
+
+	void LoadStreamingEncoderPresets(const char* currentPreset,
+					 const char* currentQSVPreset,
+					 const char* currentNVENCPreset,
+					 const char* currentAMDPreset);
 
 private slots:
 	void on_theme_activated(int idx);
@@ -396,7 +432,6 @@ private slots:
 	void SetVideoIcon(const QIcon &icon);
 	void SetHotkeysIcon(const QIcon &icon);
 	void SetAdvancedIcon(const QIcon &icon);
-
 protected:
 	virtual void closeEvent(QCloseEvent *event);
 
@@ -407,5 +442,17 @@ public:
 public slots:
 	void AddService();
 	void RemoveService(int serviceID);
-	void DisplaySettings(int serviceID);
+	void DisplayServiceSettings(int serviceID);
+
+	void AddOutputSetting();
+	void RemoveOutputSetting(int id);
+	void ScrollUpOutputList();
+	void ScrollDownOutputList();
+	void StreamOutputChanged() {
+		streamOutputSettingChanged = true;
+		outputsChanged = true;
+	}
+	void UpdateOutputName(const QString& name);
+signals:
+	void UpdateOutputListName(const QString& name);
 };

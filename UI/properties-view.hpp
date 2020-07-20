@@ -133,7 +133,7 @@ public:
 			  int minSize = 0);
 
 	inline obs_data_t *GetSettings() const { return settings; }
-
+	void SetSettings(const OBSData& newSettings);
 	inline void UpdateSettings() { callback(obj, settings); }
 	inline bool DeferUpdate() const { return deferUpdate; }
 };

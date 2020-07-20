@@ -1475,6 +1475,16 @@ void OBSPropertiesView::SignalChanged()
 	emit Changed();
 }
 
+void OBSPropertiesView::SetSettings(const OBSData& newSettings) {
+	if (newSettings) {
+		settings = newSettings;
+	}
+	else {
+		settings = obs_encoder_defaults(type.c_str());
+	}
+	ReloadProperties();
+}
+
 static bool FrameRateChangedVariant(const QVariant &variant,
 				    media_frames_per_second &fps,
 				    obs_data_item_t *&obj,

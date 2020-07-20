@@ -71,6 +71,7 @@ class OBSBasicStats;
 
 #define PREVIEW_EDGE_SIZE 10
 #define RTMP_SERVICE_NUM_LIMIT 20
+#define STREAM_OUTPUT_NUM_LIMIT 20
 
 struct BasicOutputHandler;
 
@@ -223,7 +224,8 @@ private:
 
 	OBSData defaultOutputSettings;
 	std::map<int, OBSData> streamOutputSettings;
-	char* outputMode;
+	std::vector<int> usedOutputIDs;
+	int selectedStreamOutputSetting = -1;
 
 	std::vector<int> availableServiceIDs;
 	std::vector<int> availableOutputIDs;
@@ -749,16 +751,29 @@ public:
 
 	obs_service_t *GetService();
 	void SetService(obs_service_t *service);
-	void SetServices(std::vector<OBSService> newServices);
 
+	void SetServices(std::vector<OBSService> newServices);
 	std::vector<OBSService> GetServices() const { return services; }
 
-	int GetSelectedSettingID() { 
-		return selectedServiceSettingID; 
+	void SetStreamOutputSettings(const std::map<int, OBSData>& settings) {
+		streamOutputSettings = settings;
 	}
+	
+	std::map<int, OBSData> GetStreamOutputSettings() const { return streamOutputSettings; }
+	OBSData GetStreamOutputSettings(int id) const { return streamOutputSettings.at(id); }
 
-	void SetSelectedSettingID(int id) { 
-		selectedServiceSettingID = id; 
+	std::vector<int> GetOutputSettingsIDs() { return usedOutputIDs; }
+	void SetOutputSettingIDs(const std::vector<int>& newIDs) { usedOutputIDs = newIDs; }
+
+	int GetSelectedSettingID() { return selectedServiceSettingID;}
+	void SetSelectedSettingID(int id) { selectedServiceSettingID = id; }
+
+	int GetSelectedOutputSettingID() { return selectedStreamOutputSetting;}
+	void SetSelectedOutputSettingID(int id) { selectedStreamOutputSetting = id; }
+
+	std::vector<int> GetFreeOutputSettingsIDs() { return availableOutputIDs; }
+	void SetFreeOutputSettingIDs(const std::vector<int>& newIDs) { 
+		availableOutputIDs = newIDs; 
 	}
 
 	std::vector<int> GetAvailableIDsHeap() {
