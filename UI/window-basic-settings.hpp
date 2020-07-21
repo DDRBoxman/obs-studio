@@ -157,7 +157,7 @@ private:
 	OBSSignal hotkeyRegistered;
 	OBSSignal hotkeyUnregistered;
 
-	SettingsListContainer savedServiceSettings;
+	SettingsListContainer serviceSettings;
 	SettingsListContainer savedOutputSettings;
 
 	/*-----------------*/
@@ -186,7 +186,8 @@ private:
 	OBSData GetStreamFormChanges(int id);
 
 	void PopulateStreamOutputList(KeyedListWidget* list, 
-				      const std::vector<int>& idOrder);
+				      const std::vector<int>& idOrder,
+				      const int currentID);
 	void PopulateSimpleStreamOutputForm(int id);
 	void PopulateAdvStreamOutputForm(int id);
 	void SaveStreamOutputFormChanges();

@@ -1650,11 +1650,18 @@ void OBSBasicSettings::ReleaseSettingID(std::vector<int>& idHeap, int id) {
 }
 
 void OBSBasicSettings::PopulateStreamOutputList(KeyedListWidget* list, 
-					const std::vector<int>& idOrder) {
-	for (auto &id : idOrder) {
-		QString name = streamOutputNames.at(id);
-		list->AddNewItem(name, id);
+					const std::vector<int>& idOrder,
+					const int currentID) {
+	int row = -1;
+	for (unsigned i = 0; i < idOrder.size(); i++) {
+		QString name = streamOutputNames.at(idOrder[i]);
+		list->AddNewItem(name, idOrder[i]);
+
+		if (currentID == idOrder[i])
+			row = i;
 	}
+
+	list->setCurrentRow(row);
 }
 
 void OBSBasicSettings::PopulateSimpleStreamOutputForm(int id) {
@@ -1863,7 +1870,7 @@ void OBSBasicSettings::LoadSimpleOutputSettings() {
 		displayedID = 0;
 	
 	std::vector<int> idOrder = main->GetOutputSettingsIDs();
-	PopulateStreamOutputList(ui->simpleStreamOutputs, idOrder);
+	PopulateStreamOutputList(ui->simpleStreamOutputs, idOrder, displayedID);
 	PopulateSimpleStreamOutputForm(displayedID);
 	PopulateSimpleRecordingSettings();
 	PopulateSimpleRBufSettings();
@@ -1884,7 +1891,7 @@ void OBSBasicSettings::LoadAdvOutputStreamingSettings()
 	ui->filenameFormatting->setToolTip(QTStr("FilenameFormatting.TT"));
 
 	std::vector<int> idOrder = main->GetOutputSettingsIDs();
-	PopulateStreamOutputList(ui->advancedStreamOutputs, idOrder);
+	PopulateStreamOutputList(ui->advancedStreamOutputs, idOrder, displayedID);
 	PopulateAdvStreamOutputForm(displayedID);
 }
 
