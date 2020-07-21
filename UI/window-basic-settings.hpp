@@ -171,7 +171,7 @@ private:
 	std::mutex streamMutex;
 	std::mutex outputMutex;
 
-	int currentSettingID = -1;
+	int selectedServiceID = -1;
 
 	int maxServiceID = -1;
 	std::vector<int> freeServiceIDs;

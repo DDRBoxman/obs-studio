@@ -624,20 +624,3 @@ struct obs_service_info rtmp_common_service = {
 	.apply_encoder_settings = rtmp_common_apply_settings,
 	.get_output_type = rtmp_common_get_output_type,
 };
-
-void register_rtmp_common(char* id)
-{
-	struct obs_service_info rtmp_common_service = {
-		.id = id,
-		.get_name = rtmp_common_getname,
-		.create = rtmp_common_create,
-		.destroy = rtmp_common_destroy,
-		.update = rtmp_common_update,
-		.get_properties = rtmp_common_properties,
-		.get_url = rtmp_common_url,
-		.get_key = rtmp_common_key,
-		.apply_encoder_settings = rtmp_common_apply_settings,
-		.get_output_type = rtmp_common_get_output_type,
-	};
-	obs_register_service(&rtmp_common_service);
-}

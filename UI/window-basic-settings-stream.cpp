@@ -109,8 +109,10 @@ void OBSBasicSettings::LoadStream1Settings() {
 	std::vector<OBSService> services = main->GetServices();
 	freeServiceIDs = main->GetAvailableIDsHeap();
 
-	int currentIndex = -1;
-	currentSettingID = main->GetSelectedSettingID();
+	int selectedIndex = -1;
+	maxServiceID = -1;
+
+	selectedServiceID = main->GetSelectedSettingID();
 
 	for(unsigned i = 0; i < services.size(); i++) {
 		OBSData data = ServiceToSettingData(services[i]);
@@ -118,17 +120,20 @@ void OBSBasicSettings::LoadStream1Settings() {
 		ui->servicesList->AddNewItem(obs_data_get_string(data, "name"), 
 						  obs_data_get_int(data, "id"));
 		
-		if (currentSettingID == obs_data_get_int(data, "id")) 
-			currentIndex = i;
+		if (selectedServiceID == obs_data_get_int(data, "id")) 
+			selectedIndex = i;
+		
+		if (maxServiceID < selectedServiceID)
+			maxServiceID = selectedServiceID;
 	}
 
-	if (currentSettingID == -1) {
-		currentIndex = 0;
-		currentSettingID = serviceSettings.GetIdAtIndex(0);
+	if (selectedServiceID == -1) {
+		selectedIndex = 0;
+		selectedServiceID = serviceSettings.GetIdAtIndex(0);
 	}
 
-	ui->servicesList->setCurrentRow(currentIndex);
-	PopulateStreamSettingsForm(currentSettingID);
+	ui->servicesList->setCurrentRow(selectedIndex);
+	PopulateStreamSettingsForm(selectedServiceID);
 }
 
 void OBSBasicSettings::SaveStream1Settings() {
@@ -156,7 +161,7 @@ void OBSBasicSettings::SaveStream1Settings() {
 	}
 
 	main->SetServices(services);
-	main->SetSelectedSettingID(currentSettingID);
+	main->SetSelectedSettingID(selectedServiceID);
 	main->SetAvailableIDsHeap(freeServiceIDs);
 	main->SaveService();
 }
@@ -523,18 +528,15 @@ void OBSBasicSettings::AddEmptyServiceSetting(int id, bool isDefault) {
 		sprintf(serviceName, "Default Service");
 	else 
 		sprintf(serviceName, "New Service %d", id);
-
-	char type[32];
-	sprintf(type, "rtmp_common.%d", id);
  
 	obs_data_set_int(data, "id", (long long)id);
 	obs_data_set_string(data, "name", serviceName);
-	obs_data_set_string(data, "type", type);
+	obs_data_set_string(data, "type", "rtmp_common");
 
 	serviceSettings.Add(data);
 
 	PopulateStreamSettingsForm(id);
-	currentSettingID = id;
+	selectedServiceID = id;
 
 	ui->servicesList->AddNewItem(serviceName, id);
 }
@@ -553,7 +555,7 @@ void OBSBasicSettings::AddService() {
 	}
 
 	if (ui->servicesList->count() != 0)
-		SaveStreamSettingsChanges(currentSettingID);
+		SaveStreamSettingsChanges(selectedServiceID);
 
 	int newID = GetNewSettingID(freeServiceIDs, maxServiceID);
 
@@ -577,7 +579,7 @@ void OBSBasicSettings::RemoveService(int serviceID) {
 
 	if (newSelectedID != -1) {
 		PopulateStreamSettingsForm(newSelectedID);
-		currentSettingID = newSelectedID;
+		selectedServiceID = newSelectedID;
 	}
 	else {
 		QMessageBox* emptyNotice = new QMessageBox(this);
@@ -598,9 +600,9 @@ void OBSBasicSettings::RemoveService(int serviceID) {
 
 void OBSBasicSettings::DisplayServiceSettings(int serviceID) {
 	std::lock_guard<std::mutex> lock(streamMutex);
-	SaveStreamSettingsChanges(currentSettingID);
+	SaveStreamSettingsChanges(selectedServiceID);
 	PopulateStreamSettingsForm(serviceID);
-	currentSettingID = serviceID;
+	selectedServiceID = serviceID;
 }
 
 void OBSBasicSettings::PopulateStreamSettingsForm(int id) {	
@@ -685,11 +687,11 @@ OBSData OBSBasicSettings::GetStreamFormChanges(int id) {
 	
 	bool customServer = IsCustomService();
 	
-	char *service_type = new char[32];
+	char service_type[32];
 	if (customServer)
-		sprintf(service_type, "rtmp_custom.%d", id);
+		sprintf(service_type, "rtmp_custom");
 	else 
-		sprintf(service_type, "rtmp_common.%d", id);
+		sprintf(service_type, "rtmp_common");
 	
 	obs_data_set_string(settings, "type", service_type);
 	obs_data_set_string(settings, "name",

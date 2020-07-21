@@ -121,16 +121,16 @@ const char *obs_service_get_name(const obs_service_t *service)
 		       : NULL;
 }
 
-const char *obs_service_get_output_id(const obs_service_t *service)
+int obs_service_get_output_id(const obs_service_t *service)
 {
-	return obs_service_valid(service, "obs_service_get_name")
+	return obs_service_valid(service, "obs_service_get_output_id")
 		       ? service->output_id
-		       : NULL;
+		       : -1;
 }
 
 void obs_service_set_output_id(obs_service_t *service, int id)
 {
-	if (obs_service_valid(service, "obs_service_get_name"))
+	if (obs_service_valid(service, "obs_service_set_output_id"))
 		service->output_id = id;
 }
 

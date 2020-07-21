@@ -71,9 +71,6 @@ static void refresh_callback(void *unused, calldata_t *cd)
 	UNUSED_PARAMETER(unused);
 }
 
-extern void register_rtmp_common(char* id);
-extern void register_rtmp_custom(char* id);
-
 bool obs_module_load(void)
 {
 	init_twitch_data();
@@ -107,19 +104,6 @@ bool obs_module_load(void)
 
 	obs_register_service(&rtmp_common_service);
 	obs_register_service(&rtmp_custom_service);
-
-	char *service_type;
-	for (int i = 0; i < RTMP_SERVICE_NUM_LIMIT; i++) {
-		service_type = malloc(name_len);
-		sprintf(service_type, "rtmp_common.%d", i);
-		register_rtmp_common(service_type);
-	}
-
-	for (int i = 0; i < RTMP_SERVICE_NUM_LIMIT; i++) {
-		service_type = malloc(name_len);
-		sprintf(service_type, "rtmp_custom.%d", i);
-		register_rtmp_custom(service_type);
-	}
 
 	return true;
 }

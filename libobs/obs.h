@@ -2138,7 +2138,7 @@ EXPORT bool obs_weak_service_references_service(obs_weak_service_t *weak,
 
 EXPORT const char *obs_service_get_name(const obs_service_t *service);
 
-EXPORT const char *obs_service_get_output_id(const obs_service_t *service);
+EXPORT int obs_service_get_output_id(const obs_service_t *service);
 
 EXPORT void obs_service_set_output_id(obs_service_t *service, int id);
 

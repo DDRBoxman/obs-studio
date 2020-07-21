@@ -1115,14 +1115,14 @@ std::vector<int> OBSBasic::GetFreeIDsHelper(const std::vector<int> &usedIDs) {
 				ret.push_back(j);
 		}
 		else {
-		for (int j = usedIDs[i - 1] + 1; j < usedIDs[i]; j++)
-			ret.push_back(j);
+			for (int j = usedIDs[i - 1] + 1; j < usedIDs[i]; j++)
+				ret.push_back(j);
+		}
 
-			if (i == (usedIDs.size() - 1)) {
-				for (int j = usedIDs[i] + 1; 
-				    j < RTMP_SERVICE_NUM_LIMIT; j++)
-					ret.push_back(j);
-			}
+		if (i == (usedIDs.size() - 1) && usedIDs[i] < RTMP_SERVICE_NUM_LIMIT) {
+			for (int j = usedIDs[i] + 1; 
+				j < RTMP_SERVICE_NUM_LIMIT; j++)
+				ret.push_back(j);
 		}
 	}
 	
@@ -1191,7 +1191,7 @@ bool OBSBasic::LoadService() {
 		services.push_back(tmp);
 	}
 
-	availableServiceIDs = GetFreeIDs(usedServiceIDs);
+	freeServiceIDs = GetFreeIDs(usedServiceIDs);
 
 	return !!service;
 }
@@ -1203,8 +1203,17 @@ bool OBSBasic::InitService()
 	if (LoadService())
 		return true;
 
-	service = obs_service_create("rtmp_common.0", "Default Service", nullptr,
-				     nullptr);
+	OBSData defaultSettings = obs_data_create();
+	obs_data_release(defaultSettings);
+
+	obs_data_set_int(defaultSettings, "id", 0);
+	obs_data_set_string(defaultSettings, "name", 
+			    "Default Service (Empty)");
+
+	service = obs_service_create("rtmp_common", "Default Service (Empty)", 
+				     defaultSettings, nullptr);
+	freeServiceIDs = GetFreeIDs({0});
+
 	if (!service)
 		return false;
 
@@ -1269,7 +1278,7 @@ bool OBSBasic::LoadStreamOutputs() {
 		streamOutputSettings.insert({outputID, temp});
 	}
 
-	availableOutputIDs = GetFreeIDs(usedOutputIDs);
+	freeOutputIDs = GetFreeIDs(usedOutputIDs);
 
 	return streamOutputSettings.size() == 0;
 }
@@ -3769,7 +3778,7 @@ void OBSBasic::SetServices(const std::vector<OBSService>& newServices) {
 	services = newServices;
 
 	if (newServices.size() == 0) {
-		service = obs_service_create("rtmp_common.0", "Default Service", nullptr, nullptr);
+		service = obs_service_create("rtmp_common", "Default Service", nullptr, nullptr);
 		services.push_back(service);
 	} else {
 		service = services[0];
