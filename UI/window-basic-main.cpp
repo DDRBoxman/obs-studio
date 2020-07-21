@@ -1082,46 +1082,44 @@ retryScene:
 }
 
 OBSService OBSBasic::ServicefromJsonObj(OBSData data) {
-	int id = obs_data_get_int(data, "id");
 	const char *type = obs_data_get_string(data, "type");
 	const char *name = obs_data_get_string(data, "name"); 
 	OBSData hotkeyData = obs_data_get_obj(data, "hotkey-data");
 	
 	OBSService ret = obs_service_create(type, name, data, hotkeyData);
-	obs_service_set_setting_id(ret, id);
 
 	return ret;
 }
 
-std::vector<int> OBSBasic::GetFreeIDs(std::vector<int> usedIDList) {
-	std::sort(usedIDList.begin(), usedIDList.end());
+std::vector<int> OBSBasic::GetFreeIDs(std::vector<int> usedIDs) {
+	std::sort(usedIDs.begin(), usedIDs.end());
 
 	std::vector<int> ret;
 
-	if (usedIDList.size() == 0) {
+	if (usedIDs.size() == 0) {
 		for (int id = 0; id < RTMP_SERVICE_NUM_LIMIT; id++)
 			ret.push_back(id);
 	} else {
-		ret = GetFreeIDsHelper(usedIDList);
+		ret = GetFreeIDsHelper(usedIDs);
 	}
 	std::make_heap(ret.begin(), ret.end(), std::greater<int>());
 	return ret;
 }
 
-std::vector<int> OBSBasic::GetFreeIDsHelper(const std::vector<int> &usedIDList) {
+std::vector<int> OBSBasic::GetFreeIDsHelper(const std::vector<int> &usedIDs) {
 	std::vector<int> ret;
 
-	for (unsigned i = 0; i < usedIDList.size(); i++) {
+	for (unsigned int i = 0; i < usedIDs.size(); i++) {
 		if (i == 0) {
-			for (int j = 0; j < usedIDList[i]; j++)
+			for (int j = 0; j < usedIDs[i]; j++)
 				ret.push_back(j);
 		}
 		else {
-		for (int j = usedIDList[i - 1] + 1; j < usedIDList[i]; j++)
+		for (int j = usedIDs[i - 1] + 1; j < usedIDs[i]; j++)
 			ret.push_back(j);
 
-			if (i == (usedIDList.size() - 1)) {
-				for (int j = usedIDList[i] + 1; 
+			if (i == (usedIDs.size() - 1)) {
+				for (int j = usedIDs[i] + 1; 
 				    j < RTMP_SERVICE_NUM_LIMIT; j++)
 					ret.push_back(j);
 			}
@@ -1147,7 +1145,7 @@ void OBSBasic::SaveService() {
 	OBSDataArray servicesContainer = obs_data_array_create();
 	obs_data_array_release(servicesContainer);
 
-	for (unsigned i = 0; i < services.size(); i++) {
+	for (unsigned int i = 0; i < services.size(); i++) {
 		OBSData serviceData = obs_service_get_settings(services[i]);
 		obs_data_release(serviceData);
 		obs_data_array_push_back(servicesContainer, serviceData);
@@ -1179,7 +1177,7 @@ bool OBSBasic::LoadService() {
 	
 	OBSDataArray loadedServices = obs_data_get_array(serviceData, "services");
 
-	for (unsigned i = 0; 
+	for (unsigned int i = 0; 
 	     (i < obs_data_array_count(loadedServices)) && (i < RTMP_SERVICE_NUM_LIMIT); 
 	     i++) {
 		OBSData data = obs_data_array_item(loadedServices, i);
@@ -1209,8 +1207,6 @@ bool OBSBasic::InitService()
 				     nullptr);
 	if (!service)
 		return false;
-	
-	obs_service_set_setting_id(service, 0);
 
 	services.push_back(service);
 	obs_service_release(service);
@@ -1264,7 +1260,7 @@ bool OBSBasic::LoadStreamOutputs() {
 	OBSDataArray loadedOutputs = obs_data_get_array(outputsData, "outputs");
 	obs_data_array_release(loadedOutputs);
 
-	for (unsigned i = 0; i < obs_data_array_count(loadedOutputs); i++) {
+	for (unsigned int i = 0; i < obs_data_array_count(loadedOutputs); i++) {
 		OBSData temp = obs_data_array_item(loadedOutputs, i);
 		obs_data_release(temp);
 
@@ -3769,12 +3765,11 @@ void OBSBasic::SetService(obs_service_t *newService) {
 		service = newService;
 }
 
-void OBSBasic::SetServices(std::vector<OBSService> newServices) {
+void OBSBasic::SetServices(const std::vector<OBSService>& newServices) {
 	services = newServices;
 
 	if (newServices.size() == 0) {
 		service = obs_service_create("rtmp_common.0", "Default Service", nullptr, nullptr);
-		obs_service_set_setting_id(service, 0);
 		services.push_back(service);
 	} else {
 		service = services[0];

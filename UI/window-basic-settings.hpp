@@ -158,7 +158,6 @@ private:
 	OBSSignal hotkeyUnregistered;
 
 	SettingsListContainer serviceSettings;
-	SettingsListContainer savedOutputSettings;
 
 	/*-----------------*/
 	std::map<int, QString> streamOutputNames;

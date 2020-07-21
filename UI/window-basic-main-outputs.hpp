@@ -10,7 +10,6 @@ struct BasicOutputHandler {
 	OBSOutput fileOutput;
 	OBSOutput streamOutput;
 	std::vector<OBSOutput> streamOutputs;
-	std::set<int> activeServices;
 
 	OBSOutput replayBuffer;
 	bool streamingActive = false;

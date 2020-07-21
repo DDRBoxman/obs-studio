@@ -983,7 +983,6 @@ bool SimpleOutput::StartStreaming(const std::vector<OBSService> &services) {
 	/* --------------------- */
 	DisconnectSignals();
 	streamOutputs.clear();
-	activeServices.clear();
 
 	for (auto &service : services) {
 		const char *type = obs_service_get_output_type(service);
@@ -1012,7 +1011,6 @@ bool SimpleOutput::StartStreaming(const std::vector<OBSService> &services) {
 
 		obs_output_set_service(output, service);
 
-		activeServices.insert(obs_service_get_setting_id(service));
 		streamOutputs.push_back(output);
 	}
 
@@ -1932,7 +1930,6 @@ bool AdvancedOutput::StartStreaming(const std::vector<OBSService> &services) {
 	/* --------------------- */
 	DisconnectSignals();
 	streamOutputs.clear();
-	activeServices.clear();
 
 	for (auto &service : services) {
 		const char *type = obs_service_get_output_type(service);
@@ -1962,7 +1959,6 @@ bool AdvancedOutput::StartStreaming(const std::vector<OBSService> &services) {
 		
 		obs_output_set_service(output, service);
 
-		activeServices.insert(obs_service_get_setting_id(service));
 		streamOutputs.push_back(output);
 	}
 

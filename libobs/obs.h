@@ -2163,12 +2163,6 @@ EXPORT void obs_service_update(obs_service_t *service, obs_data_t *settings);
 /** Returns the current settings for this service */
 EXPORT obs_data_t *obs_service_get_settings(const obs_service_t *service);
 
-/** Returns the id of the service */
-EXPORT int obs_service_get_setting_id(const obs_service_t *service);
-
-/** sets the id of the current service */
-EXPORT void obs_service_set_setting_id(obs_service_t *service, int id);
-
 /** Returns the URL for this service context */
 EXPORT const char *obs_service_get_url(const obs_service_t *service);
 

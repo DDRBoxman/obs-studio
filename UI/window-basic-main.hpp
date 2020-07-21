@@ -730,8 +730,8 @@ private:
 	void DiskSpaceMessage();
 
 	OBSService ServicefromJsonObj(OBSData data);
-	std::vector<int> GetFreeIDs(std::vector<int> usedIDList);
-	std::vector<int> GetFreeIDsHelper(const std::vector<int> &usedIDList);
+	std::vector<int> GetFreeIDs(std::vector<int> usedIDs);
+	std::vector<int> GetFreeIDsHelper(const std::vector<int> &usedIDs);
 
 	bool SetDefaultOutputSetting();
 
@@ -752,7 +752,7 @@ public:
 	obs_service_t *GetService();
 	void SetService(obs_service_t *service);
 
-	void SetServices(std::vector<OBSService> newServices);
+	void SetServices(const std::vector<OBSService>& newServices);
 	std::vector<OBSService> GetServices() const { return services; }
 
 	void SetStreamOutputSettings(const std::map<int, OBSData>& settings) {
