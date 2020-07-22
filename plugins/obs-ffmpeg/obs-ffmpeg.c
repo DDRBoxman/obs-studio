@@ -225,8 +225,6 @@ extern void obs_ffmpeg_load_logging(void);
 extern void obs_ffmpeg_unload_logging(void);
 #endif
 
-extern void register_ffmpeg_mpegts_muxer(char* id);
-
 bool obs_module_load(void)
 {
 	obs_register_source(&ffmpeg_source);
@@ -236,15 +234,6 @@ bool obs_module_load(void)
 	obs_register_output(&replay_buffer);
 	obs_register_encoder(&aac_encoder_info);
 	obs_register_encoder(&opus_encoder_info);
-
-	/* Make room for multiple ffmpeg outputs*/
-	char* output_type;
-	for (int i = 0; i < RTMP_STREAM_OUTPUT_NUM_LIMIT; i++) {
-		output_type = malloc(STREAM_OUTPUT_NAME_LENGTH);
-		sprintf(output_type, "ffmpeg_mpegts_muxer.%d", i);
-		register_ffmpeg_mpegts_muxer(output_type);
-	}
-
 #ifndef __APPLE__
 	if (nvenc_supported()) {
 		blog(LOG_INFO, "NVENC supported");
