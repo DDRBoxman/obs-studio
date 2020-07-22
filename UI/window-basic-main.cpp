@@ -1177,6 +1177,26 @@ bool OBSBasic::LoadService() {
 	
 	OBSDataArray loadedServices = obs_data_get_array(serviceData, "services");
 
+	/* For backward compatibility */
+	if (!loadedServices) {
+		OBSData setting = obs_data_get_obj(serviceData, "settings");
+		obs_data_release(setting);
+
+		obs_data_set_string(setting, "name", 
+			 	obs_data_get_string(setting, "service"));
+		obs_data_set_int(setting, "id", 0);
+		obs_data_set_int(setting, "output_id", 0);
+		obs_data_set_string(setting, "type", 
+			 	obs_data_get_string(serviceData, "type"));
+
+		OBSService tmp = ServicefromJsonObj(setting);
+		obs_service_release(tmp);
+
+		service = tmp;
+		services.push_back(tmp);
+		usedServiceIDs.push_back(0);
+	}
+
 	for (unsigned int i = 0; 
 	     (i < obs_data_array_count(loadedServices)) && (i < RTMP_SERVICE_NUM_LIMIT); 
 	     i++) {
@@ -1184,6 +1204,7 @@ bool OBSBasic::LoadService() {
 		obs_data_release(data);
 		usedServiceIDs.push_back(obs_data_get_int(data, "id"));
 		OBSService tmp = ServicefromJsonObj(data);
+		obs_service_release(tmp);
 		
 		if (i == 0)
 			service = tmp;
