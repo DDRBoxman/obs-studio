@@ -100,8 +100,6 @@ bool obs_module_load(void)
 	bfree(local_dir);
 	bfree(cache_dir);
 #endif
-	const size_t name_len = 32;
-
 	obs_register_service(&rtmp_common_service);
 	obs_register_service(&rtmp_custom_service);
 
