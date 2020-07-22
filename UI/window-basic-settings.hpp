@@ -182,7 +182,7 @@ private:
 	OBSData ServiceToSettingData(const OBSService& service);
 	void PopulateStreamSettingsForm(int id);
 	void SaveStreamSettingsChanges(int selectedServiceID);
-	OBSData GetStreamFormChanges(int id);
+	OBSData GetStreamFormChanges();
 
 	void PopulateStreamOutputList(KeyedListWidget* list, 
 				      const std::vector<int>& idOrder,
@@ -448,6 +448,8 @@ public slots:
 	void RemoveOutputSetting(int id);
 	void ScrollUpOutputList();
 	void ScrollDownOutputList();
+	void UpdateOutputPage();
+
 	void StreamOutputChanged() {
 		streamOutputSettingChanged = true;
 		outputsChanged = true;

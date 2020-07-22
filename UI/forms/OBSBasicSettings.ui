@@ -2269,8 +2269,8 @@
                        </layout>
                        <action name="actionAddAdvancedOutput">
                         <property name="icon">
-                         <iconset theme="add.png">
-                          <normaloff>.</normaloff>.</iconset>
+                          <iconset resource="obs.qrc">
+                           <normaloff>:/res/images/plus.svg</normaloff>:/res/images/plus.svg</iconset>
                         </property>
                         <property name="text">
                          <string>Add</string>

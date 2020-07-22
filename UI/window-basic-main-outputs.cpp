@@ -196,6 +196,22 @@ static bool CreateAACEncoder(OBSEncoder &res, string &id, int bitrate,
 	return false;
 }
 
+static OBSEncoder CreateAACEncoder(const char *name, int bitrate, size_t idx)
+{
+	const char *id_ = GetAACEncoderForBitrate(bitrate);
+	if (!id_)
+		return nullptr;
+
+	OBSEncoder res = 
+		obs_audio_encoder_create(id_, name, nullptr, idx, nullptr);
+
+	if (res) {
+		obs_encoder_release(res);
+		return res;
+	}
+
+	return nullptr;
+}
 /* ------------------------------------------------------------------------ */
 
 void BasicOutputHandler::DisconnectSignals() {
@@ -299,6 +315,7 @@ bool BasicOutputHandler::StartStreamOutputs(int retryDelay, int maxRetries, bool
 struct SimpleOutput : BasicOutputHandler {
 	OBSEncoder aacStreaming;
 	OBSEncoder h264Streaming;
+
 	OBSEncoder aacRecording;
 	OBSEncoder h264Recording;
 
@@ -313,6 +330,7 @@ struct SimpleOutput : BasicOutputHandler {
 	bool lowCPUx264 = false;
 
 	SimpleOutput(OBSBasic *main_);
+	SimpleOutput(OBSBasic *main_, const std::map<int, OBSData>& outputConfigs);
 
 	int CalcCRF(int crf);
 
@@ -333,6 +351,14 @@ struct SimpleOutput : BasicOutputHandler {
 	void LoadRecordingPreset();
 
 	void LoadStreamingPreset_h264(const char *encoder);
+
+	/* ----------------------- */
+	virtual void InitializeStreamVideoEncoders(
+			const std::map<int, OBSData> &outputConfigs) override;
+	virtual void InitializeStreamAudioEncoders(
+			const std::map<int, OBSData> &outputConfigs) override;
+	OBSEncoder LoadStreamingPreset(const char *encoder, const char *name);
+	/* ----------------------- */
 
 	void UpdateRecording();
 	bool ConfigureRecording(bool useReplayBuffer);
@@ -389,6 +415,23 @@ void SimpleOutput::LoadStreamingPreset_h264(const char *encoderId)
 	obs_encoder_release(h264Streaming);
 }
 
+OBSEncoder SimpleOutput::LoadStreamingPreset(const char *encoderId, 
+					     const char *name) {
+	const char *encoderType = "simple_h264_stream";
+	const int typeLength = strlen(encoderType); 
+	char encoderName[64 +typeLength];
+	
+	sprintf(encoderName, "%s.%s", name, encoderType);
+	OBSEncoder videoEncoder = 
+		obs_video_encoder_create(encoderId, encoderName, 
+					 nullptr, nullptr);
+	if (!videoEncoder)
+		throw "Failed to create h264 streaming encoder (simple output)";
+	obs_encoder_release(videoEncoder);
+
+	return videoEncoder;
+}
+
 void SimpleOutput::LoadRecordingPreset()
 {
 	const char *quality =
@@ -439,12 +482,68 @@ void SimpleOutput::LoadRecordingPreset()
 	}
 }
 
+void SimpleOutput::InitializeStreamVideoEncoders(
+				const std::map<int, OBSData> &outputConfigs) {
+	for (auto &i : outputConfigs) {
+		const char *encoder = 
+			obs_data_get_string(i.second, "stream_encoder");
+		const char *name =
+			obs_data_get_string(i.second, "name");
+
+		OBSEncoder videoEncoder = nullptr;
+		if (strcmp(encoder, SIMPLE_ENCODER_QSV) == 0) {
+			videoEncoder = 
+				LoadStreamingPreset("obs_qsv11", name);
+
+		} else if (strcmp(encoder, SIMPLE_ENCODER_AMD) == 0) {
+			videoEncoder = 
+				LoadStreamingPreset("amd_amf_h264", name);
+
+		} else if (strcmp(encoder, SIMPLE_ENCODER_NVENC) == 0) {
+			const char *id = 
+				EncoderAvailable("jim_nvenc") ? "jim_nvenc"
+							      : "ffmpeg_nvenc";
+			videoEncoder = LoadStreamingPreset(id, name);
+
+		} else {
+			videoEncoder = LoadStreamingPreset("obs_x264", name);
+
+		}
+		int id = obs_data_get_int(i.second, "id_num");
+		streamVideoEncoders.insert({id, videoEncoder});
+	}
+}
+
+void SimpleOutput::InitializeStreamAudioEncoders(
+				const std::map<int, OBSData> &outputConfigs) {
+	for (auto &i : outputConfigs) {
+		const char *encoder = 
+			obs_data_get_string(i.second, "stream_encoder");
+		const char *name =
+			obs_data_get_string(i.second, "name");
+		const int bitrate = obs_data_get_int(i.second, "");
+
+		if (!CreateAACEncoder(aacStreaming, aacStreamEncID, 
+				      GetAudioBitrate(),"simple_aac", 0))
+			throw "Failed to create aac streaming encoder (simple output)";
+	}
+}
+
+SimpleOutput::SimpleOutput(OBSBasic *main_, 
+     const std::map<int, OBSData>& outputConfigs) : BasicOutputHandler(main_) {
+	
+	InitializeStreamVideoEncoders(outputConfigs);
+	InitializeStreamAudioEncoders(outputConfigs);
+	LoadRecordingPreset();
+}
+
 SimpleOutput::SimpleOutput(OBSBasic *main_) : BasicOutputHandler(main_)
 {
 	const char *encoder = config_get_string(main->Config(), "SimpleOutput",
 						"StreamEncoder");
 
 	if (strcmp(encoder, SIMPLE_ENCODER_QSV) == 0) {
+		
 		LoadStreamingPreset_h264("obs_qsv11");
 
 	} else if (strcmp(encoder, SIMPLE_ENCODER_AMD) == 0) {
@@ -1260,6 +1359,13 @@ struct AdvancedOutput : BasicOutputHandler {
 	string aacEncoderID[MAX_AUDIO_MIXES];
 
 	AdvancedOutput(OBSBasic *main_);
+
+	/* ----------------------- */
+	virtual void InitializeStreamVideoEncoders(
+			const std::map<int, OBSData>& outputConfigs) override {}
+	virtual void InitializeStreamAudioEncoders(
+			const std::map<int, OBSData>& outputConfigs) override {}
+	/* ----------------------- */
 
 	inline void UpdateStreamSettings();
 	inline void UpdateRecordingSettings();
@@ -2228,4 +2334,12 @@ BasicOutputHandler *CreateSimpleOutputHandler(OBSBasic *main)
 BasicOutputHandler *CreateAdvancedOutputHandler(OBSBasic *main)
 {
 	return new AdvancedOutput(main);
+}
+
+/* ------------------------------------------------------------------------ */
+
+BasicOutputHandler *CreateSimpleOutputHandler(OBSBasic *main,
+				const std::map<int, OBSData> &outputConfig)
+{
+	return new SimpleOutput(main, outputConfig);
 }

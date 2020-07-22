@@ -681,7 +681,7 @@ void OBSBasicSettings::PopulateStreamSettingsForm(int id) {
 	loading = false;
 }
 
-OBSData OBSBasicSettings::GetStreamFormChanges(int id) {
+OBSData OBSBasicSettings::GetStreamFormChanges() {
 
 	OBSData settings = obs_data_create();
 	
@@ -757,7 +757,7 @@ OBSData OBSBasicSettings::GetStreamFormChanges(int id) {
 }
 
 void OBSBasicSettings::SaveStreamSettingsChanges(int selectedServiceID) {
-	OBSData formChanges = GetStreamFormChanges(selectedServiceID);
+	OBSData formChanges = GetStreamFormChanges();
 
 	obs_data_set_obj(formChanges, 
 		"hotkey-data",

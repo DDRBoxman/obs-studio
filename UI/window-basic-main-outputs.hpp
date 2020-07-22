@@ -9,7 +9,13 @@ class OBSBasic;
 struct BasicOutputHandler {
 	OBSOutput fileOutput;
 	OBSOutput streamOutput;
+
 	std::vector<OBSOutput> streamOutputs;
+
+	/* Multiple Encoders **/
+	std::map<int, OBSEncoder> streamVideoEncoders;
+	std::map<int, OBSEncoder> streamAudioEncoders;
+	/* ----------------- **/
 
 	OBSOutput replayBuffer;
 	bool streamingActive = false;
@@ -35,6 +41,13 @@ struct BasicOutputHandler {
 	inline BasicOutputHandler(OBSBasic *main_) : main(main_) {}
 
 	virtual ~BasicOutputHandler(){};
+
+	/* ----------------------- */
+	virtual void InitializeStreamVideoEncoders(
+			const std::map<int, OBSData>& outputConfigs) = 0;
+	virtual void InitializeStreamAudioEncoders(
+			const std::map<int, OBSData>& outputConfigs) = 0;
+	/* ----------------------- */
 
 	virtual bool StartStreaming(obs_service_t *service) = 0;
 	virtual bool StartStreaming(const std::vector<OBSService> &services) = 0;
@@ -65,3 +78,6 @@ struct BasicOutputHandler {
 
 BasicOutputHandler *CreateSimpleOutputHandler(OBSBasic *main);
 BasicOutputHandler *CreateAdvancedOutputHandler(OBSBasic *main);
+
+BasicOutputHandler *CreateSimpleOutputHandler(OBSBasic *main,
+				const std::map<int, OBSData> &outputConfig);

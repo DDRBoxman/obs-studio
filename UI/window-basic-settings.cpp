@@ -792,6 +792,10 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 		SLOT(AdvOutRecCheckWarnings()));
 	AdvOutRecCheckWarnings();
 
+	/* Output pages */
+	connect(ui->outputMode, SIGNAL(currentIndexChanged(int)), this,
+		SLOT(UpdateOutputPage()));
+
 	/* Simple Output */
 	connect(ui->simpleStreamOutputs, SIGNAL(RemovedKey(int, int)), this,
 		SLOT(RemoveOutputSetting(int)));
@@ -2257,6 +2261,7 @@ void OBSBasicSettings::LoadOutputSettings()
 
 	int modeIdx = astrcmpi(mode, "Advanced") == 0 ? 1 : 0;
 	ui->outputMode->setCurrentIndex(modeIdx);
+	ui->outputModePages->setCurrentIndex(modeIdx);
 
 	LoadSimpleOutputSettings();
 	LoadAdvOutputStreamingSettings();
@@ -5084,14 +5089,35 @@ void OBSBasicSettings::AddOutputSetting() {
 
 	QString name = obs_data_get_string(streamOutputChanges.at(newID), "name");
 	
-	if (ui->outputMode->currentText() == "Simple")
-		ui->simpleStreamOutputs->AddNewItem(name, newID);
-	else
-		ui->advancedStreamOutputs->AddNewItem(name, newID);
+	ui->simpleStreamOutputs->AddNewItem(name, newID);
+	ui->advancedStreamOutputs->AddNewItem(name, newID);
 
 	UpdateStreamOutputComboBox();
 	outputsChanged = true;
 	EnableApplyButton(true);
+}
+
+void OBSBasicSettings::UpdateOutputPage() {
+	if (ui->outputMode->currentText() == "Simple") {
+		if (streamOutputSettingChanged)
+			GetAdvStreamOutputChanges();
+		
+		int currentID =
+			ui->simpleStreamOutputs->currentItem()->
+						data(Qt::UserRole).toInt();
+		PopulateSimpleStreamOutputForm(currentID);
+	}
+	else {
+		if (streamOutputSettingChanged)
+			GetSimpleStreamOutputChanges();
+		
+		int currentID = 
+			ui->advancedStreamOutputs->currentItem()->
+						data(Qt::UserRole).toInt();
+		PopulateAdvStreamOutputForm(currentID);
+	}
+
+	streamOutputSettingChanged = false;
 }
 
 void OBSBasicSettings::RemoveOutputSetting(int id) {
@@ -5114,10 +5140,16 @@ void OBSBasicSettings::RemoveOutputSetting(int id) {
 
 	ReleaseSettingID(freeStreamOutputIDs, id);
 	
-	if (ui->outputMode->currentText() == "Simple")
+	if (ui->outputMode->currentText() == "Simple") {
 		PopulateSimpleStreamOutputForm(newSelectedID);
-	else
+		int row = ui->advancedStreamOutputs->currentRow();
+		ui->advancedStreamOutputs->takeItem(row);
+	}
+	else {
 		PopulateAdvStreamOutputForm(newSelectedID);
+		int row = ui->simpleStreamOutputs->currentRow();
+		ui->simpleStreamOutputs->takeItem(row);
+	}
 
 	UpdateStreamOutputComboBox();
 	outputsChanged = true;
@@ -5144,10 +5176,14 @@ void OBSBasicSettings::ScrollUpOutputList() {
 	int currentID = streamOutputsList->currentItem()->
 					data(Qt::UserRole).toInt();
 	
-	if (ui->outputMode->currentText() == "Simple")
+	if (ui->outputMode->currentText() == "Simple") {
+		ui->advancedStreamOutputs->setCurrentRow(currentRow);
 		PopulateSimpleStreamOutputForm(currentID);
-	else
+	}
+	else {
+		ui->simpleStreamOutputs->setCurrentRow(currentRow);
 		PopulateAdvStreamOutputForm(currentID);
+	}
 }
 
 void OBSBasicSettings::ScrollDownOutputList() {
@@ -5171,10 +5207,14 @@ void OBSBasicSettings::ScrollDownOutputList() {
 	int currentID = streamOutputsList->currentItem()->
 					data(Qt::UserRole).toInt();
 
-	if (ui->outputMode->currentText() == "Simple")
+	if (ui->outputMode->currentText() == "Simple") {
+		ui->advancedStreamOutputs->setCurrentRow(currentRow);
 		PopulateSimpleStreamOutputForm(currentID);
-	else
+	}
+	else {
+		ui->simpleStreamOutputs->setCurrentRow(currentRow);
 		PopulateAdvStreamOutputForm(currentID);
+	}
 }
 
 void OBSBasicSettings::UpdateOutputName(const QString& name) {
