@@ -4,7 +4,6 @@
 #include <util/dstr.h>
 #include <obs-module.h>
 #include <file-updater/file-updater.h>
-#include <stdio.h>
 
 #include "rtmp-format-ver.h"
 #include "lookup-config.h"
@@ -15,8 +14,6 @@ MODULE_EXPORT const char *obs_module_description(void)
 {
 	return "OBS core RTMP services";
 }
-
-#define RTMP_SERVICE_NUM_LIMIT 20
 
 #define RTMP_SERVICES_LOG_STR "[rtmp-services plugin] "
 #define RTMP_SERVICES_VER_STR "rtmp-services plugin (libobs " OBS_VERSION ")"
@@ -100,9 +97,9 @@ bool obs_module_load(void)
 	bfree(local_dir);
 	bfree(cache_dir);
 #endif
+
 	obs_register_service(&rtmp_common_service);
 	obs_register_service(&rtmp_custom_service);
-
 	return true;
 }
 
