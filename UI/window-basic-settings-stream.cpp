@@ -107,10 +107,8 @@ OBSData OBSBasicSettings::ServiceToSettingData(const OBSService& service) {
 
 void OBSBasicSettings::LoadStream1Settings() {
 	std::vector<OBSService> services = main->GetServices();
-	freeServiceIDs = main->GetAvailableIDsHeap();
 
 	int selectedIndex = -1;
-	maxServiceID = -1;
 
 	selectedServiceID = main->GetSelectedSettingID();
 
@@ -122,9 +120,6 @@ void OBSBasicSettings::LoadStream1Settings() {
 		
 		if (selectedServiceID == obs_data_get_int(data, "id")) 
 			selectedIndex = i;
-		
-		if (maxServiceID < selectedServiceID)
-			maxServiceID = selectedServiceID;
 	}
 
 	if (selectedServiceID == -1) {
@@ -162,7 +157,6 @@ void OBSBasicSettings::SaveStream1Settings() {
 
 	main->SetServices(services);
 	main->SetSelectedSettingID(selectedServiceID);
-	main->SetAvailableIDsHeap(freeServiceIDs);
 	main->SaveService();
 }
 
@@ -557,7 +551,8 @@ void OBSBasicSettings::AddService() {
 	if (ui->servicesList->count() != 0)
 		SaveStreamSettingsChanges(selectedServiceID);
 
-	int newID = GetNewSettingID(freeServiceIDs, maxServiceID);
+	std::map<int, OBSData> settings = serviceSettings.GetSettings();
+	int newID = GetNewServiceID(settings);
 
 	AddEmptyServiceSetting(newID, false);
 	
@@ -575,7 +570,6 @@ void OBSBasicSettings::RemoveService(int serviceID) {
 			 			data(Qt::UserRole).toInt();
 
 	serviceSettings.Remove(serviceID);
-	ReleaseSettingID(freeServiceIDs, serviceID);
 
 	if (newSelectedID != -1) {
 		PopulateStreamSettingsForm(newSelectedID);
@@ -589,8 +583,8 @@ void OBSBasicSettings::RemoveService(int serviceID) {
 		emptyNotice->setText("You have removed all saved services.");
 		emptyNotice->exec();
 
-		int defaultServiceID = GetNewSettingID(freeServiceIDs,
-						       maxServiceID);
+		std::map<int, OBSData> settings;
+		int defaultServiceID = GetNewServiceID(settings);
 		AddEmptyServiceSetting(defaultServiceID, true);
 	}
 

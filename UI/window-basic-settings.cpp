@@ -1630,27 +1630,30 @@ static inline bool IsSurround(const char *speakers)
 	return false;
 }
 
-int OBSBasicSettings::GetNewSettingID(std::vector<int>& idHeap, int& maxId) {
-	if (idHeap.size() == 0) {
-		maxId++;
-		return maxId;
-	} 
-	else {
-		std::pop_heap(idHeap.begin(), idHeap.end(),
-			      std::greater<int>());
-		int id = idHeap[idHeap.size() - 1];
-		idHeap.pop_back();
+int OBSBasicSettings::GetNewID(std::vector<int>& usedIDs) {
+	std::sort(usedIDs.begin(), usedIDs.end());
 
-		if (id > maxId)
-			maxId = id;
-
-		return id;
+	for (int i = 0; i < usedIDs.size(); i++) {
+		if (usedIDs[i] != i)
+			return i;
 	}
+
+	return usedIDs.size();
 }
 
-void OBSBasicSettings::ReleaseSettingID(std::vector<int>& idHeap, int id) {
-	idHeap.push_back(id); 
-	std::push_heap(idHeap.begin(), idHeap.end(), std::greater<int>());
+int OBSBasicSettings::GetNewServiceID(const std::map<int, OBSData>& settings) {
+	std::vector<int> usedIDs;
+	for (auto &i : settings)
+		usedIDs.push_back(i.first);
+
+	return GetNewID(usedIDs);
+}
+
+int OBSBasicSettings::GetNewOutputID(const std::map<int, QString>& settings) {
+	std::vector<int> usedIDs;
+	for (auto &i : settings)
+		usedIDs.push_back(i.first);
+	return GetNewID(usedIDs);
 }
 
 void OBSBasicSettings::PopulateStreamOutputList(KeyedListWidget* list, 
@@ -2293,8 +2296,6 @@ void OBSBasicSettings::GetStreamOutputSettings() {
 		streamOutputNames.insert({output.first, 
 			obs_data_get_string(output.second, "name")});
 	}
-	
-	freeStreamOutputIDs = main->GetFreeOutputSettingsIDs();
 }
 
 const std::vector<int> OBSBasicSettings::GetStreamOutputOrder() {
@@ -5075,7 +5076,7 @@ void OBSBasicSettings::AddOutputSetting() {
 		return;
 	}
 
-	int newID = GetNewSettingID(freeStreamOutputIDs, maxStreamOutputID);
+	int newID = GetNewOutputID(streamOutputNames);
 
 	if (streamOutputSettingChanged)
 		SaveStreamOutputFormChanges();
@@ -5137,8 +5138,6 @@ void OBSBasicSettings::RemoveOutputSetting(int id) {
 	if (streamOutputChanges.find(id) != streamOutputChanges.end())
 		streamOutputChanges.erase(id);
 	streamOutputNames.erase(id);
-
-	ReleaseSettingID(freeStreamOutputIDs, id);
 	
 	if (ui->outputMode->currentText() == "Simple") {
 		PopulateSimpleStreamOutputForm(newSelectedID);

@@ -162,7 +162,6 @@ private:
 	/*-----------------*/
 	std::map<int, QString> streamOutputNames;
 	std::map<int, OBSData> streamOutputChanges;
-	std::vector<int> freeStreamOutputIDs;
 	bool streamOutputSettingChanged = false;
 	int maxStreamOutputID = -1;
 	int firstLoad = true;
@@ -173,11 +172,9 @@ private:
 
 	int selectedServiceID = -1;
 
-	int maxServiceID = -1;
-	std::vector<int> freeServiceIDs;
-
-	int GetNewSettingID(std::vector<int>& idHeap, int& maxId);
-	void ReleaseSettingID(std::vector<int>& idHeap, int id);
+	int GetNewServiceID(const std::map<int, OBSData>& settings);
+	int GetNewOutputID(const std::map<int, QString>& settings);
+	int GetNewID(std::vector<int>& usedIDs);
 
 	OBSData ServiceToSettingData(const OBSService& service);
 	void PopulateStreamSettingsForm(int id);

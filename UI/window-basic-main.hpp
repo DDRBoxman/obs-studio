@@ -227,9 +227,6 @@ private:
 	std::vector<int> usedOutputIDs;
 	int selectedStreamOutputSetting = -1;
 
-	std::vector<int> freeServiceIDs;
-	std::vector<int> freeOutputIDs;
-
 	int selectedServiceSettingID = -1;
 
 	std::unique_ptr<BasicOutputHandler> outputHandler;
@@ -770,19 +767,6 @@ public:
 
 	int GetSelectedOutputSettingID() { return selectedStreamOutputSetting;}
 	void SetSelectedOutputSettingID(int id) { selectedStreamOutputSetting = id; }
-
-	std::vector<int> GetFreeOutputSettingsIDs() { return freeOutputIDs; }
-	void SetFreeOutputSettingIDs(const std::vector<int>& newIDs) { 
-		freeOutputIDs = newIDs; 
-	}
-
-	std::vector<int> GetAvailableIDsHeap() {
-		return freeServiceIDs;
-	}
-
-	void SetAvailableIDsHeap(const std::vector<int> availableIDs) {
-		freeServiceIDs = availableIDs;
-	}
 
 	int GetTransitionDuration();
 

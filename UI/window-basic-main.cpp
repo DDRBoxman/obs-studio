@@ -1212,8 +1212,6 @@ bool OBSBasic::LoadService() {
 		services.push_back(tmp);
 	}
 
-	freeServiceIDs = GetFreeIDs(usedServiceIDs);
-
 	return !!service;
 }
 
@@ -1233,7 +1231,6 @@ bool OBSBasic::InitService()
 
 	service = obs_service_create("rtmp_common", "Default Service (Empty)", 
 				     defaultSettings, nullptr);
-	freeServiceIDs = GetFreeIDs({0});
 
 	if (!service)
 		return false;
@@ -1298,8 +1295,6 @@ bool OBSBasic::LoadStreamOutputs() {
 		usedOutputIDs.push_back(outputID);
 		streamOutputSettings.insert({outputID, temp});
 	}
-
-	freeOutputIDs = GetFreeIDs(usedOutputIDs);
 
 	return streamOutputSettings.size() == 0;
 }
