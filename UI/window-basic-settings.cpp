@@ -1645,7 +1645,6 @@ int OBSBasicSettings::GetNewServiceID(const std::map<int, OBSData>& settings) {
 	std::vector<int> usedIDs;
 	for (auto &i : settings)
 		usedIDs.push_back(i.first);
-
 	return GetNewID(usedIDs);
 }
 
@@ -5066,16 +5065,6 @@ void OBSBasicSettings::AddDefaultOutputSetting(int id) {
 }
 
 void OBSBasicSettings::AddOutputSetting() {
-	if (streamOutputNames.size() >= RTMP_SERVICE_NUM_LIMIT) {
-		QMessageBox* fullNotice = new QMessageBox(this);
-		fullNotice->setIcon(QMessageBox::Warning);
-		fullNotice->setWindowModality(Qt::WindowModal);
-		fullNotice->setWindowTitle("Notice");
-		fullNotice->setText("You have already created the maximum number of outputs.");
-		fullNotice->exec();
-		return;
-	}
-
 	int newID = GetNewOutputID(streamOutputNames);
 
 	if (streamOutputSettingChanged)

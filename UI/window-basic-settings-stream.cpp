@@ -538,16 +538,6 @@ void OBSBasicSettings::AddEmptyServiceSetting(int id, bool isDefault) {
 void OBSBasicSettings::AddService() {
 	std::lock_guard<std::mutex> lock(streamMutex);
 
-	if (serviceSettings.GetCount() >= RTMP_SERVICE_NUM_LIMIT) {
-		QMessageBox* fullNotice = new QMessageBox(this);
-		fullNotice->setIcon(QMessageBox::Warning);
-		fullNotice->setWindowModality(Qt::WindowModal);
-		fullNotice->setWindowTitle("Notice");
-		fullNotice->setText("You have already created the maximum number of services.");
-		fullNotice->exec();
-		return;
-	}
-
 	if (ui->servicesList->count() != 0)
 		SaveStreamSettingsChanges(selectedServiceID);
 

@@ -3,19 +3,21 @@
 #include <string>
 #include <set>
 #include <vector>
+#include <map>
 
 class OBSBasic;
+
+struct Encoders {
+	OBSEncoder audio;
+	OBSEncoder video;
+};
 
 struct BasicOutputHandler {
 	OBSOutput fileOutput;
 	OBSOutput streamOutput;
 
 	std::vector<OBSOutput> streamOutputs;
-
-	/* Multiple Encoders **/
-	std::map<int, OBSEncoder> streamVideoEncoders;
-	std::map<int, OBSEncoder> streamAudioEncoders;
-	/* ----------------- **/
+	std::map<int, struct Encoders> streamingEncoders;
 
 	OBSOutput replayBuffer;
 	bool streamingActive = false;
@@ -42,20 +44,16 @@ struct BasicOutputHandler {
 
 	virtual ~BasicOutputHandler(){};
 
-	/* ----------------------- */
-	virtual void InitializeStreamVideoEncoders(
-			const std::map<int, OBSData>& outputConfigs) = 0;
-	virtual void InitializeStreamAudioEncoders(
-			const std::map<int, OBSData>& outputConfigs) = 0;
-	/* ----------------------- */
-
 	virtual bool StartStreaming(obs_service_t *service) = 0;
-	virtual bool StartStreaming(const std::vector<OBSService> &services) = 0;
+	virtual bool StartStreaming(const std::vector<OBSService> &services,
+				    const std::map<int, OBSData> &outputConfigs) = 0;
 	virtual bool StartRecording() = 0;
 	virtual bool StartReplayBuffer() { return false; }
+	
 	virtual void StopStreaming(bool force = false) = 0;
 	virtual void StopRecording(bool force = false) = 0;
 	virtual void StopReplayBuffer(bool force = false) { (void)force; }
+	
 	virtual bool StreamingActive() const = 0;
 	virtual bool RecordingActive() const = 0;
 	virtual bool ReplayBufferActive() const { return false; }
@@ -68,6 +66,8 @@ struct BasicOutputHandler {
 				      int delaySec, int preserveDelay);
 
 	virtual void Update() = 0;
+	virtual void Update(const std::vector<OBSService> &services,
+			    const std::map<int, OBSData> &outputConfigs) = 0;
 
 	inline bool Active() const
 	{
@@ -80,4 +80,6 @@ BasicOutputHandler *CreateSimpleOutputHandler(OBSBasic *main);
 BasicOutputHandler *CreateAdvancedOutputHandler(OBSBasic *main);
 
 BasicOutputHandler *CreateSimpleOutputHandler(OBSBasic *main,
+				const std::map<int, OBSData> &outputConfig);
+BasicOutputHandler *CreateAdvancedOutputHandler(OBSBasic *main,
 				const std::map<int, OBSData> &outputConfig);

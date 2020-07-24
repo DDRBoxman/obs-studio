@@ -70,8 +70,6 @@ class OBSBasicStats;
 #define SIMPLE_ENCODER_AMD "amd"
 
 #define PREVIEW_EDGE_SIZE 10
-#define RTMP_SERVICE_NUM_LIMIT 20
-#define STREAM_OUTPUT_NUM_LIMIT 20
 
 struct BasicOutputHandler;
 
@@ -225,9 +223,9 @@ private:
 	OBSData defaultOutputSettings;
 	std::map<int, OBSData> streamOutputSettings;
 	std::vector<int> usedOutputIDs;
-	int selectedStreamOutputSetting = -1;
+	int selectedServiceOutputID = -1;
 
-	int selectedServiceSettingID = -1;
+	int selectedServiceID = -1;
 
 	std::unique_ptr<BasicOutputHandler> outputHandler;
 	bool streamingStopping = false;
@@ -727,9 +725,6 @@ private:
 	void DiskSpaceMessage();
 
 	OBSService ServicefromJsonObj(OBSData data);
-	std::vector<int> GetFreeIDs(std::vector<int> usedIDs);
-	std::vector<int> GetFreeIDsHelper(const std::vector<int> &usedIDs);
-
 	bool SetDefaultOutputSetting();
 
 	OBSSource prevFTBSource = nullptr;
@@ -754,6 +749,7 @@ public:
 
 	void SetStreamOutputSettings(const std::map<int, OBSData>& settings) {
 		streamOutputSettings = settings;
+		ResetOutputs();
 	}
 	
 	std::map<int, OBSData> GetStreamOutputSettings() const { return streamOutputSettings; }
@@ -762,11 +758,11 @@ public:
 	std::vector<int> GetOutputSettingsIDs() { return usedOutputIDs; }
 	void SetOutputSettingIDs(const std::vector<int>& newIDs) { usedOutputIDs = newIDs; }
 
-	int GetSelectedSettingID() { return selectedServiceSettingID;}
-	void SetSelectedSettingID(int id) { selectedServiceSettingID = id; }
+	int GetSelectedSettingID() { return selectedServiceID;}
+	void SetSelectedSettingID(int id) { selectedServiceID = id; }
 
-	int GetSelectedOutputSettingID() { return selectedStreamOutputSetting;}
-	void SetSelectedOutputSettingID(int id) { selectedStreamOutputSetting = id; }
+	int GetSelectedOutputSettingID() { return selectedServiceOutputID;}
+	void SetSelectedOutputSettingID(int id) { selectedServiceOutputID = id; }
 
 	int GetTransitionDuration();
 

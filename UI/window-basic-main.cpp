@@ -1085,47 +1085,11 @@ OBSService OBSBasic::ServicefromJsonObj(OBSData data) {
 	const char *type = obs_data_get_string(data, "type");
 	const char *name = obs_data_get_string(data, "name"); 
 	OBSData hotkeyData = obs_data_get_obj(data, "hotkey-data");
-	
+	int outputID = obs_data_get_int(data, "output_id");
+
 	OBSService ret = obs_service_create(type, name, data, hotkeyData);
+	obs_service_set_output_id(ret, outputID);
 
-	return ret;
-}
-
-std::vector<int> OBSBasic::GetFreeIDs(std::vector<int> usedIDs) {
-	std::sort(usedIDs.begin(), usedIDs.end());
-
-	std::vector<int> ret;
-
-	if (usedIDs.size() == 0) {
-		for (int id = 0; id < RTMP_SERVICE_NUM_LIMIT; id++)
-			ret.push_back(id);
-	} else {
-		ret = GetFreeIDsHelper(usedIDs);
-	}
-	std::make_heap(ret.begin(), ret.end(), std::greater<int>());
-	return ret;
-}
-
-std::vector<int> OBSBasic::GetFreeIDsHelper(const std::vector<int> &usedIDs) {
-	std::vector<int> ret;
-
-	for (unsigned int i = 0; i < usedIDs.size(); i++) {
-		if (i == 0) {
-			for (int j = 0; j < usedIDs[i]; j++)
-				ret.push_back(j);
-		}
-		else {
-			for (int j = usedIDs[i - 1] + 1; j < usedIDs[i]; j++)
-				ret.push_back(j);
-		}
-
-		if (i == (usedIDs.size() - 1) && usedIDs[i] < RTMP_SERVICE_NUM_LIMIT) {
-			for (int j = usedIDs[i] + 1; 
-				j < RTMP_SERVICE_NUM_LIMIT; j++)
-				ret.push_back(j);
-		}
-	}
-	
 	return ret;
 }
 
@@ -1161,8 +1125,6 @@ void OBSBasic::SaveService() {
 }
 
 bool OBSBasic::LoadService() {
-	std::vector<int> usedServiceIDs;
-
 	char serviceJsonPath[512];
 	int ret = GetProfilePath(serviceJsonPath, sizeof(serviceJsonPath),
 				 SERVICES_PATH);
@@ -1192,27 +1154,19 @@ bool OBSBasic::LoadService() {
 		OBSService tmp = ServicefromJsonObj(setting);
 		obs_service_release(tmp);
 
-		service = tmp;
 		services.push_back(tmp);
-		usedServiceIDs.push_back(0);
 	}
 
-	for (unsigned int i = 0; 
-	     (i < obs_data_array_count(loadedServices)) && (i < RTMP_SERVICE_NUM_LIMIT); 
-	     i++) {
+	for (unsigned int i = 0; i < obs_data_array_count(loadedServices); i++) {
 		OBSData data = obs_data_array_item(loadedServices, i);
 		obs_data_release(data);
-		usedServiceIDs.push_back(obs_data_get_int(data, "id"));
 		OBSService tmp = ServicefromJsonObj(data);
 		obs_service_release(tmp);
-		
-		if (i == 0)
-			service = tmp;
-		
+
 		services.push_back(tmp);
 	}
 
-	return !!service;
+	return !!services[0];
 }
 
 bool OBSBasic::InitService()
@@ -1229,7 +1183,7 @@ bool OBSBasic::InitService()
 	obs_data_set_string(defaultSettings, "name", 
 			    "Default Service (Empty)");
 
-	service = obs_service_create("rtmp_common", "Default Service (Empty)", 
+	OBSService service = obs_service_create("rtmp_common", "Default Service (Empty)", 
 				     defaultSettings, nullptr);
 
 	if (!service)
@@ -1716,8 +1670,8 @@ void OBSBasic::ResetOutputs()
 
 	if (!outputHandler || !outputHandler->Active()) {
 		outputHandler.reset();
-		outputHandler.reset(advOut ? CreateAdvancedOutputHandler(this)
-					   : CreateSimpleOutputHandler(this));
+		outputHandler.reset(advOut ? CreateAdvancedOutputHandler(this, streamOutputSettings)
+					   : CreateSimpleOutputHandler(this, streamOutputSettings));
 
 		delete replayBufferButton;
 		delete replayLayout;
@@ -1742,7 +1696,7 @@ void OBSBasic::ResetOutputs()
 			sysTrayReplayBuffer->setEnabled(
 				!!outputHandler->replayBuffer);
 	} else {
-		outputHandler->Update();
+		outputHandler->Update(services, streamOutputSettings);
 	}
 }
 
@@ -1837,13 +1791,13 @@ void OBSBasic::OBSInit()
 
 	blog(LOG_INFO, STARTUP_SEPARATOR);
 
-	ResetOutputs();
-	CreateHotkeys();
-
 	if (!InitService())
 		throw "Failed to initialize services";
 	if (!InitStreamOutputs())
 		throw "Failed to initialize outputs";
+
+	ResetOutputs();
+	CreateHotkeys();
 
 	InitPrimitives();
 
@@ -3777,12 +3731,7 @@ void OBSBasic::RenderMain(void *data, uint32_t cx, uint32_t cy)
 
 obs_service_t *OBSBasic::GetService()
 {
-	if (!service) {
-		service =
-			obs_service_create("rtmp_common", NULL, NULL, nullptr);
-		obs_service_release(service);
-	}
-	return service;
+	return services[0];
 }
 
 void OBSBasic::SetService(obs_service_t *newService) {
@@ -5452,7 +5401,7 @@ void OBSBasic::StartStreaming()
 		sysTrayStream->setText(ui->streamButton->text());
 	}
 
-	if (!outputHandler->StartStreaming(services)) {
+	if (!outputHandler->StartStreaming(services, streamOutputSettings)) {
 		QString message =
 			!outputHandler->lastError.empty()
 				? QTStr(outputHandler->lastError.c_str())
