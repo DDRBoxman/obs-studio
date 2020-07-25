@@ -353,7 +353,7 @@ void OBSBasic::RefreshProfiles()
 void OBSBasic::ResetProfileData()
 {
 	ResetVideo();
-	service = nullptr;
+	services.clear();
 	InitService();
 	InitStreamOutputs();
 	ResetOutputs();

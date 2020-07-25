@@ -217,7 +217,6 @@ private:
 
 	os_cpu_usage_info_t *cpuUsageInfo = nullptr;
 
-	OBSService service;
 	std::vector<OBSService> services;
 
 	OBSData defaultOutputSettings;

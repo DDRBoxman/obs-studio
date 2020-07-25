@@ -2506,7 +2506,6 @@ OBSBasic::~OBSBasic()
 	obs_hotkey_set_callback_routing_func(nullptr, nullptr);
 	ClearHotkeys();
 
-	service = nullptr;
 	outputHandler.reset();
 
 	if (interaction)
@@ -3735,18 +3734,16 @@ obs_service_t *OBSBasic::GetService()
 }
 
 void OBSBasic::SetService(obs_service_t *newService) {
-	if (newService)
-		service = newService;
+	services[0] = newService;
 }
 
 void OBSBasic::SetServices(const std::vector<OBSService>& newServices) {
 	services = newServices;
-
 	if (newServices.size() == 0) {
-		service = obs_service_create("rtmp_common", "Default Service", nullptr, nullptr);
-		services.push_back(service);
-	} else {
-		service = services[0];
+		OBSService defaultService = 
+			obs_service_create("rtmp_common", "Default Service",
+					   nullptr, nullptr);
+		services.push_back(defaultService);
 	}
 }
 
@@ -6151,9 +6148,14 @@ void OBSBasic::on_streamButton_clicked()
 		bool confirm = config_get_bool(GetGlobalConfig(), "BasicWindow",
 					       "WarnBeforeStartingStream");
 
-		obs_data_t *settings = obs_service_get_settings(service);
-		bool bwtest = obs_data_get_bool(settings, "bwtest");
-		obs_data_release(settings);
+		bool bwtest = false;
+		for (auto &service : services) {
+			OBSData settings = obs_service_get_settings(service);
+			bwtest = obs_data_get_bool(settings, "bwtest");
+			
+			if (bwtest)
+				break;
+		}
 
 		if (bwtest && isVisible()) {
 			QMessageBox::StandardButton button =
