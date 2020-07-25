@@ -156,15 +156,8 @@ private:
 	OBSSignal hotkeyUnregistered;
 
 	SettingsListContainer serviceSettings;
-
-	/*-----------------*/
-	std::map<int, QString> streamOutputNames;
 	std::map<int, OBSData> streamOutputChanges;
-	bool streamOutputSettingChanged = false;
-	int maxStreamOutputID = -1;
-	int firstLoad = true;
-	/*-----------------*/
-
+	
 	std::mutex streamMutex;
 	std::mutex outputMutex;
 
@@ -446,7 +439,6 @@ public slots:
 	void UpdateOutputPage();
 
 	void StreamOutputChanged() {
-		streamOutputSettingChanged = true;
 		outputsChanged = true;
 	}
 	void UpdateOutputName(const QString& name);

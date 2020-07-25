@@ -6127,8 +6127,15 @@ void OBSBasic::on_streamButton_clicked()
 			return;
 		}
 
-		auto action =
-			UIValidation::StreamSettingsConfirmation(this, service);
+		auto action = StreamSettingsAction::Cancel;
+
+		for (auto &service : services) {
+			action =
+				UIValidation::StreamSettingsConfirmation(this, service);
+			if (action != StreamSettingsAction::ContinueStream)
+				break;
+		}
+
 		switch (action) {
 		case StreamSettingsAction::ContinueStream:
 			break;

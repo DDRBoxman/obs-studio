@@ -1923,13 +1923,18 @@ void AdvancedOutput::UpdateStreamSettings(
 			obs_data_get_string(config, "adv_stream_encoder");
 		OBSData encoderProps =
 			obs_data_get_obj(config, "adv_encoder_props");
-		
+
+		if (!vidEncType || strlen(vidEncType) == 0)
+			vidEncType = config_get_string(main->Config(), "AdvOut",
+			       			       "Encoder");
+
 		ApplyEncoderDefaults(encoderProps, encoder.second.video);
 
 		if (applyServiceSettings) {
 			for (auto &service : services) {
-				obs_service_apply_encoder_settings(
-					service, encoderProps, nullptr);
+				if (obs_service_get_output_id(service) == id)
+					obs_service_apply_encoder_settings(
+						service, encoderProps, nullptr);
 			}
 		}
 

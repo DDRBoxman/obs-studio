@@ -1660,7 +1660,8 @@ void OBSBasicSettings::PopulateStreamOutputList(KeyedListWidget* list,
 					const int currentID) {
 	int row = -1;
 	for (unsigned i = 0; i < idOrder.size(); i++) {
-		QString name = streamOutputNames.at(idOrder[i]);
+		OBSData config = streamOutputChanges.at(idOrder[i]);
+		QString name = obs_data_get_string(config, "name");
 		list->AddNewItem(name, idOrder[i]);
 
 		if (currentID == idOrder[i])
@@ -1673,13 +1674,10 @@ void OBSBasicSettings::PopulateStreamOutputList(KeyedListWidget* list,
 void OBSBasicSettings::PopulateSimpleStreamOutputForm(int id) {
 	std::lock_guard<std::mutex> lock(outputMutex);
 	OBSData settings;
-
-	if (streamOutputChanges.find(id) == streamOutputChanges.end())
-		settings = main->GetStreamOutputSettings(id);
-	else
-		settings = streamOutputChanges.at(id);
 	
 	loading = true;
+
+	settings = streamOutputChanges.at(id);
 	
 	const char *outputName = obs_data_get_string(settings, "name");
 
@@ -1726,11 +1724,7 @@ void OBSBasicSettings::PopulateAdvStreamOutputForm(int id) {
 	std::lock_guard<std::mutex> lock(outputMutex);
 	OBSData settings;
 	
-	if (streamOutputChanges.find(id) == streamOutputChanges.end())
-		settings = main->GetStreamOutputSettings(id);
-	else
-		settings = streamOutputChanges.at(id);
-
+	settings = streamOutputChanges.at(id);
 	const char* name = obs_data_get_string(settings, "name");
 	char streamEnc[64];
 	strcpy(streamEnc, obs_data_get_string(settings, "adv_stream_encoder"));
@@ -1768,6 +1762,10 @@ void OBSBasicSettings::PopulateAdvStreamOutputForm(int id) {
 		break;
 	}
 	
+	if (strlen(streamEnc) == 0)
+		strcpy(streamEnc, 
+		       config_get_string(main->Config(), "AdvOut", "Encoder"));
+
 	if (!SetComboByValue(ui->advOutEncoder, streamEnc)) {
 		if (strlen(streamEnc) == 0) {
 			strcpy(streamEnc, 
@@ -2290,10 +2288,12 @@ void OBSBasicSettings::LoadOutputSettings()
 void OBSBasicSettings::GetStreamOutputSettings() {
 	std::map<int, OBSData> outputSettings = 
 					main->GetStreamOutputSettings();
-
 	for (auto &output : outputSettings) {
-		streamOutputNames.insert({output.first, 
-			obs_data_get_string(output.second, "name")});
+		OBSData settings = obs_data_create();
+		obs_data_release(settings);
+
+		obs_data_apply(settings, output.second);
+		streamOutputChanges.insert({output.first, settings});
 	}
 }
 
@@ -2318,8 +2318,10 @@ const std::vector<int> OBSBasicSettings::GetStreamOutputOrder() {
 void OBSBasicSettings::UpdateStreamOutputComboBox() {
 	ui->streamOutputComboBox->clear();
 
-	for (auto &output : streamOutputNames)
-		ui->streamOutputComboBox->addItem(output.second, output.first);
+	for (auto &output : streamOutputChanges) {
+		const char *name = obs_data_get_string(output.second, "name");
+		ui->streamOutputComboBox->addItem(name, output.first);
+	}
 
 	ui->streamOutputComboBox->model()->sort(0);
 }
@@ -3513,8 +3515,7 @@ void OBSBasicSettings::SaveEncoder(QComboBox *combo, const char *section,
 
 void OBSBasicSettings::SaveOutputSettings()
 {
-	if (streamOutputSettingChanged)
-		SaveStreamOutputFormChanges();
+	SaveStreamOutputFormChanges();
 
 	config_set_string(main->Config(), "Output", "Mode",
 			  OutputModeFromIdx(ui->outputMode->currentIndex()));
@@ -3526,19 +3527,9 @@ void OBSBasicSettings::SaveOutputSettings()
 	else
 		currentID = ui->advancedStreamOutputs->currentItem()->
 						data(Qt::UserRole).toInt();
-
-	std::vector<int> idOrder = GetStreamOutputOrder();
-	std::map<int, OBSData> temp;
-	std::map<int, OBSData> oldOutputs = main->GetStreamOutputSettings();
-
-	for (auto &i : streamOutputNames) {
-		if (streamOutputChanges.find(i.first) != streamOutputChanges.end())
-		    	temp.insert({i.first, streamOutputChanges.at(i.first)});
-		else
-			temp.insert({i.first, oldOutputs.at(i.first)});
-	}
-	main->SetStreamOutputSettings(temp);
-	main->SetOutputSettingIDs(idOrder);
+	
+	main->SetStreamOutputSettings(streamOutputChanges);
+	main->SetOutputSettingIDs(GetStreamOutputOrder());
 	main->SaveStreamOutputs();
 	main->SetSelectedOutputSettingID(currentID);
 }
@@ -4383,7 +4374,8 @@ void OBSBasicSettings::UpdateAdvOutStreamDelayEstimate()
 		return;
 
 	OBSData settings = streamEncoderProps->GetSettings();
-	int trackIndex = config_get_int(main->Config(), "AdvOut", "TrackIndex");
+	int trackIndex = 
+		config_get_int(main->Config(), "AdvOut", "TrackIndex");
 	QString aBitrateText;
 
 	switch (trackIndex) {
@@ -5061,14 +5053,12 @@ void OBSBasicSettings::AddDefaultOutputSetting(int id) {
 	OBSData newOutput = GetDefaultOutput(outputName, id);
 
 	streamOutputChanges.insert({id, newOutput});
-	streamOutputNames.insert({id, outputName});
 }
 
 void OBSBasicSettings::AddOutputSetting() {
-	int newID = GetNewOutputID(streamOutputNames);
+	int newID = GetNewServiceID(streamOutputChanges);
 
-	if (streamOutputSettingChanged)
-		SaveStreamOutputFormChanges();
+	SaveStreamOutputFormChanges();
 
 	AddDefaultOutputSetting(newID);
 
@@ -5077,7 +5067,8 @@ void OBSBasicSettings::AddOutputSetting() {
 	else
 		PopulateAdvStreamOutputForm(newID);
 
-	QString name = obs_data_get_string(streamOutputChanges.at(newID), "name");
+	QString name = obs_data_get_string(streamOutputChanges.at(newID),
+					   "name");
 	
 	ui->simpleStreamOutputs->AddNewItem(name, newID);
 	ui->advancedStreamOutputs->AddNewItem(name, newID);
@@ -5089,8 +5080,7 @@ void OBSBasicSettings::AddOutputSetting() {
 
 void OBSBasicSettings::UpdateOutputPage() {
 	if (ui->outputMode->currentText() == "Simple") {
-		if (streamOutputSettingChanged)
-			GetAdvStreamOutputChanges();
+		GetAdvStreamOutputChanges();
 		
 		int currentID =
 			ui->simpleStreamOutputs->currentItem()->
@@ -5098,16 +5088,13 @@ void OBSBasicSettings::UpdateOutputPage() {
 		PopulateSimpleStreamOutputForm(currentID);
 	}
 	else {
-		if (streamOutputSettingChanged)
-			GetSimpleStreamOutputChanges();
+		GetSimpleStreamOutputChanges();
 		
 		int currentID = 
 			ui->advancedStreamOutputs->currentItem()->
 						data(Qt::UserRole).toInt();
 		PopulateAdvStreamOutputForm(currentID);
 	}
-
-	streamOutputSettingChanged = false;
 }
 
 void OBSBasicSettings::RemoveOutputSetting(int id) {
@@ -5124,9 +5111,7 @@ void OBSBasicSettings::RemoveOutputSetting(int id) {
 		newSelectedID = streamOutputsList->currentItem()->
 						data(Qt::UserRole).toInt();
 
-	if (streamOutputChanges.find(id) != streamOutputChanges.end())
-		streamOutputChanges.erase(id);
-	streamOutputNames.erase(id);
+	streamOutputChanges.erase(id);
 	
 	if (ui->outputMode->currentText() == "Simple") {
 		PopulateSimpleStreamOutputForm(newSelectedID);
@@ -5157,8 +5142,7 @@ void OBSBasicSettings::ScrollUpOutputList() {
 	if (streamOutputsList->count() == 0 || currentRow == 0)
 		return;
 
-	if (streamOutputSettingChanged)
-		SaveStreamOutputFormChanges();
+	SaveStreamOutputFormChanges();
 
 	streamOutputsList->setCurrentRow(--currentRow);
 	int currentID = streamOutputsList->currentItem()->
@@ -5188,8 +5172,7 @@ void OBSBasicSettings::ScrollDownOutputList() {
 	    streamOutputsList->count() == currentRow + 1)
 		return;
 
-	if (streamOutputSettingChanged)
-		SaveStreamOutputFormChanges();
+	SaveStreamOutputFormChanges();
 
 	streamOutputsList->setCurrentRow(++currentRow);
 	int currentID = streamOutputsList->currentItem()->
@@ -5216,7 +5199,8 @@ void OBSBasicSettings::UpdateOutputName(const QString& name) {
 	int currentID = streamOutputsList->currentItem()->
 					data(Qt::UserRole).toInt();
 	
-	streamOutputNames[currentID] = name;
+	obs_data_set_string(streamOutputChanges[currentID], "name",
+			    name.toStdString().c_str());
 
 	emit UpdateOutputListName(name);
 	UpdateStreamOutputComboBox();
@@ -5227,8 +5211,6 @@ void OBSBasicSettings::SaveStreamOutputFormChanges() {
 		GetSimpleStreamOutputChanges();
 	else
 		GetAdvStreamOutputChanges();
-	
-	streamOutputSettingChanged = false;
 }
 
 void OBSBasicSettings::GetSimpleStreamOutputChanges() {
@@ -5241,10 +5223,8 @@ void OBSBasicSettings::GetSimpleStreamOutputChanges() {
 	if (streamOutputChanges.find(id) == streamOutputChanges.end())
 		streamOutputChanges.insert({id, GetDefaultOutput(name, id)});
 
-	OBSData ret = streamOutputChanges.at(id);
-	obs_data_set_string(ret, "name", name);
-
-	streamOutputNames[id] = name;
+	OBSData settings = streamOutputChanges.at(id);
+	obs_data_set_string(settings, "name", name);
 
 	int videoBitrate = ui->simpleOutputVBitrate->value();
 	int audioBitrate =
@@ -5254,14 +5234,14 @@ void OBSBasicSettings::GetSimpleStreamOutputChanges() {
 	
 	const char *custom = QT_TO_UTF8(ui->simpleOutCustom->text());
 
-	obs_data_set_int(ret, "video_bitrate", videoBitrate);
-	obs_data_set_int(ret, "audio_bitrate", audioBitrate);
-	obs_data_set_string(ret, "stream_encoder", 
+	obs_data_set_int(settings, "video_bitrate", videoBitrate);
+	obs_data_set_int(settings, "audio_bitrate", audioBitrate);
+	obs_data_set_string(settings, "stream_encoder", 
 			   QT_TO_UTF8(ui->simpleOutStrEncoder->
 			   			currentData().toString()));
-	obs_data_set_bool(ret, "use_advanced", advanced);
-	obs_data_set_bool(ret, "enforce_bitrate", enforceBitrate);
-	obs_data_set_string(ret, "x264Settings", custom);
+	obs_data_set_bool(settings, "use_advanced", advanced);
+	obs_data_set_bool(settings, "enforce_bitrate", enforceBitrate);
+	obs_data_set_string(settings, "x264Settings", custom);
 
 	QString encoder = ui->simpleOutStrEncoder->currentData().toString();
 	const char *presetType;
@@ -5275,7 +5255,7 @@ void OBSBasicSettings::GetSimpleStreamOutputChanges() {
 	else
 		presetType = "preset";
 	
-	obs_data_set_string(ret, presetType,
+	obs_data_set_string(settings, presetType,
 			    QT_TO_UTF8(ui->simpleOutPreset->currentText()));
 }
 
@@ -5284,12 +5264,11 @@ void OBSBasicSettings::GetAdvStreamOutputChanges() {
 	strcpy(name, QT_TO_UTF8(ui->advancedOutputName->text()));
 	int id = ui->advancedStreamOutputs->currentItem()->
 					data(Qt::UserRole).toInt();
+	
 	if (streamOutputChanges.find(id) == streamOutputChanges.end())
 		streamOutputChanges.insert({id, GetDefaultOutput(name, id)});
 
 	OBSData settings = streamOutputChanges.at(id);
-	streamOutputNames[id] = name;
-
 	obs_data_set_obj(settings, "adv_encoder_props", 
 			 streamEncoderProps->GetSettings());
 
@@ -5312,15 +5291,14 @@ void OBSBasicSettings::GetAdvStreamOutputChanges() {
 		trackIndex = 6;
 
 	obs_data_set_int(settings, "adv_audio_track", trackIndex);
-	obs_data_set_string(settings, "adv_stream_encoder", 
-			   QT_TO_UTF8(ui->advOutEncoder->
-			   			currentData().toString()));
+	char vidEncoder[64];
+	strcpy(vidEncoder, 
+	       QT_TO_UTF8(ui->advOutEncoder->currentData().toString()));
+	obs_data_set_string(settings, "adv_stream_encoder", vidEncoder);
 	obs_data_set_bool(settings, "apply_service_settings",
 			  ui->advOutApplyService->isChecked());
 	obs_data_set_bool(settings, "adv_use_rescale",
 			  ui->advOutUseRescale->isChecked());
 	obs_data_set_string(settings, "adv_rescale", 
 			   QT_TO_UTF8(ui->advOutRescale->currentText()));
-	
-	streamOutputChanges.insert({id, settings});
 }
