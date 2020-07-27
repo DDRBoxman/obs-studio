@@ -50,7 +50,7 @@ void KeyedListWidget::ScrollUp() {
         
         if (currentIndex > 0) {
                 setCurrentRow(currentIndex - 1);
-                emit SelectedServiceKey(currentItem()->data(Qt::UserRole).toInt());
+                emit ItemClicked(currentItem()->data(Qt::UserRole).toInt());
         }
 }
 
@@ -62,10 +62,10 @@ void KeyedListWidget::ScrollDown() {
         
         if (currentIndex < count() - 1) {
                 setCurrentRow(currentIndex + 1);
-                emit SelectedServiceKey(currentItem()->data(Qt::UserRole).toInt());
+                emit ItemClicked(currentItem()->data(Qt::UserRole).toInt());
         }
 }
 
 void KeyedListWidget::SelectionChanged(QListWidgetItem* current) {
-        emit SelectedServiceKey(current->data(Qt::UserRole).toInt());
+        emit ItemClicked(current->data(Qt::UserRole).toInt());
 }

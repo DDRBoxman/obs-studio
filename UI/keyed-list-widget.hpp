@@ -30,5 +30,5 @@ private slots:
 
 signals:
         void RemovedKey(int removedKey, int currentKey);
-        void SelectedServiceKey(int key);
+        void ItemClicked(int key);
 };

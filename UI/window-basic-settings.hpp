@@ -156,15 +156,16 @@ private:
 	OBSSignal hotkeyUnregistered;
 
 	SettingsListContainer serviceSettings;
-	std::map<int, OBSData> streamOutputChanges;
+	std::map<int, OBSData> streamOutputSettings;
 	
 	std::mutex streamMutex;
 	std::mutex outputMutex;
 
 	int selectedServiceID = -1;
+	int selectedOutputID = -1;
 
-	int GetNewServiceID(const std::map<int, OBSData>& settings);
-	int GetNewOutputID(const std::map<int, QString>& settings);
+	int GetNewSettingID(const std::map<int, OBSData>& settings);
+	void ResetServiceOutputs();
 	int GetNewID(std::vector<int>& usedIDs);
 
 	OBSData ServiceToSettingData(const OBSService& service);
@@ -436,6 +437,7 @@ public slots:
 	void RemoveOutputSetting(int id);
 	void ScrollUpOutputList();
 	void ScrollDownOutputList();
+	void DisplayToggledOutput(QListWidgetItem *item);
 	void UpdateOutputPage();
 
 	void StreamOutputChanged() {

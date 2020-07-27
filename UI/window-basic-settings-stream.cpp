@@ -92,7 +92,7 @@ void OBSBasicSettings::InitStreamPage()
 
 	connect(ui->servicesList, SIGNAL(RemovedKey(int, int)), this,
 		SLOT(RemoveService(int)));
-	connect(ui->servicesList, SIGNAL(SelectedServiceKey(int)), this,
+	connect(ui->servicesList, SIGNAL(ItemClicked(int)), this,
 		SLOT(DisplayServiceSettings(int)));
 
 	connect(ui->serviceNameInput, SIGNAL(textEdited(QString)), ui->servicesList, 
@@ -542,7 +542,7 @@ void OBSBasicSettings::AddService() {
 		SaveStreamSettingsChanges(selectedServiceID);
 
 	std::map<int, OBSData> settings = serviceSettings.GetSettings();
-	int newID = GetNewServiceID(settings);
+	int newID = GetNewSettingID(settings);
 
 	AddEmptyServiceSetting(newID, false);
 	
@@ -574,7 +574,7 @@ void OBSBasicSettings::RemoveService(int serviceID) {
 		emptyNotice->exec();
 
 		std::map<int, OBSData> settings;
-		int defaultServiceID = GetNewServiceID(settings);
+		int defaultServiceID = GetNewSettingID(settings);
 		AddEmptyServiceSetting(defaultServiceID, true);
 	}
 
