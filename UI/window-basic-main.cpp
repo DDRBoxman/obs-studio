@@ -1223,7 +1223,7 @@ void OBSBasic::SaveStreamOutputs() {
 }
 
 bool OBSBasic::LoadStreamOutputs() {
-	usedOutputIDs.clear();
+	streamOutputIDOrder.clear();
 
 	char outputJsonPath[512];
 	int ret = GetProfilePath(outputJsonPath, sizeof(outputJsonPath),
@@ -1246,11 +1246,11 @@ bool OBSBasic::LoadStreamOutputs() {
 		obs_data_release(temp);
 
 		int outputID = obs_data_get_int(temp, "id_num");
-		usedOutputIDs.push_back(outputID);
+		streamOutputIDOrder.push_back(outputID);
 		streamOutputSettings.insert({outputID, temp});
 	}
 
-	return streamOutputSettings.size() == 0;
+	return streamOutputSettings.size() != 0;
 }
 
 bool OBSBasic::InitStreamOutputs() {
@@ -1285,6 +1285,12 @@ bool OBSBasic::SetDefaultOutputSetting() {
 
 	const char *custom = config_get_string(basicConfig, "SimpleOutput",
 						"x264Settings");
+	
+	bool advApplyServiceSettings = 
+		config_get_bool(basicConfig, "AdvOut", "ApplyServiceSettings");
+	bool advUseRescale = config_get_bool(basicConfig, "AdvOut", "UseRescale");
+	int advTrackIndex = config_get_uint(basicConfig, "AdvOut", "TrackIndex");
+	const char *advEncoder = config_get_string(basicConfig, "AdvOut", "Encoder");
 
 	OBSData outputSetting = obs_data_create();
 
@@ -1305,8 +1311,20 @@ bool OBSBasic::SetDefaultOutputSetting() {
 	obs_data_set_string(outputSetting, "AMDPreset", amdPreset);
 	obs_data_set_string(outputSetting, "x264Settings", custom);
 	obs_data_set_string(outputSetting, "name", "Default Output");
+	
+	obs_data_set_int(outputSetting, "adv_audio_track", advTrackIndex);
+	obs_data_set_bool(outputSetting, "apply_service_settings",
+			  advApplyServiceSettings);
+	obs_data_set_bool(outputSetting, "adv_use_rescale", advUseRescale);
+	obs_data_set_string(outputSetting, "adv_stream_encoder", advEncoder);
+
+	obs_data_set_int(outputSetting, "id_num", 0);
 
 	streamOutputSettings.insert({0, outputSetting});
+	streamOutputIDOrder.push_back(0);
+
+	for (auto &service : services)
+		obs_service_set_output_id(service, 0);
 
 	return true;
 }

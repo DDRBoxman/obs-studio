@@ -2005,17 +2005,19 @@ inline void AdvancedOutput::SetupStreaming(
 		bool rescale = obs_data_get_bool(config, "adv_use_rescale");
 		const char *rescaleRes =
 			obs_data_get_string(config, "adv_rescale");
-		unsigned int cx = 0;
-		unsigned int cy = 0;
 
 		if (rescale && rescaleRes && *rescaleRes) {
+			unsigned int cx = 0;
+			unsigned int cy = 0;
+
 			if (sscanf(rescaleRes, "%ux%u", &cx, &cy) != 2) {
 				cx = 0;
 				cy = 0;
 			}
+			obs_encoder_set_scaled_size(encoders.second.video,
+						    cx, cy);
 		}
 
-		obs_encoder_set_scaled_size(encoders.second.video, cx, cy);
 		obs_encoder_set_video(encoders.second.video, obs_get_video());
 	}
 }

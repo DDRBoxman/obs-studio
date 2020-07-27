@@ -381,6 +381,7 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	HookWidget(ui->useAuth,              CHECK_CHANGED,  STREAM1_CHANGED);
 	HookWidget(ui->authUsername,         EDIT_CHANGED,   STREAM1_CHANGED);
 	HookWidget(ui->authPw,               EDIT_CHANGED,   STREAM1_CHANGED);
+	HookWidget(ui->streamOutputComboBox, COMBO_CHANGED,  STREAM1_CHANGED);
 	HookWidget(ui->outputMode,           COMBO_CHANGED,  OUTPUTS_CHANGED);
 	HookWidget(ui->simpleOutputPath,     EDIT_CHANGED,   OUTPUTS_CHANGED);
 	HookWidget(ui->simpleNoSpace,        CHECK_CHANGED,  OUTPUTS_CHANGED);
@@ -797,13 +798,10 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 		SLOT(UpdateOutputPage()));
 
 	/* Simple Output */
-	connect(ui->simpleStreamOutputs, SIGNAL(RemovedKey(int, int)), this,
-		SLOT(RemoveOutputSetting(int)));
-	
 	connect(ui->actionAddSimpleOutput, SIGNAL(triggered()), this,
 		SLOT(AddOutputSetting()));
 	connect(ui->actionRemoveSimpleOutput, SIGNAL(triggered()), 
-		ui->simpleStreamOutputs, SLOT(RemoveItem()));
+		this, SLOT(RemoveOutputSetting()));
 	connect(ui->actionSimpleOutputScrollUp, SIGNAL(triggered()), this,
 		SLOT(ScrollUpOutputList()));
 	connect(ui->actionSimpleOutputScrollDown, SIGNAL(triggered()), this,
@@ -817,13 +815,10 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 		this, SLOT(DisplayToggledOutput(QListWidgetItem*)));
 	
 	/* Advanced Stream Output */
-	connect(ui->advancedStreamOutputs, SIGNAL(RemovedKey(int, int)), this,
-		SLOT(RemoveOutputSetting(int)));
-
 	connect(ui->actionAddAdvancedOutput, SIGNAL(triggered()), this,
 		SLOT(AddOutputSetting()));
 	connect(ui->actionRemoveAdvancedOutput, SIGNAL(triggered()), 
-		ui->advancedStreamOutputs, SLOT(RemoveItem()));
+		this, SLOT(RemoveOutputSetting()));
 	connect(ui->actionAdvancedOutputScrollUp, SIGNAL(triggered()), this,
 		SLOT(ScrollUpOutputList()));
 	connect(ui->actionAdvancedOutputScrollDown, SIGNAL(triggered()), this,
@@ -2254,10 +2249,6 @@ void OBSBasicSettings::LoadOutputSettings()
 	ui->outputMode->setCurrentIndex(modeIdx);
 	ui->outputModePages->setCurrentIndex(modeIdx);
 
-	selectedOutputID = main->GetSelectedOutputSettingID();
-	if (selectedOutputID == -1)
-		selectedOutputID = 0;
-
 	LoadSimpleOutputSettings();
 	LoadAdvOutputStreamingSettings();
 	LoadAdvOutputRecordingSettings();
@@ -2290,6 +2281,10 @@ void OBSBasicSettings::GetStreamOutputSettings() {
 		obs_data_apply(settings, output.second);
 		streamOutputSettings.insert({output.first, settings});
 	}
+
+	selectedOutputID = main->GetSelectedOutputSettingID();
+	if (selectedOutputID == -1)
+		selectedOutputID = 0;
 }
 
 const std::vector<int> OBSBasicSettings::GetStreamOutputOrder() {
@@ -3090,10 +3085,10 @@ void OBSBasicSettings::LoadSettings(bool changedOnly)
 {
 	if (!changedOnly || generalChanged)
 		LoadGeneralSettings();
-	if (!changedOnly || stream1Changed)
-		LoadStream1Settings();
 	if (!changedOnly || outputsChanged)
 		LoadOutputSettings();
+	if (!changedOnly || stream1Changed)
+		LoadStream1Settings();
 	if (!changedOnly || audioChanged)
 		LoadAudioSettings();
 	if (!changedOnly || videoChanged)
@@ -5093,52 +5088,92 @@ void OBSBasicSettings::UpdateOutputPage() {
 	}
 }
 
-void OBSBasicSettings::RemoveOutputSetting(int id) {
+void OBSBasicSettings::RemoveOutputSetting() {
 	int newSelectedID = -1;
 
-	KeyedListWidget* streamOutputsList;
-	
-	if (ui->outputMode->currentText() == "Simple")
-		streamOutputsList = ui->simpleStreamOutputs;
-	else 
-		streamOutputsList = ui->advancedStreamOutputs;
-	
-	if (streamOutputsList->count() != 0)
-		newSelectedID = streamOutputsList->currentItem()->
-						data(Qt::UserRole).toInt();
+	if (streamOutputSettings.size() == 0 || !UpdateDependentServices())
+		return;
 
-	streamOutputSettings.erase(id);
+	streamOutputSettings.erase(selectedOutputID);
 
-	if (ui->outputMode->currentText() == "Simple") {
-		int row = ui->advancedStreamOutputs->currentRow();
-		ui->advancedStreamOutputs->takeItem(row);
-	}
-	else {
-		int row = ui->simpleStreamOutputs->currentRow();
-		ui->simpleStreamOutputs->takeItem(row);
-	}
+	int row = ui->advancedStreamOutputs->currentRow();
+	ui->advancedStreamOutputs->takeItem(row);
+	ui->simpleStreamOutputs->takeItem(row);
 
-	if (newSelectedID != -1) {
-		if (ui->outputMode->currentText() == "Simple")
-			PopulateSimpleStreamOutputForm(newSelectedID);
-		else
-			PopulateAdvStreamOutputForm(newSelectedID);
-		selectedOutputID = newSelectedID;
-	}
-	else {
-		QMessageBox* emptyNotice = new QMessageBox(this);
-		emptyNotice->setIcon(QMessageBox::Warning);
-		emptyNotice->setWindowModality(Qt::WindowModal);
-		emptyNotice->setWindowTitle("Notice");
-		emptyNotice->setText("You have removed all stream outputs. Services set to default output.");
-		emptyNotice->exec();
+	if (streamOutputSettings.size() == 0) {
+		QMessageBox emptyNotice(this);
+		emptyNotice.setIcon(QMessageBox::Warning);
+		emptyNotice.setWindowModality(Qt::WindowModal);
+		emptyNotice.setWindowTitle("Notice");
+		emptyNotice.setText("You have removed all stream outputs. Services set to default output.");
+		emptyNotice.exec();
 
 		ResetServiceOutputs();
+	}
+	else {
+		if (ui->outputMode->currentText() == "Simple") {
+			newSelectedID = 
+				ui->simpleStreamOutputs->currentItem()->
+						    data(Qt::UserRole).toInt();
+			PopulateSimpleStreamOutputForm(newSelectedID);
+		}
+		else {
+			newSelectedID = 
+				ui->advancedStreamOutputs->currentItem()->
+						    data(Qt::UserRole).toInt();
+			PopulateAdvStreamOutputForm(newSelectedID);
+		}
+		selectedOutputID = newSelectedID;
 	}
 
 	UpdateStreamOutputComboBox();
 	outputsChanged = true;
 	EnableApplyButton(true);
+}
+
+bool OBSBasicSettings::UpdateDependentServices() {
+	std::vector<int> dependentServices;
+	QString affectedServices;
+
+	std::map<int, OBSData> services = serviceSettings.GetSettings();
+	// get dependent services
+	for (auto &config : services) {
+		if (selectedOutputID == obs_data_get_int(config.second, "output_id"))
+			dependentServices.push_back(config.first);
+		affectedServices += "\n";
+		affectedServices += obs_data_get_string(config.second, "name");
+	}
+
+	if (dependentServices.size() == 0)
+		return true;
+
+	// warn user
+	QString message = std::to_string(dependentServices.size()).c_str();
+	message += " services depend on this output. Removing the output will force";
+	message += " services to use a default output. Are you sure you want to";
+	message += " remove the output?";
+
+	QString detailedMessage = "The following services will be affected:";
+	detailedMessage += affectedServices; 
+
+	QMessageBox warningDialog(this);
+	warningDialog.setIcon(QMessageBox::Question);
+	warningDialog.setWindowModality(Qt::WindowModal);
+	QPushButton *cancelButton = warningDialog.addButton(QMessageBox::Cancel);
+	warningDialog.addButton(QMessageBox::Ok);
+	warningDialog.setWindowTitle("Notice");
+	warningDialog.setText(message);
+	warningDialog.setDetailedText(detailedMessage);
+	
+	warningDialog.exec();
+
+	if (warningDialog.clickedButton() == cancelButton)
+		return false;
+
+	for (auto &i : dependentServices)
+		obs_data_set_int(services.at(i), "output_id", -1);
+
+	return true;
 }
 
 void OBSBasicSettings::ScrollUpOutputList() {
@@ -5201,11 +5236,11 @@ void OBSBasicSettings::ScrollDownOutputList() {
 }
 
 void OBSBasicSettings::ResetServiceOutputs() {
-	selectedOutputID = 0;
+	selectedOutputID = GetNewSettingID(streamOutputSettings);
 	AddDefaultOutputSetting(selectedOutputID);
 
-	obs_data_set_string(streamOutputSettings.at(0), "name", 
-			    "Default Output");
+	obs_data_set_string(streamOutputSettings.at(selectedOutputID), 
+			    "name", "Default Output");
 
 	if (ui->outputMode->currentText() == "Simple")
 		PopulateSimpleStreamOutputForm(selectedOutputID);
@@ -5220,11 +5255,12 @@ void OBSBasicSettings::ResetServiceOutputs() {
 	ui->advancedStreamOutputs->AddNewItem(name, selectedOutputID);
 
 	for (auto &i : serviceSettings.GetSettings()) {
-		obs_data_set_int(i.second, "output_id", 0);
+		obs_data_set_int(i.second, "output_id", selectedOutputID);
 	}
 
 	UpdateStreamOutputComboBox();
 	outputsChanged = true;
+	stream1Changed = true;
 	EnableApplyButton(true);
 }
 

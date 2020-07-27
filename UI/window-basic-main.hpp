@@ -221,7 +221,7 @@ private:
 
 	OBSData defaultOutputSettings;
 	std::map<int, OBSData> streamOutputSettings;
-	std::vector<int> usedOutputIDs;
+	std::vector<int> streamOutputIDOrder;
 	int selectedServiceOutputID = -1;
 
 	int selectedServiceID = -1;
@@ -754,8 +754,8 @@ public:
 	std::map<int, OBSData> GetStreamOutputSettings() const { return streamOutputSettings; }
 	OBSData GetStreamOutputSettings(int id) const { return streamOutputSettings.at(id); }
 
-	std::vector<int> GetOutputSettingsIDs() { return usedOutputIDs; }
-	void SetOutputSettingIDs(const std::vector<int>& newIDs) { usedOutputIDs = newIDs; }
+	std::vector<int> GetOutputSettingsIDs() { return streamOutputIDOrder; }
+	void SetOutputSettingIDs(const std::vector<int>& newIDs) { streamOutputIDOrder = newIDs; }
 
 	int GetSelectedSettingID() { return selectedServiceID;}
 	void SetSelectedSettingID(int id) { selectedServiceID = id; }

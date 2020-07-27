@@ -566,12 +566,12 @@ void OBSBasicSettings::RemoveService(int serviceID) {
 		selectedServiceID = newSelectedID;
 	}
 	else {
-		QMessageBox* emptyNotice = new QMessageBox(this);
-		emptyNotice->setIcon(QMessageBox::Warning);
-		emptyNotice->setWindowModality(Qt::WindowModal);
-		emptyNotice->setWindowTitle("Notice");
-		emptyNotice->setText("You have removed all saved services.");
-		emptyNotice->exec();
+		QMessageBox emptyNotice(this);
+		emptyNotice.setIcon(QMessageBox::Warning);
+		emptyNotice.setWindowModality(Qt::WindowModal);
+		emptyNotice.setWindowTitle("Notice");
+		emptyNotice.setText("You have removed all saved services.");
+		emptyNotice.exec();
 
 		std::map<int, OBSData> settings;
 		int defaultServiceID = GetNewSettingID(settings);

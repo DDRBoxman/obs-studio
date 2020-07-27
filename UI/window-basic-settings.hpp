@@ -296,6 +296,7 @@ private:
 
 	void GetStreamOutputSettings();
 	void UpdateStreamOutputComboBox();
+	bool UpdateDependentServices();
 
 	const std::vector<int> GetStreamOutputOrder();
 
@@ -434,7 +435,7 @@ public slots:
 	void DisplayServiceSettings(int serviceID);
 
 	void AddOutputSetting();
-	void RemoveOutputSetting(int id);
+	void RemoveOutputSetting();
 	void ScrollUpOutputList();
 	void ScrollDownOutputList();
 	void DisplayToggledOutput(QListWidgetItem *item);
