@@ -134,12 +134,6 @@ void obs_service_set_output_id(obs_service_t *service, int id)
 		service->output_id = id;
 }
 
-obs_output_t *obs_service_get_output(const obs_service_t *service) {
-	return obs_service_valid(service, "obs_service_get_output")
-		? service->output
-		: NULL;
-}
-
 static inline obs_data_t *get_defaults(const struct obs_service_info *info)
 {
 	obs_data_t *settings = obs_data_create();

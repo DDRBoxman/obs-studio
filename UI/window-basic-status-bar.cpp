@@ -226,7 +226,7 @@ void OBSBasicStatusBar::UpdateBandwidth()
 	uint64_t sumBytesTime = 0;
 
 	for (auto &stat : streamStats) {
-		OBSOutput output = stat.second.output;
+		OBSOutput output = stat.output;
 
 		uint64_t bytesSent = obs_output_get_total_bytes(output);
 		uint64_t bytesSentTime = os_gettime_ns();
@@ -246,7 +246,7 @@ void OBSBasicStatusBar::UpdateBandwidth()
 		sumBytesSent += bytesSent;
 		sumBytesTime += bytesSentTime;
 
-		stat.second.lastBytesSent = bytesSent;
+		stat.lastBytesSent = bytesSent;
 	}
 
 	double avgKBPerSec = sum / (float)streamStats.size();
@@ -295,16 +295,16 @@ void OBSBasicStatusBar::UpdateStreamTime()
 				.arg(QString::number(reconnectingServices));
 		QString toolTip = "";
 
-		for (auto &i : streamStats) {
-			int reconnectTimeout = i.second.reconnectTimeout;
-			int retries = i.second.retries;
+		for (auto &stat : streamStats) {
+			int reconnectTimeout = stat.reconnectTimeout;
+			int retries = stat.retries;
 
 			if (reconnectTimeout > 0) {
 				toolTip += QTStr("Basic.StatusBar.Reconnecting")
 						.arg(QString::number(retries),
 							QString::number(reconnectTimeout));
 				toolTip += "\n";
-				i.second.reconnectTimeout--;
+				stat.reconnectTimeout--;
 
 			} else if (retries > 0) {
 				QString msg = QTStr("Basic.StatusBar.AttemptingReconnect")
@@ -360,8 +360,8 @@ void OBSBasicStatusBar::UpdateDroppedFrames() {
 	float congestion = 0.0;
 
 	for (auto &stat : streamStats) {
-		OBSOutput output = stat.second.output;
-		QLabel *droppedFrames = stat.second.droppedFrame;
+		OBSOutput output = stat.output;
+		QLabel *droppedFrames = stat.droppedFrame;
 
 		int totalDropped = 
 			obs_output_get_frames_dropped(output);
@@ -450,10 +450,10 @@ void OBSBasicStatusBar::Reconnect(int seconds, OBSOutput output)
 
 	reconnectingServices++;
 
-	for (auto &i : streamStats) {
-		if (output == i.second.output) {
-			i.second.reconnectTimeout = seconds;
-			i.second.retries++;
+	for (auto &stat : streamStats) {
+		if (output == stat.output) {
+			stat.reconnectTimeout = seconds;
+			stat.retries++;
 			break;
 		}
 	}
@@ -481,11 +481,11 @@ void OBSBasicStatusBar::ReconnectSuccess(OBSOutput output)
 	main->SysTrayNotify(msg, QSystemTrayIcon::Information);
 	ReconnectClear();
 
-	for (auto &i : streamStats) {
-		if (output == i.second.output) {
-			i.second.retries = 0;
-			i.second.lastBytesSent = 0;
-			i.second.reconnectTimeout = 0;
+	for (auto &stat : streamStats) {
+		if (output == stat.output) {
+			stat.retries = 0;
+			stat.lastBytesSent = 0;
+			stat.reconnectTimeout = 0;
 			break;
 		}
 	}
@@ -570,7 +570,7 @@ void OBSBasicStatusBar::StreamStopped()
 {
 	if (streamStats.size() != 0) {
 		for (auto &stat : streamStats) {
-			OBSOutput output = stat.second.output;
+			OBSOutput output = stat.output;
 			signal_handler_disconnect(
 				obs_output_get_signal_handler(output),
 				"reconnect", OBSOutputReconnect, this);
@@ -578,7 +578,7 @@ void OBSBasicStatusBar::StreamStopped()
 				obs_output_get_signal_handler(output),
 				"reconnect_success", OBSOutputReconnectSuccess, 
 				this);
-			delete stat.second.droppedFrame;
+			delete stat.droppedFrame;
 		}
 
 		droppedFrames->setText(QString(""));
@@ -649,12 +649,13 @@ void OBSBasicStatusBar::InitializeStats() {
 		return;
 	
 	std::vector<OBSService> services = main->GetServices();
+	std::vector<OBSOutput> outputs = main->outputHandler->GetOutputs();
 
 	streamStats.clear();
 	if (!active) {
-		for (auto &service : services) {
-			int id = obs_service_get_output_id(service);
-			OBSOutput output = obs_service_get_output(service);
+		for (unsigned int i = 0; i < services.size(); i++) {
+			OBSService service = services[i];
+			OBSOutput output = outputs[i];
 
 			signal_handler_connect(
 				obs_output_get_signal_handler(output),
@@ -672,8 +673,8 @@ void OBSBasicStatusBar::InitializeStats() {
 				obs_service_get_settings(service), "name");
 			droppedFrames->setToolTip(QString(streamName));
 
-			streamStats.insert({id, {output, 0, 0, 0, 
-						 droppedFrames}});
+			streamStats.push_back({output, 0, 0, 0, 
+						 droppedFrames});
 
 			multipleDroppedFrames->layout()->
 						   addWidget(droppedFrames);

@@ -6,7 +6,7 @@
 #include <util/platform.h>
 #include <obs.h>
 #include <map>
-
+#include <vector>
 
 class QLabel;
 
@@ -44,7 +44,7 @@ private:
 
 	int reconnectingServices = 0;
 
-	std::map<int, StreamStats> streamStats;
+	std::vector<StreamStats> streamStats;
 
 	obs_output_t *recordOutput = nullptr;
 	bool active = false;

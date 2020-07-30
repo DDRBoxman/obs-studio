@@ -74,6 +74,8 @@ struct BasicOutputHandler {
 		return streamingActive || recordingActive || delayActive ||
 		       replayBufferActive;
 	}
+
+	inline std::vector<OBSOutput> GetOutputs() { return streamOutputs; }
 };
 
 BasicOutputHandler *CreateSimpleOutputHandler(OBSBasic *main);
