@@ -1843,9 +1843,9 @@ void AdvancedOutput::SetupRecording(const OBSData &config) {
 AdvancedOutput::AdvancedOutput(OBSBasic *main_, 
 	const std::map<int, OBSData>& outputConfigs) :  BasicOutputHandler(main_) {
 	
-	for (auto &i : outputConfigs) {
-		int id = i.first;
-		OBSData config = i.second;
+	for (auto &item : outputConfigs) {
+		int id = item.first;
+		OBSData config = item.second;
 		
 		/* Create Video Encoders */
 		const char *encoderType = 
