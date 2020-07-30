@@ -218,6 +218,7 @@ private:
 	os_cpu_usage_info_t *cpuUsageInfo = nullptr;
 
 	std::vector<OBSService> services;
+	int activeStreams = 0;
 
 	OBSData defaultOutputSettings;
 	std::map<int, OBSData> streamOutputSettings;
@@ -545,8 +546,8 @@ public slots:
 	void StopStreaming();
 	void ForceStopStreaming();
 
-	void StreamDelayStarting(int sec);
-	void StreamDelayStopping(int sec);
+	void StreamDelayStarting(OBSOutput output);
+	void StreamDelayStopping(OBSOutput output);
 
 	void StreamingStart();
 	void StreamStopping();

@@ -2142,6 +2142,8 @@ EXPORT int obs_service_get_output_id(const obs_service_t *service);
 
 EXPORT void obs_service_set_output_id(obs_service_t *service, int id);
 
+EXPORT obs_output_t *obs_service_get_output(const obs_service_t *service);
+
 /** Gets the default settings for a service */
 EXPORT obs_data_t *obs_service_defaults(const char *id);
 

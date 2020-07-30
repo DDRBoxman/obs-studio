@@ -5,14 +5,34 @@
 #include <QTimer>
 #include <util/platform.h>
 #include <obs.h>
+#include <map>
+
 
 class QLabel;
+
+struct StreamStats {
+	OBSOutput output;
+	int retries;
+	int reconnectTimeout;
+	uint64_t lastBytesSent;
+	QLabel *droppedFrame;
+
+	~StreamStats() {
+		if (!droppedFrame) {
+			delete droppedFrame;
+			droppedFrame = nullptr;
+		}
+	} 
+};
 
 class OBSBasicStatusBar : public QStatusBar {
 	Q_OBJECT
 
 private:
 	QLabel *delayInfo;
+	QLabel *message;
+	QTimer *messageDuration;
+	QWidget *multipleDroppedFrames;
 	QLabel *droppedFrames;
 	QLabel *streamIcon;
 	QLabel *streamTime;
@@ -22,17 +42,17 @@ private:
 	QLabel *kbps;
 	QLabel *statusSquare;
 
-	obs_output_t *streamOutput = nullptr;
+	int reconnectingServices = 0;
+
+	std::map<int, StreamStats> streamStats;
+
 	obs_output_t *recordOutput = nullptr;
 	bool active = false;
 	bool overloadedNotify = true;
 	bool streamPauseIconToggle = false;
 
-	int retries = 0;
 	int totalStreamSeconds = 0;
 	int totalRecordSeconds = 0;
-
-	int reconnectTimeout = 0;
 
 	int delaySecTotal = 0;
 	int delaySecStarting = 0;
@@ -72,22 +92,25 @@ private:
 	void UpdateStreamTime();
 	void UpdateRecordTime();
 	void UpdateDroppedFrames();
+	void InitializeStats();
 
 	static void OBSOutputReconnect(void *data, calldata_t *params);
 	static void OBSOutputReconnectSuccess(void *data, calldata_t *params);
 
 private slots:
-	void Reconnect(int seconds);
-	void ReconnectSuccess();
+	void messageTimeout();
+	void Reconnect(int seconds, OBSOutput output);
+	void ReconnectSuccess(OBSOutput output);
 	void UpdateStatusBar();
 	void UpdateCPUUsage();
 
 public:
 	OBSBasicStatusBar(QWidget *parent);
 
-	void StreamDelayStarting(int sec);
-	void StreamDelayStopping(int sec);
-	void StreamStarted(obs_output_t *output);
+	void StreamDelayStarting(OBSOutput output);
+	void StreamDelayStopping(OBSOutput output);
+
+	void StreamStarted();
 	void StreamStopped();
 	void RecordingStarted(obs_output_t *output);
 	void RecordingStopped();
@@ -95,4 +118,9 @@ public:
 	void RecordingUnpaused();
 
 	void ReconnectClear();
+
+public slots:
+	void showMessage(const QString &message_, int timeout = 0);
+	void showMessage(const QString &message_, const QString &toolTip,
+			 int timeout = 0);
 };

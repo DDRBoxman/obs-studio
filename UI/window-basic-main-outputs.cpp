@@ -21,7 +21,7 @@ volatile bool replaybuf_active = false;
 static void OBSStreamStarting(void *data, calldata_t *params)
 {
 	BasicOutputHandler *output = static_cast<BasicOutputHandler *>(data);
-	obs_output_t *obj = (obs_output_t *)calldata_ptr(params, "output");
+	OBSOutput obj = (obs_output_t *)calldata_ptr(params, "output");
 
 	int sec = (int)obs_output_get_active_delay(obj);
 	if (sec == 0)
@@ -29,7 +29,7 @@ static void OBSStreamStarting(void *data, calldata_t *params)
 
 	output->delayActive = true;
 	QMetaObject::invokeMethod(output->main, "StreamDelayStarting",
-				  Q_ARG(int, sec));
+				  Q_ARG(OBSOutput, obj));
 }
 
 static void OBSStreamStopping(void *data, calldata_t *params)
@@ -42,7 +42,7 @@ static void OBSStreamStopping(void *data, calldata_t *params)
 		QMetaObject::invokeMethod(output->main, "StreamStopping");
 	else
 		QMetaObject::invokeMethod(output->main, "StreamDelayStopping",
-					  Q_ARG(int, sec));
+					  Q_ARG(OBSOutput, obj));
 }
 
 static void OBSStartStreaming(void *data, calldata_t *params)
@@ -1288,13 +1288,13 @@ bool SimpleOutput::StartStreaming(const std::vector<OBSService> &services,
 
 		obs_output_release(output);
 
-		ConnectToSignals(output);
 		struct Encoders encoders = 
 			streamingEncoders.at(obs_service_get_output_id(service));
 		if (!UpdateOutputEncoders(output, encoders))
 			return false;
 
 		obs_output_set_service(output, service);
+		ConnectToSignals(output);
 
 		streamOutputs.push_back(output);
 	}

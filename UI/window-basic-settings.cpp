@@ -1632,7 +1632,7 @@ static inline bool IsSurround(const char *speakers)
 int OBSBasicSettings::GetNewID(std::vector<int>& usedIDs) {
 	std::sort(usedIDs.begin(), usedIDs.end());
 
-	for (int i = 0; i < usedIDs.size(); i++) {
+	for (int i = 0; i < (int)usedIDs.size(); i++) {
 		if (usedIDs[i] != i)
 			return i;
 	}
