@@ -106,8 +106,6 @@ private:
 
 	std::unique_ptr<Ui::OBSBasicSettings> ui;
 
-	std::shared_ptr<Auth> auth;
-
 	bool generalChanged = false;
 	bool stream1Changed = false;
 	bool outputsChanged = false;
@@ -156,6 +154,7 @@ private:
 	OBSSignal hotkeyUnregistered;
 
 	SettingsListContainer serviceSettings;
+	std::map<int, std::shared_ptr<Auth>> serviceAuths;
 	std::map<int, OBSData> streamOutputSettings;
 	
 	std::mutex streamMutex;

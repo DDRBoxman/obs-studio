@@ -27,7 +27,7 @@ class RestreamAuth : public OAuthStreamKey {
 	virtual void LoadUI() override;
 
 public:
-	RestreamAuth(const Def &d);
+	RestreamAuth(const Def &d, int id_ = 0);
 
 	static std::shared_ptr<Auth> Login(QWidget *parent);
 };

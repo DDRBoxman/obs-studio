@@ -34,19 +34,20 @@ public:
 		Type type;
 	};
 
-	typedef std::function<std::shared_ptr<Auth>()> create_cb;
+	typedef std::function<std::shared_ptr<Auth>(int)> create_cb;
 
-	inline Auth(const Def &d) : def(d) {}
+	inline Auth(const Def &d, int id_ = 0) : def(d), id(id_) {}
 	virtual ~Auth() {}
 
 	inline Type type() const { return def.type; }
 	inline const char *service() const { return def.service.c_str(); }
+	const char *authName() const;
 
 	virtual void LoadUI() {}
 
 	virtual void OnStreamConfig() {}
 
-	static std::shared_ptr<Auth> Create(const std::string &service);
+	static std::shared_ptr<Auth> Create(const std::string &service, int id = 0);
 	static Type AuthType(const std::string &service);
 	static void Load();
 	static void Save();
@@ -56,4 +57,7 @@ protected:
 
 private:
 	Def def;
+	int id;
+	static void ParseAuthTypes(const std::string types, 
+			           std::map<int, std::string>& services);
 };

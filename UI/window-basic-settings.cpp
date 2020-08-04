@@ -3777,8 +3777,8 @@ void OBSBasicSettings::closeEvent(QCloseEvent *event)
 		event->ignore();
 
 	if (forceAuthReload) {
-		main->auth->Save();
-		main->auth->Load();
+		Auth::Save();
+		Auth::Load();
 		forceAuthReload = false;
 	}
 }

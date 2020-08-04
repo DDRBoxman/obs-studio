@@ -33,13 +33,13 @@ class OAuth : public Auth {
 	Q_OBJECT
 
 public:
-	inline OAuth(const Def &d) : Auth(d) {}
+	inline OAuth(const Def &d, int id_ = 0) : Auth(d, id_) {}
 
-	typedef std::function<std::shared_ptr<Auth>(QWidget *)> login_cb;
+	typedef std::function<std::shared_ptr<Auth>(QWidget *, int)> login_cb;
 	typedef std::function<void()> delete_cookies_cb;
 
 	static std::shared_ptr<Auth> Login(QWidget *parent,
-					   const std::string &service);
+					   const std::string &service, int id = 0);
 	static void DeleteCookies(const std::string &service);
 
 	static void RegisterOAuth(const Def &d, create_cb create,
@@ -71,9 +71,10 @@ protected:
 	std::string key_;
 
 public:
-	inline OAuthStreamKey(const Def &d) : OAuth(d) {}
+	inline OAuthStreamKey(const Def &d, int id_ = 0) : OAuth(d, id_) {}
 
 	inline const std::string &key() const { return key_; }
 
 	virtual void OnStreamConfig() override;
+	static void ConfigStreamAuths();
 };

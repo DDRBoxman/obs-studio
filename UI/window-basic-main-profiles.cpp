@@ -235,6 +235,7 @@ bool OBSBasic::AddProfile(bool create_new, const char *title, const char *text,
 	Auth::Save();
 	if (create_new) {
 		auth.reset();
+		auths.clear();
 		DestroyPanelCookieManager();
 	} else if (!rename) {
 		DuplicateCurrentCookieProfile(config);
@@ -460,6 +461,7 @@ void OBSBasic::on_actionRemoveProfile_triggered()
 
 	Auth::Save();
 	auth.reset();
+	auths.clear();
 	DeleteCookies();
 	DestroyPanelCookieManager();
 
@@ -628,6 +630,7 @@ void OBSBasic::ChangeProfile()
 
 	Auth::Save();
 	auth.reset();
+	auths.clear();
 	DestroyPanelCookieManager();
 
 	config.Swap(basicConfig);

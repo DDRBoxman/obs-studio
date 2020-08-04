@@ -30,7 +30,7 @@ static Auth::Def twitchDef = {"Twitch", Auth::Type::OAuth_StreamKey};
 
 /* ------------------------------------------------------------------------- */
 
-TwitchAuth::TwitchAuth(const Def &d) : OAuthStreamKey(d)
+TwitchAuth::TwitchAuth(const Def &d, int id_) : OAuthStreamKey(d, id_)
 {
 	if (!cef)
 		return;
@@ -84,7 +84,7 @@ try {
 
 	ExecThreadedWithoutBlocking(
 		func, QTStr("Auth.LoadingChannel.Title"),
-		QTStr("Auth.LoadingChannel.Text").arg(service()));
+		QTStr("Auth.LoadingChannel.Text").arg(authName()));
 	if (error_code == 403) {
 		OBSMessageBox::warning(OBSBasic::Get(),
 				       Str("TwitchAuth.TwoFactorFail.Title"),
@@ -123,7 +123,7 @@ try {
 } catch (ErrorInfo info) {
 	QString title = QTStr("Auth.ChannelFailure.Title");
 	QString text = QTStr("Auth.ChannelFailure.Text")
-			       .arg(service(), info.message.c_str(),
+			       .arg(authName(), info.message.c_str(),
 				    info.error.c_str());
 
 	QMessageBox::warning(OBSBasic::Get(), title, text);
@@ -136,9 +136,9 @@ try {
 void TwitchAuth::SaveInternal()
 {
 	OBSBasic *main = OBSBasic::Get();
-	config_set_string(main->Config(), service(), "Name", name.c_str());
+	config_set_string(main->Config(), authName(), "Name", name.c_str());
 	if (uiLoaded) {
-		config_set_string(main->Config(), service(), "DockState",
+		config_set_string(main->Config(), authName(), "DockState",
 				  main->saveState().toBase64().constData());
 	}
 	OAuthStreamKey::SaveInternal();
@@ -157,7 +157,7 @@ bool TwitchAuth::LoadInternal()
 		return false;
 
 	OBSBasic *main = OBSBasic::Get();
-	name = get_config_str(main, service(), "Name");
+	name = get_config_str(main, authName(), "Name");
 	firstLoad = false;
 	return OAuthStreamKey::LoadInternal();
 }
@@ -223,7 +223,7 @@ void TwitchAuth::LoadUI()
 	script = "localStorage.setItem('twilight.theme', 1);";
 
 	const int twAddonChoice =
-		config_get_int(main->Config(), service(), "AddonChoice");
+		config_get_int(main->Config(), authName(), "AddonChoice");
 	if (twAddonChoice) {
 		if (twAddonChoice & 0x1)
 			script += bttv_script;
@@ -245,7 +245,7 @@ void TwitchAuth::LoadUI()
 		chat->setVisible(true);
 	} else {
 		const char *dockStateStr = config_get_string(
-			main->Config(), service(), "DockState");
+			main->Config(), authName(), "DockState");
 		QByteArray dockState =
 			QByteArray::fromBase64(QByteArray(dockStateStr));
 		main->restoreState(dockState);
@@ -275,7 +275,7 @@ void TwitchAuth::LoadSecondaryUIPanes()
 	script += referrer_script2;
 
 	const int twAddonChoice =
-		config_get_int(main->Config(), service(), "AddonChoice");
+		config_get_int(main->Config(), authName(), "AddonChoice");
 	if (twAddonChoice) {
 		if (twAddonChoice & 0x1)
 			script += bttv_script;
@@ -369,7 +369,7 @@ void TwitchAuth::LoadSecondaryUIPanes()
 		}
 
 		const char *dockStateStr = config_get_string(
-			main->Config(), service(), "DockState");
+			main->Config(), authName(), "DockState");
 		QByteArray dockState =
 			QByteArray::fromBase64(QByteArray(dockStateStr));
 		main->restoreState(dockState);
@@ -423,7 +423,7 @@ bool TwitchAuth::RetryLogin()
 			QT_TO_UTF8(login.GetCode()), true);
 }
 
-std::shared_ptr<Auth> TwitchAuth::Login(QWidget *parent)
+std::shared_ptr<Auth> TwitchAuth::Login(QWidget *parent, int id)
 {
 	OAuthLogin login(parent, TWITCH_AUTH_URL, false);
 	if (login.exec() == QDialog::Rejected) {
@@ -431,7 +431,7 @@ std::shared_ptr<Auth> TwitchAuth::Login(QWidget *parent)
 	}
 
 	std::shared_ptr<TwitchAuth> auth =
-		std::make_shared<TwitchAuth>(twitchDef);
+		std::make_shared<TwitchAuth>(twitchDef, id);
 
 	std::string client_id = TWITCH_CLIENTID;
 	deobfuscate_str(&client_id[0], TWITCH_HASH);
@@ -449,9 +449,9 @@ std::shared_ptr<Auth> TwitchAuth::Login(QWidget *parent)
 	return nullptr;
 }
 
-static std::shared_ptr<Auth> CreateTwitchAuth()
+static std::shared_ptr<Auth> CreateTwitchAuth(int id_ = 0)
 {
-	return std::make_shared<TwitchAuth>(twitchDef);
+	return std::make_shared<TwitchAuth>(twitchDef, id_);
 }
 
 static void DeleteCookies()

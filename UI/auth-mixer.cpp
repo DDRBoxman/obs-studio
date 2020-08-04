@@ -1,3 +1,5 @@
+#pragma once 
+
 #include "auth-mixer.hpp"
 
 #include <QPushButton>
@@ -31,7 +33,7 @@ static Auth::Def mixerDef = {"Mixer", Auth::Type::OAuth_StreamKey};
 
 /* ------------------------------------------------------------------------- */
 
-MixerAuth::MixerAuth(const Def &d) : OAuthStreamKey(d) {}
+MixerAuth::MixerAuth(const Def &d, int id_ = 0) : OAuthStreamKey(d, id_) {}
 
 bool MixerAuth::GetChannelInfo(bool allow_retry)
 try {
@@ -68,7 +70,7 @@ try {
 
 		ExecThreadedWithoutBlocking(
 			func, QTStr("Auth.LoadingChannel.Title"),
-			QTStr("Auth.LoadingChannel.Text").arg(service()));
+			QTStr("Auth.LoadingChannel.Text").arg(authName()));
 		if (!success || output.empty())
 			throw ErrorInfo("Failed to get user info from remote",
 					error);
@@ -104,7 +106,7 @@ try {
 
 	ExecThreadedWithoutBlocking(
 		func, QTStr("Auth.LoadingChannel.Title"),
-		QTStr("Auth.LoadingChannel.Text").arg(service()));
+		QTStr("Auth.LoadingChannel.Text").arg(authName()));
 	if (!success || output.empty())
 		throw ErrorInfo("Failed to get stream key from remote", error);
 
@@ -136,7 +138,7 @@ try {
 } catch (ErrorInfo info) {
 	QString title = QTStr("Auth.ChannelFailure.Title");
 	QString text = QTStr("Auth.ChannelFailure.Text")
-			       .arg(service(), info.message.c_str(),
+			       .arg(authName(), info.message.c_str(),
 				    info.error.c_str());
 
 	QMessageBox::warning(OBSBasic::Get(), title, text);
@@ -149,10 +151,10 @@ try {
 void MixerAuth::SaveInternal()
 {
 	OBSBasic *main = OBSBasic::Get();
-	config_set_string(main->Config(), service(), "Name", name.c_str());
-	config_set_string(main->Config(), service(), "Id", id.c_str());
+	config_set_string(main->Config(), authName(), "Name", name.c_str());
+	config_set_string(main->Config(), authName(), "Id", id.c_str());
 	if (uiLoaded) {
-		config_set_string(main->Config(), service(), "DockState",
+		config_set_string(main->Config(), authName(), "DockState",
 				  main->saveState().toBase64().constData());
 	}
 	OAuthStreamKey::SaveInternal();
@@ -171,8 +173,8 @@ bool MixerAuth::LoadInternal()
 		return false;
 
 	OBSBasic *main = OBSBasic::Get();
-	name = get_config_str(main, service(), "Name");
-	id = get_config_str(main, service(), "Id");
+	name = get_config_str(main, authName(), "Name");
+	id = get_config_str(main, authName(), "Id");
 	firstLoad = false;
 	return OAuthStreamKey::LoadInternal();
 }
@@ -213,7 +215,7 @@ void MixerAuth::LoadUI()
 	chat->SetWidget(browser);
 
 	const int mxAddonChoice =
-		config_get_int(main->Config(), service(), "AddonChoice");
+		config_get_int(main->Config(), authName(), "AddonChoice");
 	if (mxAddonChoice) {
 		if (mxAddonChoice & 0x1)
 			script += elixr_script;
@@ -233,7 +235,7 @@ void MixerAuth::LoadUI()
 		chat->setVisible(true);
 	} else {
 		const char *dockStateStr = config_get_string(
-			main->Config(), service(), "DockState");
+			main->Config(), authName(), "DockState");
 		QByteArray dockState =
 			QByteArray::fromBase64(QByteArray(dockStateStr));
 		main->restoreState(dockState);
@@ -262,7 +264,7 @@ bool MixerAuth::RetryLogin()
 			QT_TO_UTF8(login.GetCode()), true);
 }
 
-std::shared_ptr<Auth> MixerAuth::Login(QWidget *parent)
+std::shared_ptr<Auth> MixerAuth::Login(QWidget *parent, int id)
 {
 	if (!cef) {
 		return nullptr;
@@ -275,7 +277,7 @@ std::shared_ptr<Auth> MixerAuth::Login(QWidget *parent)
 		return nullptr;
 	}
 
-	std::shared_ptr<MixerAuth> auth = std::make_shared<MixerAuth>(mixerDef);
+	std::shared_ptr<MixerAuth> auth = std::make_shared<MixerAuth>(mixerDef, id);
 
 	std::string client_id = MIXER_CLIENTID;
 	deobfuscate_str(&client_id[0], MIXER_HASH);
@@ -293,9 +295,9 @@ std::shared_ptr<Auth> MixerAuth::Login(QWidget *parent)
 	return nullptr;
 }
 
-static std::shared_ptr<Auth> CreateMixerAuth()
+static std::shared_ptr<Auth> CreateMixerAuth(int id = 0)
 {
-	return std::make_shared<MixerAuth>(mixerDef);
+	return std::make_shared<MixerAuth>(mixerDef, id);
 }
 
 static void DeleteCookies()

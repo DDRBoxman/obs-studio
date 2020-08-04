@@ -29,7 +29,7 @@ static Auth::Def restreamDef = {"Restream", Auth::Type::OAuth_StreamKey};
 
 /* ------------------------------------------------------------------------- */
 
-RestreamAuth::RestreamAuth(const Def &d) : OAuthStreamKey(d) {}
+RestreamAuth::RestreamAuth(const Def &d, int id_ = 0) : OAuthStreamKey(d, id_) {}
 
 bool RestreamAuth::GetChannelInfo()
 try {
@@ -64,7 +64,7 @@ try {
 
 	ExecThreadedWithoutBlocking(
 		func, QTStr("Auth.LoadingChannel.Title"),
-		QTStr("Auth.LoadingChannel.Text").arg(service()));
+		QTStr("Auth.LoadingChannel.Text").arg(authName()));
 	if (!success || output.empty())
 		throw ErrorInfo("Failed to get stream key from remote", error);
 
@@ -83,7 +83,7 @@ try {
 } catch (ErrorInfo info) {
 	QString title = QTStr("Auth.ChannelFailure.Title");
 	QString text = QTStr("Auth.ChannelFailure.Text")
-			       .arg(service(), info.message.c_str(),
+			       .arg(authName(), info.message.c_str(),
 				    info.error.c_str());
 
 	QMessageBox::warning(OBSBasic::Get(), title, text);
@@ -96,7 +96,7 @@ try {
 void RestreamAuth::SaveInternal()
 {
 	OBSBasic *main = OBSBasic::Get();
-	config_set_string(main->Config(), service(), "DockState",
+	config_set_string(main->Config(), authName(), "DockState",
 			  main->saveState().toBase64().constData());
 	OAuthStreamKey::SaveInternal();
 }
@@ -198,7 +198,7 @@ void RestreamAuth::LoadUI()
 		channels->setVisible(true);
 	} else {
 		const char *dockStateStr = config_get_string(
-			main->Config(), service(), "DockState");
+			main->Config(), authName(), "DockState");
 		QByteArray dockState =
 			QByteArray::fromBase64(QByteArray(dockStateStr));
 		main->restoreState(dockState);
@@ -225,7 +225,7 @@ bool RestreamAuth::RetryLogin()
 			QT_TO_UTF8(login.GetCode()), true);
 }
 
-std::shared_ptr<Auth> RestreamAuth::Login(QWidget *parent)
+std::shared_ptr<Auth> RestreamAuth::Login(QWidget *parent, int id)
 {
 	OAuthLogin login(parent, RESTREAM_AUTH_URL, false);
 	cef->add_popup_whitelist_url("about:blank", &login);
@@ -235,7 +235,7 @@ std::shared_ptr<Auth> RestreamAuth::Login(QWidget *parent)
 	}
 
 	std::shared_ptr<RestreamAuth> auth =
-		std::make_shared<RestreamAuth>(restreamDef);
+		std::make_shared<RestreamAuth>(restreamDef, id);
 
 	std::string client_id = RESTREAM_CLIENTID;
 	deobfuscate_str(&client_id[0], RESTREAM_HASH);
@@ -254,9 +254,9 @@ std::shared_ptr<Auth> RestreamAuth::Login(QWidget *parent)
 	return nullptr;
 }
 
-static std::shared_ptr<Auth> CreateRestreamAuth()
+static std::shared_ptr<Auth> CreateRestreamAuth(int id = 0)
 {
-	return std::make_shared<RestreamAuth>(restreamDef);
+	return std::make_shared<RestreamAuth>(restreamDef, id);
 }
 
 static void DeleteCookies()

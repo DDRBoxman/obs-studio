@@ -24,7 +24,7 @@ class MixerAuth : public OAuthStreamKey {
 	virtual void LoadUI() override;
 
 public:
-	MixerAuth(const Def &d);
+	MixerAuth(const Def &d, int id_ = 0);
 
 	static std::shared_ptr<Auth> Login(QWidget *parent);
 };

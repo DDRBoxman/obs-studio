@@ -111,9 +111,19 @@ void OBSBasicSettings::LoadStream1Settings() {
 	int selectedIndex = -1;
 
 	selectedServiceID = main->GetSelectedSettingID();
+	serviceAuths = main->GetAuths();
 
 	for(unsigned i = 0; i < services.size(); i++) {
 		OBSData data = ServiceToSettingData(services[i]);
+
+		if (obs_data_get_bool(data, "connectedAccount")) {
+			int id = obs_data_get_int(data, "id");
+			int addon = config_get_int(main->Config(), 
+						   serviceAuths.at(id)->authName(),
+						   "AddonChoice");
+			obs_data_set_int(data, "AddonChoice", addon);
+		}
+
 		serviceSettings.Add(data);
 		ui->servicesList->AddNewItem(obs_data_get_string(data, "name"), 
 						  obs_data_get_int(data, "id"));
@@ -145,6 +155,15 @@ void OBSBasicSettings::SaveStream1Settings() {
 		int id = serviceSettings.GetIdAtIndex(i);
 		OBSData settings = serviceSettings.GetSettings(id);
 		
+		if (serviceAuths.find(id) != serviceAuths.end()) {
+			const char *name = serviceAuths.at(id)->authName();
+			int addOnChoice = 
+				obs_data_get_int(settings, "AddonChoice");
+			obs_data_erase(settings, "AddonChoice");
+			config_set_int(main->Config(), name, "AddonChoice",
+				       addOnChoice);
+		}
+
 		const char* type = obs_data_get_string(settings, "type");
 		const char* name = obs_data_get_string(settings, "name");
 
@@ -155,6 +174,7 @@ void OBSBasicSettings::SaveStream1Settings() {
 		services.push_back(tmp); 
 	}
 
+	main->SetAuths(serviceAuths);
 	main->SetServices(services);
 	main->SetSelectedSettingID(selectedServiceID);
 	main->SaveService();
@@ -306,12 +326,15 @@ void OBSBasicSettings::on_service_currentIndexChanged(int)
 	}
 
 #ifdef BROWSER_AVAILABLE
-	auth.reset();
+	if (serviceAuths.find(selectedServiceID) != serviceAuths.end()) {
+		serviceAuths[selectedServiceID].reset();
+		std::map<int, std::shared_ptr<Auth>>  auths = main->GetAuths();
 
-	if (!!main->auth &&
-	    service.find(main->auth->service()) != std::string::npos) {
-		auth = main->auth;
-		OnAuthConnected();
+		if (auths.find(selectedServiceID) != auths.end() &&
+		    service.find(auths[selectedServiceID]->service()) != std::string::npos) {
+			serviceAuths[selectedServiceID] = auths[selectedServiceID];
+			OnAuthConnected();
+		}
 	}
 #endif
 }
@@ -405,7 +428,9 @@ OBSService OBSBasicSettings::SpawnTempService()
 void OBSBasicSettings::OnOAuthStreamKeyConnected()
 {
 #ifdef BROWSER_AVAILABLE
-	OAuthStreamKey *a = reinterpret_cast<OAuthStreamKey *>(auth.get());
+	OAuthStreamKey *a = 
+		reinterpret_cast<OAuthStreamKey *>(
+			serviceAuths.at(selectedServiceID).get());
 
 	if (a) {
 		bool validKey = !a->key().empty();
@@ -455,9 +480,11 @@ void OBSBasicSettings::on_connectAccount_clicked()
 
 	OAuth::DeleteCookies(service);
 
-	auth = OAuthStreamKey::Login(this, service);
-	if (!!auth)
+	std::shared_ptr<Auth> auth = OAuthStreamKey::Login(this, service);
+	if (!!auth) {
+		serviceAuths.insert({selectedServiceID, auth});
 		OnAuthConnected();
+	}
 #endif
 }
 
@@ -477,8 +504,7 @@ void OBSBasicSettings::on_disconnectAccount_clicked()
 		return;
 	}
 
-	main->auth.reset();
-	auth.reset();
+	serviceAuths.erase(selectedServiceID);
 
 	std::string service = QT_TO_UTF8(ui->service->currentText());
 
@@ -666,7 +692,6 @@ void OBSBasicSettings::PopulateStreamSettingsForm(int id) {
 }
 
 OBSData OBSBasicSettings::GetStreamFormChanges() {
-
 	OBSData settings = obs_data_create();
 	
 	bool customServer = IsCustomService();
@@ -708,34 +733,30 @@ OBSData OBSBasicSettings::GetStreamFormChanges() {
 	obs_data_set_bool(settings, "bwtest",
 			ui->bandwidthTestEnable->isChecked());
 
-	if (!!auth && strcmp(auth->service(), "Twitch") == 0) {
-		bool choiceExists = config_has_user_value(
-			main->Config(), "Twitch", "AddonChoice");
+	bool accountConnected = 
+		serviceAuths.find(selectedServiceID) != serviceAuths.end();
+
+	if (accountConnected) {
+		QComboBox *addOns = nullptr;
+
+		if (strcmp(serviceAuths.at(selectedServiceID)->service(),
+			   "Twitch") == 0)
+			addOns = ui->twitchAddonDropdown;
+		else if (strcmp(serviceAuths.at(selectedServiceID)->service(),
+			        "Mixer") == 0)
+			addOns = ui->mixerAddonDropdown;
+
 		int currentChoice =
-			config_get_int(main->Config(), "Twitch", "AddonChoice");
-		int newChoice = ui->twitchAddonDropdown->currentIndex();
+			obs_data_get_int(settings, "AddonChoice");
+		int newChoice = addOns->currentIndex();
+		obs_data_set_int(settings, "AddonChoice", newChoice);
 
-		config_set_int(main->Config(), "Twitch", "AddonChoice",
-				newChoice);
-
-		if (choiceExists && currentChoice != newChoice)
-			forceAuthReload = true;
-	}
-	if (!!auth && strcmp(auth->service(), "Mixer") == 0) {
-		bool choiceExists = config_has_user_value(
-			main->Config(), "Mixer", "AddonChoice");
-		int currentChoice =
-			config_get_int(main->Config(), "Mixer", "AddonChoice");
-		int newChoice = ui->mixerAddonDropdown->currentIndex();
-
-		config_set_int(main->Config(), "Mixer", "AddonChoice",
-				newChoice);
-
-		if (choiceExists && currentChoice != newChoice)
+		if (currentChoice != newChoice)
 			forceAuthReload = true;
 	}
 
 	obs_data_set_string(settings, "key", QT_TO_UTF8(ui->key->text()));
+	obs_data_set_bool(settings, "connectedAccount", accountConnected);
 
 	return settings;
 }

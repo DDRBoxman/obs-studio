@@ -116,11 +116,12 @@ void OAuth::RegisterOAuth(const Def &d, create_cb create, login_cb login,
 	RegisterAuth(d, create);
 }
 
-std::shared_ptr<Auth> OAuth::Login(QWidget *parent, const std::string &service)
+std::shared_ptr<Auth> OAuth::Login(QWidget *parent, const std::string &service,
+                                   int id)
 {
 	for (auto &a : loginCBs) {
 		if (service.find(a.def.service) != std::string::npos) {
-			return a.login(parent);
+			return a.login(parent, id);
 		}
 	}
 
@@ -139,11 +140,11 @@ void OAuth::DeleteCookies(const std::string &service)
 void OAuth::SaveInternal()
 {
 	OBSBasic *main = OBSBasic::Get();
-	config_set_string(main->Config(), service(), "RefreshToken",
+	config_set_string(main->Config(), authName(), "RefreshToken",
 			  refresh_token.c_str());
-	config_set_string(main->Config(), service(), "Token", token.c_str());
-	config_set_uint(main->Config(), service(), "ExpireTime", expire_time);
-	config_set_int(main->Config(), service(), "ScopeVer", currentScopeVer);
+	config_set_string(main->Config(), authName(), "Token", token.c_str());
+	config_set_uint(main->Config(), authName(), "ExpireTime", expire_time);
+	config_set_int(main->Config(), authName(), "ScopeVer", currentScopeVer);
 }
 
 static inline std::string get_config_str(OBSBasic *main, const char *section,
@@ -156,11 +157,11 @@ static inline std::string get_config_str(OBSBasic *main, const char *section,
 bool OAuth::LoadInternal()
 {
 	OBSBasic *main = OBSBasic::Get();
-	refresh_token = get_config_str(main, service(), "RefreshToken");
-	token = get_config_str(main, service(), "Token");
-	expire_time = config_get_uint(main->Config(), service(), "ExpireTime");
+	refresh_token = get_config_str(main, authName(), "RefreshToken");
+	token = get_config_str(main, authName(), "Token");
+	expire_time = config_get_uint(main->Config(), authName(), "ExpireTime");
 	currentScopeVer =
-		(int)config_get_int(main->Config(), service(), "ScopeVer");
+		(int)config_get_int(main->Config(), authName(), "ScopeVer");
 	return implicit ? !token.empty() : !refresh_token.empty();
 }
 
@@ -186,7 +187,7 @@ try {
 		} else {
 			QString title = QTStr("Auth.InvalidScope.Title");
 			QString text =
-				QTStr("Auth.InvalidScope.Text").arg(service());
+				QTStr("Auth.InvalidScope.Text").arg(authName());
 
 			QMessageBox::warning(OBSBasic::Get(), title, text);
 		}
@@ -218,7 +219,7 @@ try {
 	};
 
 	ExecThreadedWithoutBlocking(func, QTStr("Auth.Authing.Title"),
-				    QTStr("Auth.Authing.Text").arg(service()));
+				    QTStr("Auth.Authing.Text").arg(authName()));
 	if (!success || output.empty())
 		throw ErrorInfo("Failed to get token from remote", error);
 
@@ -263,7 +264,7 @@ try {
 	if (!retry) {
 		QString title = QTStr("Auth.AuthFailure.Title");
 		QString text = QTStr("Auth.AuthFailure.Text")
-				       .arg(service(), info.message.c_str(),
+				       .arg(authName(), info.message.c_str(),
 					    info.error.c_str());
 
 		QMessageBox::warning(OBSBasic::Get(), title, text);
@@ -295,4 +296,30 @@ void OAuthStreamKey::OnStreamConfig()
 	obs_service_update(service, settings);
 
 	obs_data_release(settings);
+}
+
+void OAuthStreamKey::ConfigStreamAuths() {
+	OBSBasic *main = OBSBasic::Get();
+	std::vector<OBSService> services = main->GetServices();
+	std::map<int, std::shared_ptr<Auth>> auths = main->GetAuths();
+
+	for (auto &service : services) {
+		OBSData settings = obs_service_get_settings(service);
+		int id = obs_data_get_int(settings, "id");
+		bool bwtest = obs_data_get_bool(settings, "bwtest");
+
+		if (obs_data_get_bool(settings, "connectedAccount")) {
+			OAuthStreamKey *auth = 
+				static_cast<OAuthStreamKey *>(auths.at(id).get());
+			if(auth->key().empty())
+				continue;
+			if (bwtest && strcmp(auth->service(), "Twitch") == 0)
+				obs_data_set_string(settings, "key",
+						(auth->key() + "?bandwidthtest=true").c_str());
+			else
+				obs_data_set_string(settings, "key", auth->key().c_str());
+
+			obs_service_update(service, settings);
+		}
+	}
 }

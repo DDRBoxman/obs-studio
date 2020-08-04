@@ -36,9 +36,9 @@ class TwitchAuth : public OAuthStreamKey {
 	virtual void LoadUI() override;
 
 public:
-	TwitchAuth(const Def &d);
+	TwitchAuth(const Def &d, int id_ = 0);
 
-	static std::shared_ptr<Auth> Login(QWidget *parent);
+	static std::shared_ptr<Auth> Login(QWidget *parent, int id = 0);
 
 	QTimer uiLoadTimer;
 
