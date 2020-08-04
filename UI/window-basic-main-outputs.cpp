@@ -1249,7 +1249,7 @@ bool SimpleOutput::StartStreaming(const std::vector<OBSService> &services,
 	if (!Active())
 		SetupOutputs(services, outputConfigs);
 
-	OAuthStreamKey::ConfigStreamAuths();
+	Auth::ConfigStreamAuths();
 
 	/* --------------------- */
 	DisconnectSignals();
@@ -2567,7 +2567,7 @@ AdvancedOutput::StartStreaming(const std::vector<OBSService> &services,
 	if (!Active())
 		SetupOutputs(outputConfigs);
 
-	OAuthStreamKey::ConfigStreamAuths();
+	Auth::ConfigStreamAuths();
 
 	/* --------------------- */
 	DisconnectSignals();

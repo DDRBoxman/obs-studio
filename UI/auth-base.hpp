@@ -46,6 +46,8 @@ public:
 	virtual void LoadUI() {}
 
 	virtual void OnStreamConfig() {}
+	static void ConfigStreamAuths();
+	virtual const std::string &key() const = 0;
 
 	static std::shared_ptr<Auth> Create(const std::string &service, int id = 0);
 	static Type AuthType(const std::string &service);

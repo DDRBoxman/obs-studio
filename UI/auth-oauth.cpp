@@ -297,29 +297,3 @@ void OAuthStreamKey::OnStreamConfig()
 
 	obs_data_release(settings);
 }
-
-void OAuthStreamKey::ConfigStreamAuths() {
-	OBSBasic *main = OBSBasic::Get();
-	std::vector<OBSService> services = main->GetServices();
-	std::map<int, std::shared_ptr<Auth>> auths = main->GetAuths();
-
-	for (auto &service : services) {
-		OBSData settings = obs_service_get_settings(service);
-		int id = obs_data_get_int(settings, "id");
-		bool bwtest = obs_data_get_bool(settings, "bwtest");
-
-		if (obs_data_get_bool(settings, "connectedAccount")) {
-			OAuthStreamKey *auth = 
-				static_cast<OAuthStreamKey *>(auths.at(id).get());
-			if(auth->key().empty())
-				continue;
-			if (bwtest && strcmp(auth->service(), "Twitch") == 0)
-				obs_data_set_string(settings, "key",
-						(auth->key() + "?bandwidthtest=true").c_str());
-			else
-				obs_data_set_string(settings, "key", auth->key().c_str());
-
-			obs_service_update(service, settings);
-		}
-	}
-}

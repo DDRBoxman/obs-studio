@@ -57,6 +57,8 @@ protected:
 	virtual bool LoadInternal() override;
 
 	virtual bool RetryLogin() = 0;
+	virtual const std::string &key() const = 0;
+
 	bool TokenExpired();
 	bool GetToken(const char *url, const std::string &client_id,
 		      int scope_ver,
@@ -73,8 +75,7 @@ protected:
 public:
 	inline OAuthStreamKey(const Def &d, int id_ = 0) : OAuth(d, id_) {}
 
-	inline const std::string &key() const { return key_; }
+	virtual const std::string &key() const override { return key_; }
 
 	virtual void OnStreamConfig() override;
-	static void ConfigStreamAuths();
 };

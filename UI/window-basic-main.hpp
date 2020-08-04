@@ -181,6 +181,7 @@ class OBSBasic : public OBSMainWindow {
 private:
 	obs_frontend_callbacks *api = nullptr;
 
+	std::shared_ptr<Auth> auth;
 	std::map<int, std::shared_ptr<Auth>> auths;
 
 	std::vector<VolControl *> volumes;
