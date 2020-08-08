@@ -70,7 +70,7 @@ try {
 
 		ExecThreadedWithoutBlocking(
 			func, QTStr("Auth.LoadingChannel.Title"),
-			QTStr("Auth.LoadingChannel.Text").arg(authName()));
+			QTStr("Auth.LoadingChannel.Text").arg(Name()));
 		if (!success || output.empty())
 			throw ErrorInfo("Failed to get user info from remote",
 					error);
@@ -106,7 +106,7 @@ try {
 
 	ExecThreadedWithoutBlocking(
 		func, QTStr("Auth.LoadingChannel.Title"),
-		QTStr("Auth.LoadingChannel.Text").arg(authName()));
+		QTStr("Auth.LoadingChannel.Text").arg(Name()));
 	if (!success || output.empty())
 		throw ErrorInfo("Failed to get stream key from remote", error);
 
@@ -138,7 +138,7 @@ try {
 } catch (ErrorInfo info) {
 	QString title = QTStr("Auth.ChannelFailure.Title");
 	QString text = QTStr("Auth.ChannelFailure.Text")
-			       .arg(authName(), info.message.c_str(),
+			       .arg(Name(), info.message.c_str(),
 				    info.error.c_str());
 
 	QMessageBox::warning(OBSBasic::Get(), title, text);
@@ -151,10 +151,10 @@ try {
 void MixerAuth::SaveInternal()
 {
 	OBSBasic *main = OBSBasic::Get();
-	config_set_string(main->Config(), authName(), "Name", name.c_str());
-	config_set_string(main->Config(), authName(), "Id", id.c_str());
+	config_set_string(main->Config(), Name(), "Name", name.c_str());
+	config_set_string(main->Config(), Name(), "Id", id.c_str());
 	if (uiLoaded) {
-		config_set_string(main->Config(), authName(), "DockState",
+		config_set_string(main->Config(), Name(), "DockState",
 				  main->saveState().toBase64().constData());
 	}
 	OAuthStreamKey::SaveInternal();
@@ -173,8 +173,8 @@ bool MixerAuth::LoadInternal()
 		return false;
 
 	OBSBasic *main = OBSBasic::Get();
-	name = get_config_str(main, authName(), "Name");
-	id = get_config_str(main, authName(), "Id");
+	name = get_config_str(main, Name(), "Name");
+	id = get_config_str(main, Name(), "Id");
 	firstLoad = false;
 	return OAuthStreamKey::LoadInternal();
 }
@@ -215,7 +215,7 @@ void MixerAuth::LoadUI()
 	chat->SetWidget(browser);
 
 	const int mxAddonChoice =
-		config_get_int(main->Config(), authName(), "AddonChoice");
+		config_get_int(main->Config(), Name(), "AddonChoice");
 	if (mxAddonChoice) {
 		if (mxAddonChoice & 0x1)
 			script += elixr_script;
@@ -235,7 +235,7 @@ void MixerAuth::LoadUI()
 		chat->setVisible(true);
 	} else {
 		const char *dockStateStr = config_get_string(
-			main->Config(), authName(), "DockState");
+			main->Config(), Name(), "DockState");
 		QByteArray dockState =
 			QByteArray::fromBase64(QByteArray(dockStateStr));
 		main->restoreState(dockState);

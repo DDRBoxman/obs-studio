@@ -41,7 +41,7 @@ public:
 
 	inline Type type() const { return def.type; }
 	inline const char *service() const { return def.service.c_str(); }
-	const char *authName() const;
+	const char *Name() const;
 
 	virtual void LoadUI() {}
 
@@ -60,6 +60,5 @@ protected:
 private:
 	Def def;
 	int id;
-	static void ParseAuthTypes(const std::string types, 
-			           std::map<int, std::string>& services);
+	static std::map<int, std::string> ParseAuthTypes(const std::string types);
 };

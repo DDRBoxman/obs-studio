@@ -140,11 +140,11 @@ void OAuth::DeleteCookies(const std::string &service)
 void OAuth::SaveInternal()
 {
 	OBSBasic *main = OBSBasic::Get();
-	config_set_string(main->Config(), authName(), "RefreshToken",
+	config_set_string(main->Config(), Name(), "RefreshToken",
 			  refresh_token.c_str());
-	config_set_string(main->Config(), authName(), "Token", token.c_str());
-	config_set_uint(main->Config(), authName(), "ExpireTime", expire_time);
-	config_set_int(main->Config(), authName(), "ScopeVer", currentScopeVer);
+	config_set_string(main->Config(), Name(), "Token", token.c_str());
+	config_set_uint(main->Config(), Name(), "ExpireTime", expire_time);
+	config_set_int(main->Config(), Name(), "ScopeVer", currentScopeVer);
 }
 
 static inline std::string get_config_str(OBSBasic *main, const char *section,
@@ -157,11 +157,11 @@ static inline std::string get_config_str(OBSBasic *main, const char *section,
 bool OAuth::LoadInternal()
 {
 	OBSBasic *main = OBSBasic::Get();
-	refresh_token = get_config_str(main, authName(), "RefreshToken");
-	token = get_config_str(main, authName(), "Token");
-	expire_time = config_get_uint(main->Config(), authName(), "ExpireTime");
+	refresh_token = get_config_str(main, Name(), "RefreshToken");
+	token = get_config_str(main, Name(), "Token");
+	expire_time = config_get_uint(main->Config(), Name(), "ExpireTime");
 	currentScopeVer =
-		(int)config_get_int(main->Config(), authName(), "ScopeVer");
+		(int)config_get_int(main->Config(), Name(), "ScopeVer");
 	return implicit ? !token.empty() : !refresh_token.empty();
 }
 
@@ -187,7 +187,7 @@ try {
 		} else {
 			QString title = QTStr("Auth.InvalidScope.Title");
 			QString text =
-				QTStr("Auth.InvalidScope.Text").arg(authName());
+				QTStr("Auth.InvalidScope.Text").arg(Name());
 
 			QMessageBox::warning(OBSBasic::Get(), title, text);
 		}
@@ -219,7 +219,7 @@ try {
 	};
 
 	ExecThreadedWithoutBlocking(func, QTStr("Auth.Authing.Title"),
-				    QTStr("Auth.Authing.Text").arg(authName()));
+				    QTStr("Auth.Authing.Text").arg(Name()));
 	if (!success || output.empty())
 		throw ErrorInfo("Failed to get token from remote", error);
 
@@ -264,7 +264,7 @@ try {
 	if (!retry) {
 		QString title = QTStr("Auth.AuthFailure.Title");
 		QString text = QTStr("Auth.AuthFailure.Text")
-				       .arg(authName(), info.message.c_str(),
+				       .arg(Name(), info.message.c_str(),
 					    info.error.c_str());
 
 		QMessageBox::warning(OBSBasic::Get(), title, text);

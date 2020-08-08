@@ -2,6 +2,7 @@
 #include "window-basic-main.hpp"
 
 #include <vector>
+#include <regex>
 #include <map>
 
 struct AuthInfo {
@@ -42,17 +43,14 @@ Auth::Type Auth::AuthType(const std::string &service)
 void Auth::Load()
 {
 	OBSBasic *main = OBSBasic::Get();
-	std::map<int, std::string> names;
-	std::map<int, std::shared_ptr<Auth>> auths;
 	const char *type = config_get_string(main->Config(), "Auth", "Type");
-	
-	std::string types = "";
-	
+
+	std::string types = "";	
 	if (type && std::strlen(type) != 0)
 		types = type;
 
-	Auth::ParseAuthTypes(types, names);
-
+	std::map<int, std::string> names = Auth::ParseAuthTypes(types);
+	std::map<int, std::shared_ptr<Auth>> auths;
 	for (auto &item : names) {
 		std::shared_ptr<Auth> auth = Create(item.second, item.first);
 		if (auth) {
@@ -81,8 +79,8 @@ void Auth::Save()
 	for (auto it = auths.begin(); it != auths.end(); it++) {
 		Auth *auth = it->second.get();
 		if (it != auths.begin())
-			types += ",";
-		types += auth->authName();
+			types.append(",");
+		types.append(auth->Name());
 		auth->SaveInternal();
 	}
 
@@ -90,39 +88,40 @@ void Auth::Save()
 	config_save_safe(main->Config(), "tmp", nullptr);
 }
 
-const char *Auth::authName() const {
+const char *Auth::Name() const {
 	std::string name = def.service;
 	name += "_service#";
 	name += std::to_string(id);
 	return name.c_str();
 }
 
-void Auth::ParseAuthTypes(const std::string types, 
-			  std::map<int, std::string>& services) {
+std::map<int, std::string> Auth::ParseAuthTypes(const std::string types) {
+	std::map<int, std::string> services;
 	if (types.size() == 0)
-		return;
-	
-	int index = 0;
-	while (index < (int)types.size()) {
-		int commaPos = types.find(',', index);
-		std::string service;
-		if (commaPos == std::string::npos) {
-			service = types.substr(index, commaPos);
-			index = types.size();
-		}
-		else {
-			service = types.substr(index, commaPos - index);
-			index = commaPos + 1;
-		}
+		return services;
 
-		std::string name = service.substr(0, service.find("_service#"));
-		int id = 0;
-		if (service.size() > name.size() + std::strlen("_service#"))
-			id = std::stoi(service.substr(service.find("_service#") +
-				       std::strlen("_service#")));
+	const std::regex comma(",");
+	std::vector<std::string> auths(
+	    std::sregex_token_iterator(types.begin(), types.end(), comma, -1),
+	    std::sregex_token_iterator()
+	);
 
-		services.insert({id, name});
+	const std::regex sep("_service#");
+	for (auto &auth : auths) {
+		std::vector<std::string> info(
+		    std::sregex_token_iterator(auth.begin(), auth.end(), sep, -1),
+		    std::sregex_token_iterator()
+		);
+		if (info.size() > 0) {
+			std::string name = info[0];
+			int id = 0;
+			if (info.size() == 2)
+				id = std::stoi(info[1]);
+			services.insert(std::pair<int, std::string>(id, name));
+		}
 	}
+
+	return services;
 }
 
 void Auth::ConfigStreamAuths() {

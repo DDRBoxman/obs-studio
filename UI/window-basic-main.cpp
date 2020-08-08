@@ -4382,7 +4382,7 @@ void OBSBasic::AddProjectorMenuMonitors(QMenu *parent, QObject *target,
 		QString name = "";
 #ifdef _WIN32
 		QTextStream fullname(&name);
-		fullname << GetMonitorName(screen->name());
+		fullname << GetMonitorName(screen->Name());
 		fullname << " (";
 		fullname << (i + 1);
 		fullname << ")";

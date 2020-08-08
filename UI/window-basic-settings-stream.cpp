@@ -119,7 +119,7 @@ void OBSBasicSettings::LoadStream1Settings() {
 		if (obs_data_get_bool(data, "connectedAccount")) {
 			int id = obs_data_get_int(data, "id");
 			int addon = config_get_int(main->Config(), 
-						   serviceAuths.at(id)->authName(),
+						   serviceAuths.at(id)->Name(),
 						   "AddonChoice");
 			obs_data_set_int(data, "AddonChoice", addon);
 		}
@@ -156,7 +156,7 @@ void OBSBasicSettings::SaveStream1Settings() {
 		OBSData settings = serviceSettings.GetSettings(id);
 		
 		if (serviceAuths.find(id) != serviceAuths.end()) {
-			const char *name = serviceAuths.at(id)->authName();
+			const char *name = serviceAuths.at(id)->Name();
 			int addOnChoice = 
 				obs_data_get_int(settings, "AddonChoice");
 			obs_data_erase(settings, "AddonChoice");

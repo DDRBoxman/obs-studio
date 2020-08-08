@@ -64,7 +64,7 @@ try {
 
 	ExecThreadedWithoutBlocking(
 		func, QTStr("Auth.LoadingChannel.Title"),
-		QTStr("Auth.LoadingChannel.Text").arg(authName()));
+		QTStr("Auth.LoadingChannel.Text").arg(Name()));
 	if (!success || output.empty())
 		throw ErrorInfo("Failed to get stream key from remote", error);
 
@@ -83,7 +83,7 @@ try {
 } catch (ErrorInfo info) {
 	QString title = QTStr("Auth.ChannelFailure.Title");
 	QString text = QTStr("Auth.ChannelFailure.Text")
-			       .arg(authName(), info.message.c_str(),
+			       .arg(Name(), info.message.c_str(),
 				    info.error.c_str());
 
 	QMessageBox::warning(OBSBasic::Get(), title, text);
@@ -96,7 +96,7 @@ try {
 void RestreamAuth::SaveInternal()
 {
 	OBSBasic *main = OBSBasic::Get();
-	config_set_string(main->Config(), authName(), "DockState",
+	config_set_string(main->Config(), Name(), "DockState",
 			  main->saveState().toBase64().constData());
 	OAuthStreamKey::SaveInternal();
 }
@@ -198,7 +198,7 @@ void RestreamAuth::LoadUI()
 		channels->setVisible(true);
 	} else {
 		const char *dockStateStr = config_get_string(
-			main->Config(), authName(), "DockState");
+			main->Config(), Name(), "DockState");
 		QByteArray dockState =
 			QByteArray::fromBase64(QByteArray(dockStateStr));
 		main->restoreState(dockState);

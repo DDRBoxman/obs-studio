@@ -4,10 +4,11 @@
 #include <QMessageBox>
 
 void KeyedListWidget::AddNewItem(const QString &alias, int key) {
-        QListWidgetItem* service = new QListWidgetItem(alias, this);
-        service->setData(Qt::UserRole, key);
-        addItem(service);
-        setCurrentItem(service);
+        QString name = alias;
+        QListWidgetItem* item = new QListWidgetItem(name);
+        item->setData(Qt::UserRole, key);
+        addItem(item);
+        setCurrentItem(item);
 }
 
 void KeyedListWidget::UpdateItemName(const QString &alias) {
@@ -18,8 +19,8 @@ void KeyedListWidget::RemoveItem() {
         if (currentRow() == NONE_SELECTED) {
                 // show failure
                 QString message = count() == 0 ? 
-                        "There are no saved streaming services." : 
-                        "No services selected.";
+                        "There are no saved items." : 
+                        "No items selected.";
 
                 QMessageBox* failureNotice = new QMessageBox(this);
                 failureNotice->setIcon(QMessageBox::Warning);
@@ -29,10 +30,10 @@ void KeyedListWidget::RemoveItem() {
                 failureNotice->exec();
         }
         
-        // remove service
-        QListWidgetItem* service = currentItem();
-        int removedItemKey = service->data(Qt::UserRole).toInt();
-        takeItem(row(service));
+        // remove item
+        QListWidgetItem* item = currentItem();
+        int removedItemKey = item->data(Qt::UserRole).toInt();
+        takeItem(row(item));
         
         int newItemKey = -1;
         

@@ -84,7 +84,7 @@ try {
 
 	ExecThreadedWithoutBlocking(
 		func, QTStr("Auth.LoadingChannel.Title"),
-		QTStr("Auth.LoadingChannel.Text").arg(authName()));
+		QTStr("Auth.LoadingChannel.Text").arg(Name()));
 	if (error_code == 403) {
 		OBSMessageBox::warning(OBSBasic::Get(),
 				       Str("TwitchAuth.TwoFactorFail.Title"),
@@ -123,7 +123,7 @@ try {
 } catch (ErrorInfo info) {
 	QString title = QTStr("Auth.ChannelFailure.Title");
 	QString text = QTStr("Auth.ChannelFailure.Text")
-			       .arg(authName(), info.message.c_str(),
+			       .arg(Name(), info.message.c_str(),
 				    info.error.c_str());
 
 	QMessageBox::warning(OBSBasic::Get(), title, text);
@@ -136,9 +136,9 @@ try {
 void TwitchAuth::SaveInternal()
 {
 	OBSBasic *main = OBSBasic::Get();
-	config_set_string(main->Config(), authName(), "Name", name.c_str());
+	config_set_string(main->Config(), Name(), "Name", name.c_str());
 	if (uiLoaded) {
-		config_set_string(main->Config(), authName(), "DockState",
+		config_set_string(main->Config(), Name(), "DockState",
 				  main->saveState().toBase64().constData());
 	}
 	OAuthStreamKey::SaveInternal();
@@ -157,7 +157,7 @@ bool TwitchAuth::LoadInternal()
 		return false;
 
 	OBSBasic *main = OBSBasic::Get();
-	name = get_config_str(main, authName(), "Name");
+	name = get_config_str(main, Name(), "Name");
 	firstLoad = false;
 	return OAuthStreamKey::LoadInternal();
 }
@@ -223,7 +223,7 @@ void TwitchAuth::LoadUI()
 	script = "localStorage.setItem('twilight.theme', 1);";
 
 	const int twAddonChoice =
-		config_get_int(main->Config(), authName(), "AddonChoice");
+		config_get_int(main->Config(), Name(), "AddonChoice");
 	if (twAddonChoice) {
 		if (twAddonChoice & 0x1)
 			script += bttv_script;
@@ -245,7 +245,7 @@ void TwitchAuth::LoadUI()
 		chat->setVisible(true);
 	} else {
 		const char *dockStateStr = config_get_string(
-			main->Config(), authName(), "DockState");
+			main->Config(), Name(), "DockState");
 		QByteArray dockState =
 			QByteArray::fromBase64(QByteArray(dockStateStr));
 		main->restoreState(dockState);
@@ -275,7 +275,7 @@ void TwitchAuth::LoadSecondaryUIPanes()
 	script += referrer_script2;
 
 	const int twAddonChoice =
-		config_get_int(main->Config(), authName(), "AddonChoice");
+		config_get_int(main->Config(), Name(), "AddonChoice");
 	if (twAddonChoice) {
 		if (twAddonChoice & 0x1)
 			script += bttv_script;
@@ -369,7 +369,7 @@ void TwitchAuth::LoadSecondaryUIPanes()
 		}
 
 		const char *dockStateStr = config_get_string(
-			main->Config(), authName(), "DockState");
+			main->Config(), Name(), "DockState");
 		QByteArray dockState =
 			QByteArray::fromBase64(QByteArray(dockStateStr));
 		main->restoreState(dockState);
