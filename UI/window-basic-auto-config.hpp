@@ -166,15 +166,30 @@ class AutoConfigStreamPage : public QWizardPage {
 		StreamKey,
 	};
 
+	std::map<int, OBSData> serviceConfigs;
+	int selectedServiceID = -1;
+	int autoConfigID = -1;
+	std::map<int, std::shared_ptr<Auth>> serviceAuths;
 	std::shared_ptr<Auth> auth;
 
+	bool firstLoad = false;
+	bool loading = false;
 	Ui_AutoConfigStreamPage *ui;
 	QString lastService;
 	bool ready = false;
 
 	void LoadServices(bool showAll);
 	inline bool IsCustomService() const;
+	void LoadStreamSettings();
+	OBSData ServiceToSettingData(const OBSService& service);
+	void LoadOutputComboBox(const std::map<int, OBSData>& outputs);
+	void PopulateStreamSettings();
+	void ClearStreamSettings();
+	void GetStreamSettings();
+	bool CheckNameAndKey();
 
+	int GetNewSettingID(const std::map<int, OBSData> &map);
+	void AddEmptyServiceSetting(int id);
 public:
 	AutoConfigStreamPage(QWidget *parent = nullptr);
 	~AutoConfigStreamPage();
@@ -195,6 +210,14 @@ public slots:
 	void UpdateKeyLink();
 	void UpdateServerList();
 	void UpdateCompleted();
+	void UpdateOutputConfigForm();
+
+	void on_actionAddService_trigger();
+	void on_actionRemoveService_trigger();
+	void on_actionScrollUp_trigger();
+	void on_actionScrollDown_trigger();
+
+	void on_serviceList_itemClicked(int id);
 };
 
 class AutoConfigTestPage : public QWizardPage {
