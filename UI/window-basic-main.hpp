@@ -181,7 +181,6 @@ class OBSBasic : public OBSMainWindow {
 private:
 	obs_frontend_callbacks *api = nullptr;
 
-	std::shared_ptr<Auth> auth;
 	std::map<int, std::shared_ptr<Auth>> auths;
 
 	std::vector<VolControl *> volumes;
@@ -808,12 +807,13 @@ public:
 	void SaveStreamOutputs();
 	bool LoadStreamOutputs();
 
-	inline Auth *GetAuth() { return auth.get(); }
+	inline Auth *GetAuth() { return auths.begin()->second.get(); }
 	Auth *GetAuth(int id);
 	inline std::map<int, std::shared_ptr<Auth>> GetAuths() { return auths; }
 	inline void SetAuths(const std::map<int, std::shared_ptr<Auth>> &auths_) {
 		auths = auths_;
 	}
+	void LoadAuthUIs();
 
 	inline void EnableOutputs(bool enable)
 	{

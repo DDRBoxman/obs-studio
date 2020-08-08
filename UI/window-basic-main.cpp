@@ -3757,6 +3757,13 @@ Auth *OBSBasic::GetAuth(int id) {
 	return nullptr;
 }
 
+void OBSBasic::LoadAuthUIs() {
+	for (auto &item : auths) {
+		if (!!item.second)
+			item.second->LoadUI();
+	}
+}
+
 void OBSBasic::SetService(obs_service_t *newService) {
 	services[0] = newService;
 }
@@ -4178,7 +4185,6 @@ void OBSBasic::closeEvent(QCloseEvent *event)
 
 	Auth::Save();
 	SaveProjectNow();
-	auth.reset();
 	auths.clear();
 
 	delete extraBrowsers;

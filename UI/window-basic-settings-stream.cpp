@@ -174,10 +174,11 @@ void OBSBasicSettings::SaveStream1Settings() {
 		services.push_back(tmp); 
 	}
 
-	main->SetAuths(serviceAuths);
 	main->SetServices(services);
 	main->SetSelectedSettingID(selectedServiceID);
 	main->SaveService();
+	main->SetAuths(serviceAuths);
+	main->LoadAuthUIs();
 }
 
 void OBSBasicSettings::UpdateKeyLink()
@@ -299,6 +300,10 @@ void OBSBasicSettings::on_service_currentIndexChanged(int)
 			ui->streamKeyWidget->setVisible(true);
 			ui->streamKeyLabel->setVisible(true);
 			ui->connectAccount2->setVisible(can_auth);
+			if (serviceAuths.find(selectedServiceID) != 
+			    serviceAuths.end()) {
+				    serviceAuths[selectedServiceID].reset();
+			}
 		}
 	} else {
 		ui->connectAccount2->setVisible(false);
@@ -327,8 +332,7 @@ void OBSBasicSettings::on_service_currentIndexChanged(int)
 
 #ifdef BROWSER_AVAILABLE
 	if (serviceAuths.find(selectedServiceID) != serviceAuths.end()) {
-		serviceAuths[selectedServiceID].reset();
-		std::map<int, std::shared_ptr<Auth>>  auths = main->GetAuths();
+		std::map<int, std::shared_ptr<Auth>> auths = main->GetAuths();
 
 		if (auths.find(selectedServiceID) != auths.end() &&
 		    service.find(auths[selectedServiceID]->service()) != std::string::npos) {
@@ -626,7 +630,8 @@ void OBSBasicSettings::PopulateStreamSettingsForm(int id) {
 	const char *server = obs_data_get_string(settings, "server");
 	const char *key = obs_data_get_string(settings, "key");
 	int outputID = obs_data_get_int(settings, "output_id");
-
+	lastService = service;
+	
 	int outputIndex = ui->streamOutputComboBox->findData(outputID);
 	ui->streamOutputComboBox->setCurrentIndex(outputIndex);
 

@@ -57,7 +57,6 @@ protected:
 	virtual bool LoadInternal() override;
 
 	virtual bool RetryLogin() = 0;
-	virtual const std::string &key() const = 0;
 
 	bool TokenExpired();
 	bool GetToken(const char *url, const std::string &client_id,
