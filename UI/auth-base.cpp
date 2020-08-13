@@ -146,5 +146,6 @@ void Auth::ConfigStreamAuths() {
 
 			obs_service_update(service, settings);
 		}
+		obs_data_release(settings);
 	}
 }

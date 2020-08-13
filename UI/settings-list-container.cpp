@@ -17,12 +17,14 @@ int SettingsListContainer::GetCount() const {
         return orderedIDList.size(); 
 }
 
-const SettingsListContainer& SettingsListContainer::SetSetting(int settingID, OBSData newSetting) {
+const SettingsListContainer& 
+SettingsListContainer::SetSetting(int settingID, const OBSData &newSetting) {
         settings[settingID] = newSetting; 
         return *this;
 }
 
-const SettingsListContainer& SettingsListContainer::SetOrder(const std::vector<int>& newOrder) {
+const SettingsListContainer&
+SettingsListContainer::SetOrder(const std::vector<int>& newOrder) {
         orderedIDList = newOrder; 
         return *this;
 }

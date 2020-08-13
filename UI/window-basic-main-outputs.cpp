@@ -214,7 +214,7 @@ static OBSEncoder CreateAACEncoder(const char *name, int bitrate,
 
 	if (!res)
 		throw "Failed to create aac streaming encoder (simple output)";
-
+	obs_encoder_release(res);
 	return res;
 }
 /* ------------------------------------------------------------------------ */
@@ -1850,6 +1850,7 @@ AdvancedOutput::AdvancedOutput(OBSBasic *main_,
 			obs_data_get_string(config, "adv_stream_encoder");
 		OBSData advEncSettings = 
 			obs_data_get_obj(config, "adv_encoder_props");
+		obs_data_release(advEncSettings);
 		
 		const char* outputName = obs_data_get_string(config, "name");
 
@@ -1921,6 +1922,7 @@ void AdvancedOutput::UpdateStreamSettings(
 			obs_data_get_string(config, "adv_stream_encoder");
 		OBSData encoderProps =
 			obs_data_get_obj(config, "adv_encoder_props");
+		obs_data_release(encoderProps);
 
 		if (!vidEncType || strlen(vidEncType) == 0)
 			vidEncType = config_get_string(main->Config(), "AdvOut",
@@ -1954,6 +1956,7 @@ inline void AdvancedOutput::UpdateRecordingSettings()
 {
 	OBSData settings = GetDataFromJsonFile("recordEncoder.json");
 	obs_encoder_update(h264Recording, settings);
+	obs_data_release(settings);
 }
 
 void AdvancedOutput::Update()

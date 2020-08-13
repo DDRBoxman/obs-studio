@@ -23,7 +23,8 @@ public:
         std::vector<int> GetOrder() const;
         int GetCount() const;
 
-        const SettingsListContainer& SetSetting(int settingID, OBSData newSetting);
+        const SettingsListContainer& SetSetting(int settingID,
+                                                const OBSData &newSetting);
         const SettingsListContainer& SetOrder(const std::vector<int>& newOrder);
 
         int Add(const OBSData& setting);

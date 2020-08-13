@@ -1085,6 +1085,9 @@ OBSService OBSBasic::ServicefromJsonObj(OBSData data) {
 	const char *type = obs_data_get_string(data, "type");
 	const char *name = obs_data_get_string(data, "name"); 
 	OBSData hotkeyData = obs_data_get_obj(data, "hotkey-data");
+	if (hotkeyData)
+		obs_data_release(hotkeyData);
+
 	int outputID = obs_data_get_int(data, "output_id");
 
 	OBSService ret = obs_service_create(type, name, data, hotkeyData);
@@ -1155,15 +1158,18 @@ bool OBSBasic::LoadService() {
 		obs_service_release(tmp);
 
 		services.push_back(tmp);
-	}
+	} 
+	else {
+		obs_data_array_release(loadedServices);
+		for (unsigned int i = 0; 
+		     i < obs_data_array_count(loadedServices);i++) {
+			OBSData data = obs_data_array_item(loadedServices, i);
+			obs_data_release(data);
+			OBSService tmp = ServicefromJsonObj(data);
+			obs_service_release(tmp);
 
-	for (unsigned int i = 0; i < obs_data_array_count(loadedServices); i++) {
-		OBSData data = obs_data_array_item(loadedServices, i);
-		obs_data_release(data);
-		OBSService tmp = ServicefromJsonObj(data);
-		obs_service_release(tmp);
-
-		services.push_back(tmp);
+			services.push_back(tmp);
+		}
 	}
 
 	return !!services[0];
@@ -1293,6 +1299,7 @@ bool OBSBasic::SetDefaultOutputSetting() {
 	const char *advEncoder = config_get_string(basicConfig, "AdvOut", "Encoder");
 
 	OBSData outputSetting = obs_data_create();
+	obs_data_release(outputSetting);
 
 	if (!outputSetting)
 		return false;
@@ -2606,6 +2613,8 @@ OBSBasic::~OBSBasic()
 	delete cef;
 	cef = nullptr;
 #endif
+	services.clear();
+	streamOutputSettings.clear();
 }
 
 void OBSBasic::SaveProjectNow()

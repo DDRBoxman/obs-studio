@@ -1665,14 +1665,10 @@ void OBSBasicSettings::PopulateStreamOutputList(KeyedListWidget* list,
 
 void OBSBasicSettings::PopulateSimpleStreamOutputForm(int id) {
 	std::lock_guard<std::mutex> lock(outputMutex);
-	OBSData settings;
 	
 	loading = true;
-
-	settings = streamOutputSettings.at(id);
-	
+	OBSData settings = streamOutputSettings.at(id);
 	const char *outputName = obs_data_get_string(settings, "name");
-
 	int videoBitrate = obs_data_get_int(settings, "video_bitrate");
 	const char *streamEnc = 
 		obs_data_get_string(settings, "stream_encoder");
@@ -1714,9 +1710,8 @@ void OBSBasicSettings::PopulateSimpleStreamOutputForm(int id) {
 
 void OBSBasicSettings::PopulateAdvStreamOutputForm(int id) {
 	std::lock_guard<std::mutex> lock(outputMutex);
-	OBSData settings;
 	
-	settings = streamOutputSettings.at(id);
+	OBSData settings = streamOutputSettings.at(id);
 	const char* name = obs_data_get_string(settings, "name");
 	char streamEnc[64];
 	strcpy(streamEnc, obs_data_get_string(settings, "adv_stream_encoder"));
@@ -1929,6 +1924,7 @@ OBSBasicSettings::CreateEncoderPropertyView(const char *encoder,
 	}
 
 	OBSData settings = obs_encoder_defaults(type);
+	obs_data_release(settings);
 
 	if (!props) {
 		char encoderJsonPath[512];
@@ -1952,6 +1948,7 @@ OBSBasicSettings::CreateEncoderPropertyView(const char *encoder,
 	view->setFrameShape(QFrame::StyledPanel);
 	view->setProperty("changed", QVariant(changed));
 	QObject::connect(view, SIGNAL(Changed()), this, SLOT(OutputsChanged()));
+
 	return view;
 }
 

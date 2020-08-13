@@ -101,7 +101,11 @@ void OBSBasicSettings::InitStreamPage()
 
 OBSData OBSBasicSettings::ServiceToSettingData(const OBSService& service) {
 	OBSData serviceSetting = obs_service_get_settings(service);
-	obs_data_set_obj(serviceSetting, "hotkey-data", obs_hotkeys_save_service(service));
+	OBSData hotkeys = obs_hotkeys_save_service(service);
+	if (hotkeys) {
+		obs_data_set_obj(serviceSetting, "hotkey-data", hotkeys);
+		obs_data_release(hotkeys);
+	}
 	return serviceSetting;
 }
 
@@ -124,12 +128,14 @@ void OBSBasicSettings::LoadStream1Settings() {
 			obs_data_set_int(data, "AddonChoice", addon);
 		}
 
-		serviceSettings.Add(data);
 		ui->servicesList->AddNewItem(obs_data_get_string(data, "name"), 
 						  obs_data_get_int(data, "id"));
 		
 		if (selectedServiceID == obs_data_get_int(data, "id")) 
 			selectedIndex = i;
+		
+		serviceSettings.Add(data);
+		obs_data_release(data);
 	}
 
 	if (selectedServiceID == -1) {
@@ -148,7 +154,6 @@ void OBSBasicSettings::SaveStream1Settings() {
 		SaveStreamSettingsChanges(currentID);
 	}
 
-	OBSService defaultService;
 	std::vector<OBSService> services;
 
 	for (int i = 0; i < serviceSettings.GetCount(); i++) {
@@ -170,8 +175,10 @@ void OBSBasicSettings::SaveStream1Settings() {
 		OBSData hotkeyData = obs_data_get_obj(settings, "hotkey-data");
 
 		OBSService tmp = obs_service_create(type, name, settings, hotkeyData);
-		
-		services.push_back(tmp); 
+		services.push_back(tmp);
+		if (hotkeyData)
+			obs_data_release(hotkeyData);
+		obs_service_release(tmp);
 	}
 
 	main->SetServices(services);
@@ -546,6 +553,7 @@ void OBSBasicSettings::on_useAuth_toggled()
 
 void OBSBasicSettings::AddEmptyServiceSetting(int id, bool isDefault) {
 	OBSData data = obs_data_create();
+	obs_data_release(data);
 
 	char serviceName[64];
 	if (isDefault)
@@ -686,8 +694,6 @@ void OBSBasicSettings::PopulateStreamSettingsForm(int id) {
 	lastService.clear();
 	on_service_currentIndexChanged(0);
 
-	obs_data_release(settings);
-
 	UpdateKeyLink();
 
 	bool streamActive = obs_frontend_streaming_active();
@@ -768,13 +774,16 @@ OBSData OBSBasicSettings::GetStreamFormChanges() {
 
 void OBSBasicSettings::SaveStreamSettingsChanges(int selectedServiceID) {
 	OBSData formChanges = GetStreamFormChanges();
+	OBSData hotkeys = 
+		obs_data_get_obj(serviceSettings.GetSettings(selectedServiceID),
+				 "hotkey-data");
+	
+	if (hotkeys) {
+		obs_data_set_obj(formChanges, "hotkey-data", hotkeys);
+		obs_data_release(hotkeys);
+	}
 
-	obs_data_set_obj(formChanges, 
-		"hotkey-data",
-		obs_data_get_obj(
-			serviceSettings.GetSettings(selectedServiceID),
-			"hotkey-data"));
 	obs_data_set_int(formChanges, "id", selectedServiceID);
-
 	serviceSettings.SetSetting(selectedServiceID, formChanges);
+	obs_data_release(formChanges);
 }
