@@ -282,6 +282,8 @@ public:
 public slots:
 	void Failure(int id, const QString &message);
 	void TestComplete(const OBSData &config);
+	void on_resultsLeft_Clicked();
+	void on_resultsRight_Clicked();
 signals:
 	void StartBandwidthTests();
 	void CancelTests();

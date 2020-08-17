@@ -1243,7 +1243,22 @@ void AutoConfigTestPage::FinalizeResults()
 		QWidget *result = new QWidget(ui->stackedWidget);
 		QFormLayout *form = ShowResults(test.second, result);
 		result->setLayout(form);
+		ui->results->addWidget(result);
 	}
+}
+
+void AutoConfigTestPage::on_resultsLeft_Clicked() {
+	int currentIndex = ui->results->currentIndex();
+
+	if (currentIndex > 0 && ui->results->count() != 0)
+		ui->results->setCurrentIndex(currentIndex - 1);
+}
+
+void AutoConfigTestPage::on_resultsRight_Clicked() {
+	int currentIndex = ui->results->currentIndex();
+
+	if (currentIndex < ui->results->count() - 1 && ui->results->count() != 0)
+		ui->results->setCurrentIndex(currentIndex + 1);
 }
 
 #define STARTING_SEPARATOR \
@@ -1323,6 +1338,11 @@ AutoConfigTestPage::AutoConfigTestPage(QWidget *parent)
 	setTitle(QTStr("Basic.AutoConfig.TestPage"));
 	setSubTitle(QTStr(SUBTITLE_TESTING));
 	setCommitPage(true);
+
+	connect(ui->resultsLeft, SIGNAL(clicked()), this, 
+		SLOT(on_resultsLeft_Clicked()));
+	connect(ui->resultsRight, SIGNAL(clicked()), this, 
+		SLOT(on_resultsRight_Clicked()));
 }
 
 AutoConfigTestPage::~AutoConfigTestPage()
