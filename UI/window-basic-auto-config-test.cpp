@@ -1,8 +1,10 @@
 #include <chrono>
 
 #include <QFormLayout>
+#include <QVBoxLayout>
 
 #include <obs.hpp>
+#include <map>
 #include <util/platform.h>
 #include <util/util_uint64.h>
 #include <graphics/vec4.h>
@@ -99,29 +101,87 @@ public:
 #define TEST_RESULT_SE TEST_STR("Result.StreamingEncoder")
 #define TEST_RESULT_RE TEST_STR("Result.RecordingEncoder")
 
-void AutoConfigTestPage::StartBandwidthStage()
+Test::Test(const OBSData &settings_, 
+	  AutoConfigTestPage *parent,
+	  AutoConfig::Type type_) : QWidget(parent), type(type_)  {
+	testPage = parent;
+
+	QVBoxLayout *layout = new QVBoxLayout(this);
+	layout->setContentsMargins(0, 0, 0, 0);
+
+	QString name = QString("%1:%2")
+				.arg(obs_data_get_string(settings, "service"),
+				     obs_data_get_string(settings, "name"));
+
+	OBSData settings = obs_data_create();
+	obs_data_release(settings);
+	obs_data_apply(settings, settings_);
+
+	testPage->wizard()->Lock();
+	
+	baseCX = testPage->wizard()->baseResolutionCX;
+	baseCY = testPage->wizard()->baseResolutionCY;
+	type = testPage->wizard()->type;
+	specFpsNum = testPage->wizard()->specificFPSNum;
+	specFpsDen = testPage->wizard()->specificFPSDen;
+	preferHighFps = testPage->wizard()->preferHighFPS;
+	enc = testPage->wizard()->streamingEncoder;
+
+	testPage->wizard()->Unlock();
+
+	progress = new QProgressBar(this);
+	progressLabel = new QLabel(name, this);
+	progressLabel->setStyleSheet(" QLabel { font-weight: bold; } ");
+	subProgressLabel = new QLabel(this);
+
+	layout->addWidget(progressLabel);
+	layout->addWidget(subProgressLabel);
+	layout->addWidget(progress);
+
+	this->setLayout(layout);
+
+	connect(this, SIGNAL(Failure(int, QString&)), testPage, 
+		SLOT(Failure(int, QString&)));
+	connect(this, SIGNAL(Finished(OBSData&)), testPage, 
+		SLOT(TestComplete(OBSData&)));
+
+	connect(testPage, SIGNAL(StartBandwidthTests()), this, SLOT(StartTest()));
+	connect(testPage, SIGNAL(CancelTests()), this, SLOT(CancelTest()));
+}
+
+Test::~Test() {
+	if (progress)
+		delete progress;
+	if (progressLabel)
+		delete progressLabel;
+	if (subProgressLabel)
+		delete subProgressLabel;
+	
+}
+
+void Test::StartBandwidthStage()
 {
-	ui->progressLabel->setText(QTStr(TEST_BW));
+	progressLabel->setText(name + QString(" ") + QTStr(TEST_BW));
 	testThread = std::thread([this]() { TestBandwidthThread(); });
 }
 
-void AutoConfigTestPage::StartStreamEncoderStage()
+void Test::StartStreamEncoderStage()
 {
-	ui->progressLabel->setText(QTStr(TEST_SE));
+	progressLabel->setText(name + QString(" ") + QTStr(TEST_SE));
 	testThread = std::thread([this]() { TestStreamEncoderThread(); });
 }
 
-void AutoConfigTestPage::StartRecordingEncoderStage()
-{
-	ui->progressLabel->setText(QTStr(TEST_RE));
+void Test::StartRecordingEncoderStage() {
+	progressLabel->setText(name + QString(" ") + QTStr(TEST_RE));
 	testThread = std::thread([this]() { TestRecordingEncoderThread(); });
 }
 
-void AutoConfigTestPage::GetServers(std::vector<ServerInfo> &servers)
+void Test::GetServers(std::vector<ServerInfo> &servers,
+				    const std::string &server)
 {
 	OBSData settings = obs_data_create();
 	obs_data_release(settings);
-	obs_data_set_string(settings, "service", wiz->serviceName.c_str());
+	obs_data_set_string(settings, "service", server.c_str());
 
 	obs_properties_t *ppts = obs_get_service_properties("rtmp_common");
 	obs_property_t *p = obs_properties_get(ppts, "service");
@@ -135,13 +195,65 @@ void AutoConfigTestPage::GetServers(std::vector<ServerInfo> &servers)
 		const char *name = obs_property_list_item_name(p, i);
 		const char *server = obs_property_list_item_string(p, i);
 
-		if (wiz->CanTestServer(name)) {
+		if (CanTestServer(name)) {
 			ServerInfo info(name, server);
 			servers.push_back(info);
 		}
 	}
 
 	obs_properties_destroy(ppts);
+}
+
+bool Test::CanTestServer(const char *server)
+{	
+	bool testRegions = 
+		(obs_data_get_int(settings, "serviceType") == (int)Service::Twitch ||
+		obs_data_get_int(settings, "serviceType") == (int)Service::Smashcast);
+	testRegions = obs_data_get_int(settings, "serviceType") == (int)Service::Twitch ?
+		      !testPage->wizard()->hasTwitchAuto() :
+		      testRegions;
+
+	bool regionUS = obs_data_get_bool(settings, "regionUS");
+	bool regionEU = obs_data_get_bool(settings, "regionEU");
+	bool regionAsia = obs_data_get_bool(settings, "regionAsia");
+	bool regionOther = obs_data_get_bool(settings, "regionOther");
+
+	if (!testRegions || (regionUS && regionEU && regionAsia && regionOther))
+		return true;
+
+	if (obs_data_get_int(settings, "serviceType") == (int)Service::Twitch) {
+		if (astrcmp_n(server, "US West:", 8) == 0 ||
+		    astrcmp_n(server, "US East:", 8) == 0 ||
+		    astrcmp_n(server, "US Central:", 11) == 0) {
+			return regionUS;
+		} else if (astrcmp_n(server, "EU:", 3) == 0) {
+			return regionEU;
+		} else if (astrcmp_n(server, "Asia:", 5) == 0) {
+			return regionAsia;
+		} else if (regionOther) {
+			return true;
+		}
+	} else if (obs_data_get_int(settings, "serviceType") == 
+		   (int)Service::Smashcast) {
+		if (strcmp(server, "Default") == 0) {
+			return true;
+		} else if (astrcmp_n(server, "US-West:", 8) == 0 ||
+			   astrcmp_n(server, "US-East:", 8) == 0) {
+			return regionUS;
+		} else if (astrcmp_n(server, "EU-", 3) == 0) {
+			return regionEU;
+		} else if (astrcmp_n(server, "South Korea:", 12) == 0 ||
+			   astrcmp_n(server, "Asia:", 5) == 0 ||
+			   astrcmp_n(server, "China:", 6) == 0) {
+			return regionAsia;
+		} else if (regionOther) {
+			return true;
+		}
+	} else {
+		return true;
+	}
+
+	return false;
 }
 
 static inline void string_depad_key(string &key)
@@ -157,7 +269,7 @@ static inline void string_depad_key(string &key)
 
 const char *FindAudioEncoderFromCodec(const char *type);
 
-void AutoConfigTestPage::TestBandwidthThread()
+void Test::TestBandwidthThread()
 {
 	bool connected = false;
 	bool stopped = false;
@@ -179,14 +291,16 @@ void AutoConfigTestPage::TestBandwidthThread()
 	/* -----------------------------------*/
 	/* create obs objects                 */
 
-	const char *serverType = wiz->customServer ? "rtmp_custom"
-						   : "rtmp_common";
-
-	OBSEncoder vencoder = obs_video_encoder_create("obs_x264", "test_x264",
+	const char *serverType = obs_data_get_string(settings, "type");
+	std::string vencName, aencName, servName = obs_data_get_string(settings, "name");
+	vencName.append("-test_x264");
+	aencName.append("-test_aac");
+	servName.append("-test_service");
+	OBSEncoder vencoder = obs_video_encoder_create("obs_x264", vencName.c_str(),
 						       nullptr, nullptr);
-	OBSEncoder aencoder = obs_audio_encoder_create("ffmpeg_aac", "test_aac",
+	OBSEncoder aencoder = obs_audio_encoder_create("ffmpeg_aac", aencName.c_str(),
 						       nullptr, 0, nullptr);
-	OBSService service = obs_service_create(serverType, "test_service",
+	OBSService service = obs_service_create(serverType, servName.c_str(),
 						nullptr, nullptr);
 	obs_encoder_release(vencoder);
 	obs_encoder_release(aencoder);
@@ -194,41 +308,39 @@ void AutoConfigTestPage::TestBandwidthThread()
 
 	/* -----------------------------------*/
 	/* configure settings                 */
-
-	// service: "service", "server", "key"
 	// vencoder: "bitrate", "rate_control",
 	//           obs_service_apply_encoder_settings
 	// aencoder: "bitrate"
 	// output: "bind_ip" via main config -> "Output", "BindIP"
 	//         obs_output_set_service
 
-	OBSData service_settings = obs_data_create();
 	OBSData vencoder_settings = obs_data_create();
 	OBSData aencoder_settings = obs_data_create();
 	OBSData output_settings = obs_data_create();
-	obs_data_release(service_settings);
+	
 	obs_data_release(vencoder_settings);
 	obs_data_release(aencoder_settings);
 	obs_data_release(output_settings);
 
-	std::string key = wiz->key;
-	if (wiz->service == AutoConfig::Service::Twitch) {
+	std::string key = obs_data_get_string(settings, "key");
+	std::string serviceName = obs_data_get_string(settings, "service");
+	if (obs_data_get_int(settings, "serviceType") == 
+	    (int)Service::Twitch) {
 		string_depad_key(key);
 		key += "?bandwidthtest";
-	} else if (wiz->serviceName == "Restream.io" ||
-		   wiz->serviceName == "Restream.io - RTMP") {
+	} else if (serviceName == "Restream.io" ||
+		   serviceName == "Restream.io - RTMP") {
 		string_depad_key(key);
 		key += "?test=true";
-	} else if (wiz->serviceName == "Restream.io - FTL") {
+	} else if (serviceName == "Restream.io - FTL") {
 		string_depad_key(key);
 		key += "?test";
 	}
 
-	obs_data_set_string(service_settings, "service",
-			    wiz->serviceName.c_str());
-	obs_data_set_string(service_settings, "key", key.c_str());
+	obs_data_set_string(settings, "key", key.c_str());
 
-	obs_data_set_int(vencoder_settings, "bitrate", wiz->startingBitrate);
+	obs_data_set_int(vencoder_settings, "bitrate",
+			 obs_data_get_int(settings, "bitrate"));
 	obs_data_set_string(vencoder_settings, "rate_control", "CBR");
 	obs_data_set_string(vencoder_settings, "preset", "veryfast");
 	obs_data_set_int(vencoder_settings, "keyint_sec", 2);
@@ -244,19 +356,21 @@ void AutoConfigTestPage::TestBandwidthThread()
 	/* determine which servers to test    */
 
 	std::vector<ServerInfo> servers;
-	if (wiz->customServer)
-		servers.emplace_back(wiz->server.c_str(), wiz->server.c_str());
+	std::string server = obs_data_get_string(settings, "server");
+	if (strcmp(obs_data_get_string(settings, "type"), "rtmp_custom") == 0)
+		servers.emplace_back(server.c_str(), server.c_str());
 	else
-		GetServers(servers);
+		GetServers(servers, server);
 
 	/* just use the first server if it only has one alternate server,
 	 * or if using Mixer or Restream due to their "auto" servers */
-	if (servers.size() < 3 || wiz->serviceName == "Mixer.com - FTL" ||
-	    wiz->serviceName.substr(0, 11) == "Restream.io") {
+	if (servers.size() < 3 || serviceName == "Mixer.com - FTL" ||
+	    serviceName.substr(0, 11) == "Restream.io") {
 		servers.resize(1);
 
-	} else if (wiz->service == AutoConfig::Service::Twitch &&
-		   wiz->twitchAuto) {
+	} else if (obs_data_get_int(settings, "serviceType") == 
+		   (int)Service::Twitch &&
+		   testPage->wizard()->hasTwitchAuto()) {
 		/* if using Twitch and "Auto" is available, test 3 closest
 		 * server */
 		servers.erase(servers.begin() + 1);
@@ -266,7 +380,7 @@ void AutoConfigTestPage::TestBandwidthThread()
 	/* -----------------------------------*/
 	/* apply service settings             */
 
-	obs_service_update(service, service_settings);
+	obs_service_update(service, settings);
 	obs_service_apply_encoder_settings(service, vencoder_settings,
 					   aencoder_settings);
 
@@ -277,8 +391,12 @@ void AutoConfigTestPage::TestBandwidthThread()
 	if (!output_type)
 		output_type = "rtmp_output";
 
+	std::string outputName, audTestName = obs_data_get_string(settings, "name");
+	outputName.append("-test_stream");
+	audTestName.append("-test_audio");
+
 	OBSOutput output =
-		obs_output_create(output_type, "test_stream", nullptr, nullptr);
+		obs_output_create(output_type, outputName.c_str(), nullptr, nullptr);
 	obs_output_release(output);
 	obs_output_update(output, output_settings);
 
@@ -286,7 +404,7 @@ void AutoConfigTestPage::TestBandwidthThread()
 
 	if (strcmp(audio_codec, "aac") != 0) {
 		const char *id = FindAudioEncoderFromCodec(audio_codec);
-		aencoder = obs_audio_encoder_create(id, "test_audio", nullptr,
+		aencoder = obs_audio_encoder_create(id, audTestName.c_str(), nullptr,
 						    0, nullptr);
 		obs_encoder_release(aencoder);
 	}
@@ -358,9 +476,9 @@ void AutoConfigTestPage::TestBandwidthThread()
 			Q_ARG(QString, QTStr(TEST_BW_CONNECTING)
 					       .arg(server.name.c_str())));
 
-		obs_data_set_string(service_settings, "server",
+		obs_data_set_string(settings, "server", 
 				    server.address.c_str());
-		obs_service_update(service, service_settings);
+		obs_service_update(service, settings);
 
 		if (!obs_output_start(output))
 			continue;
@@ -369,6 +487,7 @@ void AutoConfigTestPage::TestBandwidthThread()
 		if (cancel) {
 			ul.unlock();
 			obs_output_force_stop(output);
+			emit Failure(obs_data_get_int(settings, "id"), "Cancelled");
 			return;
 		}
 		if (!stopped && !connected)
@@ -376,6 +495,7 @@ void AutoConfigTestPage::TestBandwidthThread()
 		if (cancel) {
 			ul.unlock();
 			obs_output_force_stop(output);
+			emit Failure(obs_data_get_int(settings, "id"), "Cancelled");
 			return;
 		}
 		if (!connected)
@@ -394,6 +514,7 @@ void AutoConfigTestPage::TestBandwidthThread()
 		if (cancel) {
 			ul.unlock();
 			obs_output_force_stop(output);
+			emit Failure(obs_data_get_int(settings, "id"), "Cancelled");
 			return;
 		}
 
@@ -407,6 +528,7 @@ void AutoConfigTestPage::TestBandwidthThread()
 		if (cancel) {
 			ul.unlock();
 			obs_output_force_stop(output);
+			emit Failure(obs_data_get_int(settings, "id"), "Cancelled");
 			return;
 		}
 
@@ -423,10 +545,10 @@ void AutoConfigTestPage::TestBandwidthThread()
 			total_bytes, 8ULL * 1000000000ULL / 1000ULL,
 			total_time);
 		if (obs_output_get_frames_dropped(output) ||
-		    (int)bitrate < (wiz->startingBitrate * 75 / 100)) {
+		    (int)bitrate < (obs_data_get_int(settings, "startingBitrate") * 75 / 100)) {
 			server.bitrate = (int)bitrate * 70 / 100;
 		} else {
-			server.bitrate = wiz->startingBitrate;
+			server.bitrate = obs_data_get_int(settings, "startingBitrate");
 		}
 
 		server.ms = obs_output_get_connect_time_ms(output);
@@ -457,9 +579,9 @@ void AutoConfigTestPage::TestBandwidthThread()
 		}
 	}
 
-	wiz->server = bestServer;
-	wiz->serverName = bestServerName;
-	wiz->idealBitrate = bestBitrate;
+	obs_data_set_string(settings, "server", bestServer.c_str());
+	obs_data_set_string(settings, "serverName", bestServerName.c_str());
+	obs_data_set_int(settings, "idealBitrate", bestBitrate);
 
 	QMetaObject::invokeMethod(this, "NextStage");
 }
@@ -517,7 +639,7 @@ static void CalcBaseRes(int &baseCX, int &baseCY)
 	}
 }
 
-bool AutoConfigTestPage::TestSoftwareEncoding()
+bool Test::TestSoftwareEncoding()
 {
 	TestMode testMode;
 	QMetaObject::invokeMethod(this, "UpdateMessage",
@@ -525,13 +647,16 @@ bool AutoConfigTestPage::TestSoftwareEncoding()
 
 	/* -----------------------------------*/
 	/* create obs objects                 */
-
-	OBSEncoder vencoder = obs_video_encoder_create("obs_x264", "test_x264",
+	std::string vencName, aencName, outputName = obs_data_get_string(settings, "name");
+	vencName.append("-test_x264");
+	aencName.append("-test_aac");
+	outputName.append("-null_output");
+	OBSEncoder vencoder = obs_video_encoder_create("obs_x264", vencName.c_str(),
 						       nullptr, nullptr);
-	OBSEncoder aencoder = obs_audio_encoder_create("ffmpeg_aac", "test_aac",
+	OBSEncoder aencoder = obs_audio_encoder_create("ffmpeg_aac", aencName.c_str(),
 						       nullptr, 0, nullptr);
 	OBSOutput output =
-		obs_output_create("null_output", "null", nullptr, nullptr);
+		obs_output_create("null_output", outputName.c_str(), nullptr, nullptr);
 	obs_output_release(output);
 	obs_encoder_release(vencoder);
 	obs_encoder_release(aencoder);
@@ -545,10 +670,10 @@ bool AutoConfigTestPage::TestSoftwareEncoding()
 	obs_data_release(vencoder_settings);
 	obs_data_set_int(aencoder_settings, "bitrate", 32);
 
-	if (wiz->type != AutoConfig::Type::Recording) {
+	if (type != AutoConfig::Type::Recording) {
 		obs_data_set_int(vencoder_settings, "keyint_sec", 2);
 		obs_data_set_int(vencoder_settings, "bitrate",
-				 wiz->idealBitrate);
+				 obs_data_get_int(settings, "idealBitrate"));
 		obs_data_set_string(vencoder_settings, "rate_control", "CBR");
 		obs_data_set_string(vencoder_settings, "profile", "main");
 		obs_data_set_string(vencoder_settings, "preset", "veryfast");
@@ -592,9 +717,6 @@ bool AutoConfigTestPage::TestSoftwareEncoding()
 
 	/* -----------------------------------*/
 	/* calculate starting resolution      */
-
-	int baseCX = wiz->baseResolutionCX;
-	int baseCY = wiz->baseResolutionCY;
 	CalcBaseRes(baseCX, baseCY);
 
 	/* -----------------------------------*/
@@ -639,8 +761,8 @@ bool AutoConfigTestPage::TestSoftwareEncoding()
 			return true;
 
 		if (!fps_num || !fps_den) {
-			fps_num = wiz->specificFPSNum;
-			fps_den = wiz->specificFPSDen;
+			fps_num = specFpsNum;
+			fps_den = specFpsDen;
 		}
 
 		long double fps = ((long double)fps_num / (long double)fps_den);
@@ -648,9 +770,9 @@ bool AutoConfigTestPage::TestSoftwareEncoding()
 		int cx = int(((long double)baseCX / (long double)baseCY) *
 			     (long double)cy);
 
-		if (!force && wiz->type != AutoConfig::Type::Recording) {
+		if (!force && type != AutoConfig::Type::Recording) {
 			int est = EstimateMinBitrate(cx, cy, fps_num, fps_den);
-			if (est > wiz->idealBitrate)
+			if (est > obs_data_get_int(settings, "idealBitrate"))
 				return true;
 		}
 
@@ -701,7 +823,7 @@ bool AutoConfigTestPage::TestSoftwareEncoding()
 		return !cancel;
 	};
 
-	if (wiz->specificFPSNum && wiz->specificFPSDen) {
+	if (specFpsNum && specFpsDen) {
 		count = 7;
 		if (!testRes(2160, 0, 0, false))
 			return false;
@@ -754,7 +876,7 @@ bool AutoConfigTestPage::TestSoftwareEncoding()
 
 	int minArea = 960 * 540 + 1000;
 
-	if (!wiz->specificFPSNum && wiz->preferHighFPS && results.size() > 1) {
+	if (specFpsNum != 0 && preferHighFps && results.size() > 1) {
 		Result &result1 = results[0];
 		Result &result2 = results[1];
 
@@ -766,32 +888,30 @@ bool AutoConfigTestPage::TestSoftwareEncoding()
 	}
 
 	Result result = results.front();
-	wiz->idealResolutionCX = result.cx;
-	wiz->idealResolutionCY = result.cy;
-	wiz->idealFPSNum = result.fps_num;
-	wiz->idealFPSDen = result.fps_den;
+	obs_data_set_int(settings, "idealResX", result.cx);
+	obs_data_set_int(settings, "idealResY", result.cy);
+	obs_data_set_int(settings, "idealFPSNum", result.fps_num);
+	obs_data_set_int(settings, "idealResDen", result.fps_den);
 
 	long double fUpperBitrate = EstimateUpperBitrate(
 		result.cx, result.cy, result.fps_num, result.fps_den);
 
 	int upperBitrate = int(floor(fUpperBitrate / 50.0l) * 50.0l);
 
-	if (wiz->streamingEncoder != AutoConfig::Encoder::x264) {
+	if (enc != AutoConfig::Encoder::x264) {
 		upperBitrate *= 114;
 		upperBitrate /= 100;
 	}
 
-	if (wiz->idealBitrate > upperBitrate)
-		wiz->idealBitrate = upperBitrate;
+	if (obs_data_get_int(settings, "idealBitrate") > upperBitrate)
+		obs_data_set_int(settings, "idealBitrate", upperBitrate);
 
 	softwareTested = true;
 	return true;
 }
 
-void AutoConfigTestPage::FindIdealHardwareResolution()
+void Test::FindIdealHardwareResolution()
 {
-	int baseCX = wiz->baseResolutionCX;
-	int baseCY = wiz->baseResolutionCY;
 	CalcBaseRes(baseCX, baseCY);
 
 	vector<Result> results;
@@ -812,8 +932,8 @@ void AutoConfigTestPage::FindIdealHardwareResolution()
 			return;
 
 		if (!fps_num || !fps_den) {
-			fps_num = wiz->specificFPSNum;
-			fps_den = wiz->specificFPSDen;
+			fps_num = specFpsNum;
+			fps_den = specFpsDen;
 		}
 
 		long double fps = ((long double)fps_num / (long double)fps_den);
@@ -825,8 +945,7 @@ void AutoConfigTestPage::FindIdealHardwareResolution()
 		if (!force && rate > maxDataRate)
 			return;
 
-		AutoConfig::Encoder encType = wiz->streamingEncoder;
-		bool nvenc = encType == AutoConfig::Encoder::NVENC;
+		bool nvenc = enc == AutoConfig::Encoder::NVENC;
 
 		int minBitrate = EstimateMinBitrate(cx, cy, fps_num, fps_den);
 
@@ -837,13 +956,15 @@ void AutoConfigTestPage::FindIdealHardwareResolution()
 		if (!nvenc)
 			minBitrate = minBitrate * 114 / 100;
 
-		if (wiz->type == AutoConfig::Type::Recording)
+		if (type == AutoConfig::Type::Recording)
 			force = true;
-		if (force || wiz->idealBitrate >= minBitrate)
+		if (force || 
+		    obs_data_get_int(settings, "idealBitrate") >= minBitrate){
 			results.emplace_back(cx, cy, fps_num, fps_den);
+		}
 	};
 
-	if (wiz->specificFPSNum && wiz->specificFPSDen) {
+	if (specFpsNum && specFpsDen) {
 		testRes(2160, 0, 0, false);
 		testRes(1440, 0, 0, false);
 		testRes(1080, 0, 0, false);
@@ -870,7 +991,7 @@ void AutoConfigTestPage::FindIdealHardwareResolution()
 
 	int minArea = 960 * 540 + 1000;
 
-	if (!wiz->specificFPSNum && wiz->preferHighFPS && results.size() > 1) {
+	if (!specFpsNum && preferHighFps && results.size() > 1) {
 		Result &result1 = results[0];
 		Result &result2 = results[1];
 
@@ -882,17 +1003,18 @@ void AutoConfigTestPage::FindIdealHardwareResolution()
 	}
 
 	Result result = results.front();
-	wiz->idealResolutionCX = result.cx;
-	wiz->idealResolutionCY = result.cy;
-	wiz->idealFPSNum = result.fps_num;
-	wiz->idealFPSDen = result.fps_den;
+	obs_data_set_int(settings, "idealResX", result.cx);
+	obs_data_set_int(settings, "idealResY", result.cy);
+	obs_data_set_int(settings, "idealFPSNum", result.fps_num);
+	obs_data_set_int(settings, "idealResDen", result.fps_den);
 }
 
-void AutoConfigTestPage::TestStreamEncoderThread()
+void Test::TestStreamEncoderThread()
 {
-	bool preferHardware = wiz->preferHardware;
+	bool preferHardware = obs_data_get_bool(settings, "preferHardware");
 	if (!softwareTested) {
-		if (!preferHardware || !wiz->hardwareEncodingAvailable) {
+		if (!preferHardware || 
+		    !testPage->wizard()->hardwareEncodingAvailable) {
 			if (!TestSoftwareEncoding()) {
 				return;
 			}
@@ -900,53 +1022,83 @@ void AutoConfigTestPage::TestStreamEncoderThread()
 	}
 
 	if (!softwareTested) {
-		if (wiz->nvencAvailable)
-			wiz->streamingEncoder = AutoConfig::Encoder::NVENC;
-		else if (wiz->qsvAvailable)
-			wiz->streamingEncoder = AutoConfig::Encoder::QSV;
-		else
-			wiz->streamingEncoder = AutoConfig::Encoder::AMD;
+		if (testPage->wizard()->nvencAvailable) {
+			enc = AutoConfig::Encoder::NVENC;
+			obs_data_set_string(settings, "streamEncoder",
+					    "ffmpeg_nvenc");
+		}
+		else if (testPage->wizard()->qsvAvailable) {
+			enc = AutoConfig::Encoder::QSV;
+			obs_data_set_string(settings, "streamEncoder",
+					    "obs_qsv11");
+		}
+		else {
+			enc = AutoConfig::Encoder::AMD;
+			obs_data_set_string(settings, "streamEncoder",
+					    "amd_amf_h264");
+		}
 	} else {
-		wiz->streamingEncoder = AutoConfig::Encoder::x264;
+		enc = AutoConfig::Encoder::x264;
+		obs_data_set_string(settings, "streamEncoder",
+				    "obs_x264");
 	}
 
-	if (preferHardware && !softwareTested && wiz->hardwareEncodingAvailable)
+	if (preferHardware &&
+	    !softwareTested &&
+	    testPage->wizard()->hardwareEncodingAvailable)
 		FindIdealHardwareResolution();
 
 	QMetaObject::invokeMethod(this, "NextStage");
 }
 
-void AutoConfigTestPage::TestRecordingEncoderThread()
+void Test::FinalizeResults() {
+	emit Finished(settings);
+}
+
+void Test::TestRecordingEncoderThread()
 {
-	if (!wiz->hardwareEncodingAvailable && !softwareTested) {
+	if (!testPage->wizard()->hardwareEncodingAvailable &&
+	    !softwareTested) {
 		if (!TestSoftwareEncoding()) {
 			return;
 		}
 	}
 
-	if (wiz->type == AutoConfig::Type::Recording &&
-	    wiz->hardwareEncodingAvailable)
+	if (type == AutoConfig::Type::Recording &&
+	    !testPage->wizard()->hardwareEncodingAvailable)
 		FindIdealHardwareResolution();
 
-	wiz->recordingQuality = AutoConfig::Quality::High;
+	recordingQuality = AutoConfig::Quality::High;
 
-	bool recordingOnly = wiz->type == AutoConfig::Type::Recording;
+	bool recordingOnly = type == AutoConfig::Type::Recording;
 
-	if (wiz->hardwareEncodingAvailable) {
-		if (wiz->nvencAvailable)
-			wiz->recordingEncoder = AutoConfig::Encoder::NVENC;
-		else if (wiz->qsvAvailable)
-			wiz->recordingEncoder = AutoConfig::Encoder::QSV;
-		else
-			wiz->recordingEncoder = AutoConfig::Encoder::AMD;
+	if (testPage->wizard()->hardwareEncodingAvailable) {
+		if (testPage->wizard()->nvencAvailable) {
+			enc = AutoConfig::Encoder::NVENC;
+			obs_data_set_string(settings, "recordingEncoder",
+					    "ffmpeg_nvenc");
+		}
+		else if (testPage->wizard()->qsvAvailable) {
+			enc = AutoConfig::Encoder::QSV;
+			obs_data_set_string(settings, "recordingEncoder",
+					    "obs_qsv11");
+		}
+		else {
+			enc = AutoConfig::Encoder::AMD;
+			obs_data_set_string(settings, "recordingEncoder",
+					    "amd_amf_h264");
+		}
 	} else {
-		wiz->recordingEncoder = AutoConfig::Encoder::x264;
+		enc = AutoConfig::Encoder::x264;
+		obs_data_set_string(settings, "recordingEncoder",
+				    "obs_x264");
+		
 	}
 
-	if (wiz->recordingEncoder != AutoConfig::Encoder::NVENC) {
+	if (enc != AutoConfig::Encoder::NVENC) {
 		if (!recordingOnly) {
-			wiz->recordingEncoder = AutoConfig::Encoder::Stream;
-			wiz->recordingQuality = AutoConfig::Quality::Stream;
+			enc = AutoConfig::Encoder::Stream;
+			recordingQuality = AutoConfig::Quality::Stream;
 		}
 	}
 
@@ -962,12 +1114,8 @@ void AutoConfigTestPage::TestRecordingEncoderThread()
 #define QUALITY_SAME "Basic.Settings.Output.Simple.RecordingQuality.Stream"
 #define QUALITY_HIGH "Basic.Settings.Output.Simple.RecordingQuality.Small"
 
-void AutoConfigTestPage::FinalizeResults()
-{
-	ui->stackedWidget->setCurrentIndex(1);
-	setSubTitle(QTStr(SUBTITLE_COMPLETE));
-
-	QFormLayout *form = results;
+QFormLayout *AutoConfigTestPage::ShowResults(Test *test, QWidget *parent) {
+	QFormLayout *form = new QFormLayout(parent);
 
 	auto encName = [](AutoConfig::Encoder enc) -> QString {
 		switch (enc) {
@@ -982,20 +1130,18 @@ void AutoConfigTestPage::FinalizeResults()
 		case AutoConfig::Encoder::Stream:
 			return QTStr(QUALITY_SAME);
 		}
-
 		return QTStr(ENCODER_SOFTWARE);
 	};
-
-	auto newLabel = [this](const char *str) -> QLabel * {
-		return new QLabel(QTStr(str), this);
+	
+	auto newLabel = [parent](const char *str) -> QLabel * {
+		return new QLabel(QTStr(str), parent);
 	};
 
-	if (wiz->type != AutoConfig::Type::Recording) {
-		const char *serverType = wiz->customServer ? "rtmp_custom"
-							   : "rtmp_common";
+	if (test->type == AutoConfig::Type::Streaming) {
+		const char* type = obs_data_get_string(test->settings, "type");
 
 		OBSService service = obs_service_create(
-			serverType, "temp_service", nullptr, nullptr);
+			type, "temp_service", nullptr, nullptr);
 		obs_service_release(service);
 
 		OBSData service_settings = obs_data_create();
@@ -1004,60 +1150,76 @@ void AutoConfigTestPage::FinalizeResults()
 		obs_data_release(vencoder_settings);
 
 		obs_data_set_int(vencoder_settings, "bitrate",
-				 wiz->idealBitrate);
+			obs_data_get_int(test->settings, "idealBitrate"));
 
 		obs_data_set_string(service_settings, "service",
-				    wiz->serviceName.c_str());
+			obs_data_get_string(test->settings, "service"));
 		obs_service_update(service, service_settings);
 		obs_service_apply_encoder_settings(service, vencoder_settings,
 						   nullptr);
 
-		wiz->idealBitrate =
-			(int)obs_data_get_int(vencoder_settings, "bitrate");
+		obs_data_set_int(test->settings, "idealBitrate",
+			(int)obs_data_get_int(vencoder_settings, "bitrate"));
 
-		if (!wiz->customServer)
+		form->addRow(
+			new QLabel("Stream Name"),
+			new QLabel(obs_data_get_string(test->settings, 
+							"serverName"),
+				   parent));
+		
+		if (strcmp(obs_data_get_string(test->settings, "type"),
+			   "rtmp_custom") != 0) {
 			form->addRow(
 				newLabel("Basic.AutoConfig.StreamPage.Service"),
-				new QLabel(wiz->serviceName.c_str(),
-					   ui->finishPage));
-		form->addRow(newLabel("Basic.AutoConfig.StreamPage.Server"),
-			     new QLabel(wiz->serverName.c_str(),
-					ui->finishPage));
-		form->addRow(newLabel("Basic.Settings.Output.VideoBitrate"),
-			     new QLabel(QString::number(wiz->idealBitrate),
-					ui->finishPage));
+				new QLabel(obs_data_get_string(test->settings, 
+								"service"),
+				   	   parent));
+		}
+		form->addRow(
+			newLabel("Basic.AutoConfig.StreamPage.Server"),
+			new QLabel(obs_data_get_string(test->settings, 
+							"serverName"), 
+				   parent));
+		form->addRow(
+			newLabel("Basic.Settings.Output.VideoBitrate"),
+			new QLabel(QString::number(
+					obs_data_get_int(test->settings, 
+							 "idealBitrate")),
+				   parent));
 		form->addRow(newLabel(TEST_RESULT_SE),
-			     new QLabel(encName(wiz->streamingEncoder),
-					ui->finishPage));
+			new QLabel(encName(wiz->streamingEncoder),
+				   parent));
 	}
+	QString resX = QString::number(obs_data_get_int(test->settings,
+							"idealResX"));
+	QString resY = QString::number(obs_data_get_int(test->settings,
+							"idealResY"));
+	QString baseRes = QString("%1x%2").arg(test->baseCX, test->baseCY);
+	QString scaleRes = QString("%1x%2").arg(resX, resY);
 
-	QString baseRes =
-		QString("%1x%2").arg(QString::number(wiz->baseResolutionCX),
-				     QString::number(wiz->baseResolutionCY));
-	QString scaleRes =
-		QString("%1x%2").arg(QString::number(wiz->idealResolutionCX),
-				     QString::number(wiz->idealResolutionCY));
+	if (test->type == AutoConfig::Type::Recording) {
+		if (wiz->recordingEncoder != AutoConfig::Encoder::Stream ||
+		    wiz->recordingQuality != AutoConfig::Quality::Stream) {
+			form->addRow(newLabel(TEST_RESULT_RE),
+				new QLabel(encName(wiz->recordingEncoder),
+						parent));
 
-	if (wiz->recordingEncoder != AutoConfig::Encoder::Stream ||
-	    wiz->recordingQuality != AutoConfig::Quality::Stream)
-		form->addRow(newLabel(TEST_RESULT_RE),
-			     new QLabel(encName(wiz->recordingEncoder),
-					ui->finishPage));
+			QString recQuality;
 
-	QString recQuality;
+			switch (wiz->recordingQuality) {
+			case AutoConfig::Quality::High:
+				recQuality = QTStr(QUALITY_HIGH);
+				break;
+			case AutoConfig::Quality::Stream:
+				recQuality = QTStr(QUALITY_SAME);
+				break;
+			}
 
-	switch (wiz->recordingQuality) {
-	case AutoConfig::Quality::High:
-		recQuality = QTStr(QUALITY_HIGH);
-		break;
-	case AutoConfig::Quality::Stream:
-		recQuality = QTStr(QUALITY_SAME);
-		break;
+			form->addRow(
+				newLabel("Basic.Settings.Output.Simple.RecordingQuality"),
+				new QLabel(recQuality, parent));
+		}
 	}
-
-	form->addRow(newLabel("Basic.Settings.Output.Simple.RecordingQuality"),
-		     new QLabel(recQuality, ui->finishPage));
-
 	long double fps =
 		(long double)wiz->idealFPSNum / (long double)wiz->idealFPSDen;
 
@@ -1065,74 +1227,93 @@ void AutoConfigTestPage::FinalizeResults()
 						: QString::number(fps, 'g', 2);
 
 	form->addRow(newLabel("Basic.Settings.Video.BaseResolution"),
-		     new QLabel(baseRes, ui->finishPage));
+		     new QLabel(baseRes, parent));
 	form->addRow(newLabel("Basic.Settings.Video.ScaledResolution"),
-		     new QLabel(scaleRes, ui->finishPage));
+		     new QLabel(scaleRes, parent));
 	form->addRow(newLabel("Basic.Settings.Video.FPS"),
-		     new QLabel(fpsStr, ui->finishPage));
+		     new QLabel(fpsStr, parent));
+}
+
+void AutoConfigTestPage::FinalizeResults()
+{
+	ui->stackedWidget->setCurrentIndex(1);
+	setSubTitle(QTStr(SUBTITLE_COMPLETE));
+
+	for (auto &test : tests) {
+		QWidget *result = new QWidget(ui->stackedWidget);
+		QFormLayout *form = ShowResults(test.second, result);
+		result->setLayout(form);
+	}
 }
 
 #define STARTING_SEPARATOR \
 	"\n==== Auto-config wizard testing commencing ======\n"
 #define STOPPING_SEPARATOR \
 	"\n==== Auto-config wizard testing stopping ========\n"
+#define ERROR_MESSAGE \
+	"Stream: %1\nError:\n%2\n=================================================\n"
 
-void AutoConfigTestPage::NextStage()
+void Test::NextStage()
 {
 	if (testThread.joinable())
 		testThread.join();
 	if (cancel)
 		return;
 
-	ui->subProgressLabel->setText(QString());
+	subProgressLabel->setText(QString());
 
-	/* make it skip to bandwidth stage if only set to config recording */
-	if (stage == Stage::Starting) {
+	if (type == AutoConfig::Type::Recording) {
+		stage = Stage::RecordingEncoder;
+		StartRecordingEncoderStage();
+	} else if (stage == Stage::Starting) {
 		if (!started) {
 			blog(LOG_INFO, STARTING_SEPARATOR);
 			started = true;
 		}
 
-		if (wiz->type == AutoConfig::Type::Recording) {
-			stage = Stage::StreamEncoder;
-		} else if (!wiz->bandwidthTest) {
-			stage = Stage::BandwidthTest;
-		}
-	}
-
-	if (stage == Stage::Starting) {
 		stage = Stage::BandwidthTest;
+		started = true;
 		StartBandwidthStage();
 
 	} else if (stage == Stage::BandwidthTest) {
 		stage = Stage::StreamEncoder;
 		StartStreamEncoderStage();
-
-	} else if (stage == Stage::StreamEncoder) {
-		stage = Stage::RecordingEncoder;
-		StartRecordingEncoderStage();
-
 	} else {
 		stage = Stage::Finished;
 		FinalizeResults();
-		emit completeChanged();
 	}
 }
 
-void AutoConfigTestPage::UpdateMessage(QString message)
+void Test::UpdateMessage(QString message)
 {
-	ui->subProgressLabel->setText(message);
+	progressLabel->setText(message);
 }
 
-void AutoConfigTestPage::Failure(QString message)
+void Test::Failure(QString message)
 {
-	ui->errorLabel->setText(message);
-	ui->stackedWidget->setCurrentIndex(2);
+	m.lock();
+	subProgressLabel->setText(message);
+	subProgressLabel->setStyleSheet("QLabel { color : red; }");
+	m.unlock();
+
+	emit Failure(obs_data_get_int(settings, "id"), message);
 }
 
-void AutoConfigTestPage::Progress(int percentage)
+void Test::Progress(int percentage)
 {
-	ui->progressBar->setValue(percentage);
+	progress->setValue(percentage);
+}
+
+void Test::StartTest() {
+	m.lock();
+	stage = Stage::Starting;
+	m.unlock();
+
+	NextStage();
+}
+
+void Test::CancelTest() {
+	CleanUp();
 }
 
 AutoConfigTestPage::AutoConfigTestPage(QWidget *parent)
@@ -1147,15 +1328,8 @@ AutoConfigTestPage::AutoConfigTestPage(QWidget *parent)
 AutoConfigTestPage::~AutoConfigTestPage()
 {
 	delete ui;
-
-	if (testThread.joinable()) {
-		{
-			unique_lock<mutex> ul(m);
-			cancel = true;
-			cv.notify_one();
-		}
-		testThread.join();
-	}
+	emit CancelTests();
+	ClearTests();
 
 	if (started)
 		blog(LOG_INFO, STOPPING_SEPARATOR);
@@ -1164,18 +1338,90 @@ AutoConfigTestPage::~AutoConfigTestPage()
 void AutoConfigTestPage::initializePage()
 {
 	setSubTitle(QTStr(SUBTITLE_TESTING));
-	stage = Stage::Starting;
-	softwareTested = false;
 	cancel = false;
 	DeleteLayout(results);
 	results = new QFormLayout();
 	results->setContentsMargins(0, 0, 0, 0);
 	ui->finishPageLayout->insertLayout(1, results);
 	ui->stackedWidget->setCurrentIndex(0);
-	NextStage();
+	
+	StartTests();
 }
 
-void AutoConfigTestPage::cleanupPage()
+void AutoConfigTestPage::StartTests() {
+	std::map<int, OBSData> configs = wiz->streamPage->GetConfigs();
+	ClearTests();
+
+	/* make it skip to bandwidth stage if only set to config recording */
+	if (wiz->type == AutoConfig::Type::Recording) {
+		if (wiz->recordingEncoder != AutoConfig::Encoder::Stream ||
+		    wiz->recordingQuality != AutoConfig::Quality::Stream) {
+			OBSData data = obs_data_create();
+			obs_data_release(data);
+
+			Test *test = new Test(data, this,
+					      AutoConfig::Type::Recording);
+		}
+
+		for (auto &config : configs) {
+			if (obs_data_get_int(config.second, "output_id") == -1) {
+				const char *name = 
+					obs_data_get_string(config.second, "name");
+				int newOutputID = wiz->AddDefaultOutput(name);
+				obs_data_set_int(config.second, "output_id", 
+						 newOutputID);
+			}
+		}
+	}
+	else {
+		QVBoxLayout *layout = 
+			reinterpret_cast<QVBoxLayout *>(QWidget::layout());
+		for (auto &config : configs) {
+			OBSData setting = config.second;
+			
+			if (obs_data_get_int(setting, "output_id") == -1) {
+				bool runTest = obs_data_get_bool(setting,
+							      "doBandwidthTest");
+				bool isYoutube = 
+					QString(obs_data_get_string(setting, "service"))
+							.startsWith("Youtube");
+
+				if (runTest && !isYoutube) {
+					tests[config.first] = new Test(setting, this);
+					layout->insertWidget(layout->count() - 1,
+							     tests[config.first]);
+				}
+				else {
+					const char *name = 
+						obs_data_get_string(setting, "name");
+					int newOutputID = wiz->AddDefaultOutput(name);
+					obs_data_set_int(setting, "output_id", newOutputID);
+				}
+			}
+		}
+	}
+	emit StartBandwidthTests();
+}
+
+void AutoConfigTestPage::ClearTests() {
+	emit CancelTests();
+	for (auto &test : tests) {
+		if (test.second)
+			delete test.second;
+	}
+	tests.clear();
+}
+
+void AutoConfigTestPage::Failure(int id, const QString &message) {
+	std::lock_guard<std::mutex> lock(m);
+	failureMessages += ERROR_MESSAGE;
+	failureMessages += failureMessages
+			.arg(obs_data_get_string(wiz->GetExistingOutput(id), "name"))
+			.arg(message);
+	failures[id] = message;
+}
+
+void Test::CleanUp()
 {
 	if (testThread.joinable()) {
 		{
@@ -1187,12 +1433,26 @@ void AutoConfigTestPage::cleanupPage()
 	}
 }
 
+void AutoConfigTestPage::cleanupPage()
+{
+	emit CancelTests();
+}
+
 bool AutoConfigTestPage::isComplete() const
 {
-	return stage == Stage::Finished;
+	return completeTests.size() + failures.size() == numTests;
 }
 
 int AutoConfigTestPage::nextId() const
 {
 	return -1;
+}
+
+void AutoConfigTestPage::TestComplete(const OBSData &config)
+{	
+	std::lock_guard<std::mutex> lock(m);
+	wiz->SetOutputs(obs_data_get_int(config, "id"),config);
+	completeTests.push_back(obs_data_get_int(config, "id"));
+	if (completeTests.size() + failures.size() == numTests)
+		FinalizeResults();
 }

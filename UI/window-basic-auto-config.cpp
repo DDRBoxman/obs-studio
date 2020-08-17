@@ -945,18 +945,18 @@ void AutoConfigStreamPage::GetStreamSettings()
 
 	int serviceType = -1;
 	if (service == "Twitch")
-		serviceType = (int)AutoConfig::Service::Twitch;
+		serviceType = (int)Service::Twitch;
 	else if (service == "Smashcast")
-		serviceType = (int)AutoConfig::Service::Smashcast;
+		serviceType = (int)Service::Smashcast;
 	else
-		serviceType = (int)AutoConfig::Service::Other;
+		serviceType = (int)Service::Other;
 
 	obs_data_set_int(service_settings, "serviceType", serviceType);
 
 	ready = true;
 }
 
-int AutoConfigStreamPage::GetNewSettingID(const std::map<int, OBSData> &map) {
+int AutoConfig::GetNewSettingID(const std::map<int, OBSData> &map) {
 	std::vector<int> usedIDs;
 	for (auto &i : map)
 		usedIDs.push_back(i.first);
@@ -990,7 +990,7 @@ void AutoConfigStreamPage::AddEmptyServiceSetting(int id) {
 void AutoConfigStreamPage::on_actionAddService_trigger() {
 	if (!CheckNameAndKey())
 		return;
-	int newID = GetNewSettingID(serviceConfigs);
+	int newID = AutoConfig::GetNewSettingID(serviceConfigs);
 
 	if (serviceConfigs.size() != 0)
 		GetStreamSettings();
@@ -1203,6 +1203,7 @@ AutoConfig::AutoConfig(QWidget *parent) : QWizard(parent)
 	twitchAuto = strcmp(first, "auto") == 0;
 
 	obs_properties_destroy(props);
+	existingOutputs = OBSBasic::Get()->GetStreamOutputSettings();
 
 	TestHardwareEncoding();
 
@@ -1274,6 +1275,67 @@ bool AutoConfig::CanTestServer(const char *server)
 	return false;
 }
 
+OBSData AutoConfig::GetDefaultOutput(const char* outputName, int id) {
+	OBSBasic *main = OBSBasic::Get();
+	int videoBitrate =
+		config_get_uint(main->Config(), "SimpleOutput", "VBitrate");
+	const char *streamEnc = config_get_string(
+		main->Config(), "SimpleOutput", "StreamEncoder");
+	int audioBitrate =
+		config_get_uint(main->Config(), "SimpleOutput", "ABitrate");
+	bool advanced =
+		config_get_bool(main->Config(), "SimpleOutput", "UseAdvanced");
+	bool enforceBitrate = config_get_bool(main->Config(), "SimpleOutput",
+					      "EnforceBitrate");
+	
+	const char *custom = config_get_string(main->Config(), "SimpleOutput",
+					       "x264Settings");
+
+	bool rescale = config_get_bool(main->Config(), "AdvOut", "Rescale");
+	const char *rescaleRes =
+		config_get_string(main->Config(), "AdvOut", "RescaleRes");
+	int trackIndex = config_get_int(main->Config(), "AdvOut", "TrackIndex");
+	bool applyServiceSettings = config_get_bool(main->Config(), "AdvOut",
+						    "ApplyServiceSettings");
+	
+	const char *curPreset = 
+		config_get_string(main->Config(), "SimpleOutput", "Preset");
+	const char *curQSVPreset = config_get_string(main->Config(), "SimpleOutput",
+					 "QSVPreset");
+	const char *curNVENCPreset = config_get_string(main->Config(), "SimpleOutput",
+						 "NVENCPreset");
+	const char *curAMDPreset = 
+		config_get_string(main->Config(), "SimpleOutput", "AMDPreset");
+	
+	OBSData newOutput = obs_data_create();
+	obs_data_release(newOutput);
+
+	obs_data_set_int(newOutput, "id_num", id);
+	obs_data_set_string(newOutput, "name", outputName);
+
+	/* simple settings */
+	obs_data_set_int(newOutput, "video_bitrate", videoBitrate);
+	obs_data_set_int(newOutput, "audio_bitrate", audioBitrate);
+	obs_data_set_string(newOutput, "stream_encoder", streamEnc);
+	obs_data_set_bool(newOutput, "use_advanced", advanced);
+	obs_data_set_bool(newOutput, "enforce_bitrate", enforceBitrate);
+	obs_data_set_string(newOutput, "x264Settings", custom);
+
+	/* default presets */
+	obs_data_set_string(newOutput, "preset", curPreset);
+	obs_data_set_string(newOutput, "QSVPreset", curQSVPreset);
+	obs_data_set_string(newOutput, "NVENCPreset", curNVENCPreset);
+	obs_data_set_string(newOutput, "AMDPreset", curAMDPreset);
+
+	/* advanced settings */
+	obs_data_set_bool(newOutput, "rescale", rescale);
+	obs_data_set_string(newOutput, "rescale_resolution", rescaleRes);
+	obs_data_set_int(newOutput, "track_index", trackIndex);
+	obs_data_set_bool(newOutput, "apply_service_settings", applyServiceSettings);
+
+	return newOutput;
+}
+
 void AutoConfig::done(int result)
 {
 	QWizard::done(result);
@@ -1341,6 +1403,13 @@ void AutoConfig::SaveStreamSettings()
 	config_set_string(main->Config(), "SimpleOutput", "StreamEncoder",
 			  GetEncoderId(streamingEncoder));
 	config_remove_value(main->Config(), "SimpleOutput", "UseAdvanced");
+}
+
+int AutoConfig::AddDefaultOutput(const char* name) {
+	int newID = AutoConfig::GetNewSettingID(existingOutputs);
+	OBSData newOutput = AutoConfig::GetDefaultOutput(name, newID);
+	existingOutputs[newID] = newOutput;
+	return newID;
 }
 
 void AutoConfig::SaveSettings()

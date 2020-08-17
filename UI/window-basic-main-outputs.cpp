@@ -1851,7 +1851,7 @@ AdvancedOutput::AdvancedOutput(OBSBasic *main_,
 		OBSData advEncSettings = 
 			obs_data_get_obj(config, "adv_encoder_props");
 		obs_data_release(advEncSettings);
-		
+
 		const char* outputName = obs_data_get_string(config, "name");
 
 		int streamTrack = 

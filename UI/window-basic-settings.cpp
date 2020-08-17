@@ -1722,6 +1722,7 @@ void OBSBasicSettings::PopulateAdvStreamOutputForm(int id) {
 	const char* rescaleRes = obs_data_get_string(settings, "adv_rescale");
 
 	OBSData encoderProps = obs_data_get_obj(settings, "adv_encoder_props");
+	obs_data_release(encoderProps);
 
 	ui->advancedOutputName->setText(name);
 
@@ -5038,7 +5039,6 @@ void OBSBasicSettings::AddDefaultOutputSetting(int id) {
 	sprintf(outputName, "New Output %d", id);
 
 	OBSData newOutput = GetDefaultOutput(outputName, id);
-
 	streamOutputSettings.insert({id, newOutput});
 }
 
