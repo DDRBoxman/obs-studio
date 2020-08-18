@@ -497,7 +497,7 @@ void AutoConfigStreamPage::ServiceChanged()
 	if (!loading && QObject::sender() && 
 	    QObject::sender() == ui->doBandwidthTest &&
 	    ui->doBandwidthTest->isChecked()) {
-		if (QT_TO_UTF8(ui->service->currentText()) != "Twitch") {
+		if (ui->service->currentText().toStdString() != "Twitch") {
 			QMessageBox::StandardButton button;
 #define WARNING_TEXT(x) QTStr("Basic.AutoConfig.StreamPage.StreamWarning." x)
 			button = OBSMessageBox::question(this, 
@@ -736,16 +736,8 @@ void AutoConfigStreamPage::LoadOutputComboBox(
 	}
 	ui->output->model()->sort(0);
 
-	if (!autoConfigSet) {
-		std::sort(outputIDs.begin(), outputIDs.end());
-		for (int i = 0; i < (int)outputIDs.size(); i++){
-			if (i != outputIDs[i]) {
-				autoConfigID = i;
-				break;
-			}
-		}
-		ui->output->insertItem(0, "Auto-Config Output", autoConfigID);
-	}
+	if (!autoConfigSet)
+		ui->output->insertItem(0, "Auto-Config Output", -1);
 }
 
 void AutoConfigStreamPage::LoadStreamSettings() {
@@ -837,7 +829,7 @@ void AutoConfigStreamPage::PopulateStreamSettings() {
 void AutoConfigStreamPage::ClearStreamSettings() {
 	ui->streamName->setText("");
 	ui->key->setText("");
-	ui->output->setCurrentIndex(ui->output->findText("Auto-Config Output"));
+	ui->output->setCurrentIndex(ui->output->findData(-1));
 	ui->bitrate->setValue(2500);
 
 	ui->preferHardware->setChecked(false);
@@ -922,6 +914,8 @@ void AutoConfigStreamPage::GetStreamSettings()
 		obs_data_set_string(service_settings, "server", QT_TO_UTF8(server));
 	}
 
+	obs_data_set_int(service_settings, "output_id", 
+					 ui->output->currentData().toInt());
 	obs_data_set_bool(service_settings, "bwTest",
 			  ui->doBandwidthTest->isChecked());
 	obs_data_set_int(service_settings, "startingBitrate",

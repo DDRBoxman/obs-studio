@@ -362,7 +362,6 @@ private:
 
 	void FinalizeResults();
 
-	void NextStage();
 	void UpdateMessage(QString message);
 	void Failure(QString message);
 	void Progress(int percentage);
@@ -372,6 +371,8 @@ private:
 public slots:
 	void StartTest();
 	void CancelTest();
+private slots:
+	void NextStage();
 signals:
 	void Failure(int id, const QString &message);
 	void Finished(const OBSData &config);

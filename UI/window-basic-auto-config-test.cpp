@@ -109,15 +109,12 @@ Test::Test(const OBSData &settings_,
 	QVBoxLayout *layout = new QVBoxLayout(this);
 	layout->setContentsMargins(0, 0, 0, 0);
 
-	QString name = QString("%1:%2")
-				.arg(obs_data_get_string(settings, "service"),
-				     obs_data_get_string(settings, "name"));
-
-	OBSData settings = obs_data_create();
+	settings = obs_data_create();
 	obs_data_release(settings);
 	obs_data_apply(settings, settings_);
-
 	testPage->wizard()->Lock();
+
+	name = QString(obs_data_get_string(settings, "name"));
 	
 	baseCX = testPage->wizard()->baseResolutionCX;
 	baseCY = testPage->wizard()->baseResolutionCY;
@@ -277,7 +274,7 @@ void Test::TestBandwidthThread()
 	TestMode testMode;
 	testMode.SetVideo(128, 128, 60, 1);
 
-	QMetaObject::invokeMethod(this, "Progress", Q_ARG(int, 0));
+	Progress(0);
 
 	/*
 	 * create encoders
@@ -285,8 +282,7 @@ void Test::TestBandwidthThread()
 	 * test for 10 seconds
 	 */
 
-	QMetaObject::invokeMethod(this, "UpdateMessage",
-				  Q_ARG(QString, QStringLiteral("")));
+	UpdateMessage("");
 
 	/* -----------------------------------*/
 	/* create obs objects                 */
@@ -360,7 +356,7 @@ void Test::TestBandwidthThread()
 	if (strcmp(obs_data_get_string(settings, "type"), "rtmp_custom") == 0)
 		servers.emplace_back(server.c_str(), server.c_str());
 	else
-		GetServers(servers, server);
+		GetServers(servers, serviceName);
 
 	/* just use the first server if it only has one alternate server,
 	 * or if using Mixer or Restream due to their "auto" servers */
@@ -391,7 +387,9 @@ void Test::TestBandwidthThread()
 	if (!output_type)
 		output_type = "rtmp_output";
 
-	std::string outputName, audTestName = obs_data_get_string(settings, "name");
+	std::string outputName = obs_data_get_string(settings, "name");
+	std::string audTestName = obs_data_get_string(settings, "name");
+
 	outputName.append("-test_stream");
 	audTestName.append("-test_audio");
 
@@ -470,12 +468,8 @@ void Test::TestBandwidthThread()
 		stopped = false;
 
 		int per = int((i + 1) * 100 / servers.size());
-		QMetaObject::invokeMethod(this, "Progress", Q_ARG(int, per));
-		QMetaObject::invokeMethod(
-			this, "UpdateMessage",
-			Q_ARG(QString, QTStr(TEST_BW_CONNECTING)
-					       .arg(server.name.c_str())));
-
+		Progress(per);
+		UpdateMessage(QTStr(TEST_BW_CONNECTING).arg(server.name.c_str()));
 		obs_data_set_string(settings, "server", 
 				    server.address.c_str());
 		obs_service_update(service, settings);
@@ -501,10 +495,7 @@ void Test::TestBandwidthThread()
 		if (!connected)
 			continue;
 
-		QMetaObject::invokeMethod(
-			this, "UpdateMessage",
-			Q_ARG(QString,
-			      QTStr(TEST_BW_SERVER).arg(server.name.c_str())));
+		UpdateMessage(QTStr(TEST_BW_SERVER).arg(server.name.c_str()));
 
 		/* ignore first 2.5 seconds due to possible buffering skewing
 		 * the result */
@@ -556,9 +547,7 @@ void Test::TestBandwidthThread()
 	}
 
 	if (!success) {
-		QMetaObject::invokeMethod(this, "Failure",
-					  Q_ARG(QString,
-						QTStr(TEST_BW_CONNECT_FAIL)));
+		Failure(QTStr(TEST_BW_CONNECT_FAIL));
 		return;
 	}
 
@@ -582,7 +571,7 @@ void Test::TestBandwidthThread()
 	obs_data_set_string(settings, "server", bestServer.c_str());
 	obs_data_set_string(settings, "serverName", bestServerName.c_str());
 	obs_data_set_int(settings, "idealBitrate", bestBitrate);
-
+	
 	QMetaObject::invokeMethod(this, "NextStage");
 }
 
@@ -642,8 +631,7 @@ static void CalcBaseRes(int &baseCX, int &baseCY)
 bool Test::TestSoftwareEncoding()
 {
 	TestMode testMode;
-	QMetaObject::invokeMethod(this, "UpdateMessage",
-				  Q_ARG(QString, QStringLiteral("")));
+	UpdateMessage("");
 
 	/* -----------------------------------*/
 	/* create obs objects                 */
@@ -751,7 +739,8 @@ bool Test::TestSoftwareEncoding()
 
 	auto testRes = [&](int cy, int fps_num, int fps_den, bool force) {
 		int per = ++i * 100 / count;
-		QMetaObject::invokeMethod(this, "Progress", Q_ARG(int, per));
+		Progress(per);
+		//QMetaObject::invokeMethod(this, "Progress", Q_ARG(int, per));
 
 		if (cy > baseCY)
 			return true;
@@ -793,20 +782,14 @@ bool Test::TestSoftwareEncoding()
 
 		QString fpsStr = (fps_den > 1) ? QString::number(fps, 'f', 2)
 					       : QString::number(fps, 'g', 2);
-
-		QMetaObject::invokeMethod(
-			this, "UpdateMessage",
-			Q_ARG(QString,
-			      QTStr(TEST_RES_VAL).arg(cxStr, cyStr, fpsStr)));
+		UpdateMessage(QTStr(TEST_RES_VAL).arg(cxStr, cyStr, fpsStr));
 
 		unique_lock<mutex> ul(m);
 		if (cancel)
 			return false;
 
 		if (!obs_output_start(output)) {
-			QMetaObject::invokeMethod(this, "Failure",
-						  Q_ARG(QString,
-							QTStr(TEST_RES_FAIL)));
+			Failure(QTStr(TEST_RES_FAIL));
 			return false;
 		}
 
@@ -1232,6 +1215,7 @@ QFormLayout *AutoConfigTestPage::ShowResults(Test *test, QWidget *parent) {
 		     new QLabel(scaleRes, parent));
 	form->addRow(newLabel("Basic.Settings.Video.FPS"),
 		     new QLabel(fpsStr, parent));
+	return form;
 }
 
 void AutoConfigTestPage::FinalizeResults()
@@ -1285,9 +1269,7 @@ void Test::NextStage()
 			blog(LOG_INFO, STARTING_SEPARATOR);
 			started = true;
 		}
-
 		stage = Stage::BandwidthTest;
-		started = true;
 		StartBandwidthStage();
 
 	} else if (stage == Stage::BandwidthTest) {
@@ -1301,7 +1283,7 @@ void Test::NextStage()
 
 void Test::UpdateMessage(QString message)
 {
-	progressLabel->setText(message);
+	subProgressLabel->setText(message);
 }
 
 void Test::Failure(QString message)
@@ -1379,7 +1361,7 @@ void AutoConfigTestPage::StartTests() {
 			OBSData data = obs_data_create();
 			obs_data_release(data);
 
-			Test *test = new Test(data, this,
+			tests[-1] = new Test(data, this,
 					      AutoConfig::Type::Recording);
 		}
 
@@ -1398,14 +1380,12 @@ void AutoConfigTestPage::StartTests() {
 			reinterpret_cast<QVBoxLayout *>(QWidget::layout());
 		for (auto &config : configs) {
 			OBSData setting = config.second;
-			
 			if (obs_data_get_int(setting, "output_id") == -1) {
 				bool runTest = obs_data_get_bool(setting,
-							      "doBandwidthTest");
+							      "bwTest");
 				bool isYoutube = 
 					QString(obs_data_get_string(setting, "service"))
-							.startsWith("Youtube");
-
+							.startsWith("YouTube");
 				if (runTest && !isYoutube) {
 					tests[config.first] = new Test(setting, this);
 					layout->insertWidget(layout->count() - 1,
@@ -1425,6 +1405,7 @@ void AutoConfigTestPage::StartTests() {
 
 void AutoConfigTestPage::ClearTests() {
 	emit CancelTests();
+	cancel = true;
 	for (auto &test : tests) {
 		if (test.second)
 			delete test.second;
@@ -1433,7 +1414,6 @@ void AutoConfigTestPage::ClearTests() {
 }
 
 void AutoConfigTestPage::Failure(int id, const QString &message) {
-	std::lock_guard<std::mutex> lock(m);
 	failureMessages += ERROR_MESSAGE;
 	failureMessages += failureMessages
 			.arg(obs_data_get_string(wiz->GetExistingOutput(id), "name"))
@@ -1460,7 +1440,7 @@ void AutoConfigTestPage::cleanupPage()
 
 bool AutoConfigTestPage::isComplete() const
 {
-	return completeTests.size() + failures.size() == numTests;
+	return completeTests.size() + failures.size() == tests.size() && !cancel;
 }
 
 int AutoConfigTestPage::nextId() const
@@ -1470,9 +1450,8 @@ int AutoConfigTestPage::nextId() const
 
 void AutoConfigTestPage::TestComplete(const OBSData &config)
 {	
-	std::lock_guard<std::mutex> lock(m);
 	wiz->SetOutputs(obs_data_get_int(config, "id"),config);
 	completeTests.push_back(obs_data_get_int(config, "id"));
-	if (completeTests.size() + failures.size() == numTests)
+	if (isComplete())
 		FinalizeResults();
 }
