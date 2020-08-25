@@ -1,7 +1,5 @@
 #pragma once
 
-#include <QProgressBar>
-#include <QLabel>
 #include <QWizard>
 #include <QPointer>
 #include <QFormLayout>
@@ -15,8 +13,6 @@
 #include <string>
 #include <mutex>
 #include <map>
-
-class Test;
 
 class Ui_AutoConfigStartPage;
 class Ui_AutoConfigVideoPage;
@@ -39,7 +35,6 @@ class AutoConfig : public QWizard {
 	friend class AutoConfigVideoPage;
 	friend class AutoConfigStreamPage;
 	friend class AutoConfigTestPage;
-	friend class Test;
 
 	enum class Type {
 		Invalid,
@@ -109,7 +104,10 @@ class AutoConfig : public QWizard {
 	int specificFPSNum = 0;
 	int specificFPSDen = 0;
 
+	std::map<int, OBSData> serviceConfigs;
 	std::map<int, OBSData> existingOutputs;
+	std::map<int, OBSData> successfulTests;
+
 	std::mutex m;
 
 	void TestHardwareEncoding();
@@ -136,12 +134,18 @@ public:
 	void AddOutput(int id, OBSData config) { 
 		existingOutputs.insert({id, config}); 
 	}
+
 	int AddDefaultOutput(const char* name);
+	int AddTestedOutputData(const OBSData &config);
+	OBSService ExtractServiceData(const OBSData &config);
+	void SetSuccessfulTests(const std::map<int, OBSData> &results);
+	
 	enum Page {
 		StartPage,
 		VideoPage,
 		StreamPage,
 		TestPage,
+		FinalPage
 	};
 };
 
@@ -242,64 +246,33 @@ public slots:
 	void on_serviceList_itemClicked(int id);
 };
 
+struct ServerInfo {
+	std::string name;
+	std::string address;
+	int bitrate;
+	int ms;
+
+	inline ServerInfo() : bitrate(0) , ms(-1) {}
+
+	inline ServerInfo(const char *name_, const char *address_)
+		: name(name_), address(address_)
+	{
+	}
+};
+
 class AutoConfigTestPage : public QWizardPage {
 	Q_OBJECT
 
 	friend class AutoConfig;
-	friend class Test;
 
 	QPointer<QFormLayout> results;
 
 	Ui_AutoConfigTestPage *ui;
 
-	std::map<int, Test*> tests;
+	std::map<int, OBSData> tests;
+	std::map<int, OBSData>::iterator currentTest;
 	QString failureMessages;
 	std::map<int, QString> failures;
-	std::mutex m;
-
-	int numTests = 0;
-	std::vector<int> completeTests;
-	bool cancel = false;
-	bool started = false;
-
-	void StartTests();
-	void ClearTests();
-	void FinalizeResults();
-	QFormLayout *ShowResults(Test *test, QWidget *parent);
-public:
-	AutoConfigTestPage(QWidget *parent = nullptr);
-	~AutoConfigTestPage();
-
-	virtual void initializePage() override;
-	virtual void cleanupPage() override;
-	virtual bool isComplete() const override;
-	virtual int nextId() const override;
-
-	AutoConfig *wizard() { 
-		return reinterpret_cast<AutoConfig *>(QWizardPage::wizard());
-	}; 
-
-public slots:
-	void Failure(int id, const QString &message);
-	void TestComplete(const OBSData &config);
-	void on_resultsLeft_Clicked();
-	void on_resultsRight_Clicked();
-signals:
-	void StartBandwidthTests();
-	void CancelTests();
-};
-
-class Test : public QWidget {
-	Q_OBJECT
-
-	friend class AutoConfigTestPage;
-
-	AutoConfigTestPage *testPage;
-	QString name;
-	QProgressBar *progress;
-	QLabel *progressLabel;
-	QLabel *subProgressLabel;
-	OBSData settings;
 
 	std::thread testThread;
 	std::condition_variable cv;
@@ -311,69 +284,51 @@ class Test : public QWidget {
 		StreamEncoder,
 		RecordingEncoder,
 		Finished,
+		Failed
 	};
 
-	struct ServerInfo {
-		std::string name;
-		std::string address;
-		int bitrate;
-		int ms;
+	void StartBandwidthStage(const OBSData &settings);
+	void StartStreamEncoderStage(const OBSData &settings);
+	void StartRecordingEncoderStage(const OBSData &settings);
 
-		inline ServerInfo() : bitrate(0) , ms(-1) {}
+	void FindIdealHardwareResolution(const OBSData &settings);
+	bool TestSoftwareEncoding(const OBSData &settings);
 
-		inline ServerInfo(const char *name_, const char *address_)
-			: name(name_), address(address_)
-		{
-		}
-	};
+	void TestBandwidthThread(const OBSData &settings);
+	void TestStreamEncoderThread(const OBSData &settings);
+	void TestRecordingEncoderThread(const OBSData &settings);
 
+	QWidget *CreateResultWidget(const OBSData& result, QWidget *parent = nullptr);
+	void ClearResults();
+
+	std::vector<int> completeTests;
 	bool cancel = false;
 	bool started = false;
-	bool softwareTested = false;
-
-	int baseCX;
-	int baseCY;
-	int specFpsNum;
-	int specFpsDen;
-	bool preferHighFps;
-
-	AutoConfig::Type type;
-	AutoConfig::Encoder enc;
-	AutoConfig::Quality recordingQuality;
-
 	Stage stage = Stage::Starting;
+
+	std::vector<ServerInfo> GetServers(const std::string &service);
 public:
-	Test(const OBSData &settings_,
-	     AutoConfigTestPage *parent = nullptr,
-	     AutoConfig::Type type = AutoConfig::Type::Streaming);
-	~Test();
-	void CleanUp();
-private:
-	void StartBandwidthStage();
-	void StartStreamEncoderStage();
-	void StartRecordingEncoderStage();
+	AutoConfigTestPage(QWidget *parent = nullptr);
+	~AutoConfigTestPage();
 
-	void FindIdealHardwareResolution();
-	bool TestSoftwareEncoding();
+	virtual void initializePage() override;
+	virtual bool validatePage() override;
+	virtual void cleanupPage() override;
+	virtual bool isComplete() const override;
+	virtual int nextId() const override;
 
-	void TestBandwidthThread();
-	void TestStreamEncoderThread();
-	void TestRecordingEncoderThread();
-
-	void FinalizeResults();
-
-	void UpdateMessage(QString message);
-	void Failure(QString message);
-	void Progress(int percentage);
-	void GetServers(std::vector<ServerInfo> &servers, 
-			const std::string &server = "");
-	bool CanTestServer(const char * server);
-public slots:
-	void StartTest();
-	void CancelTest();
 private slots:
 	void NextStage();
+	void UpdateMessage(QString message);
+	void UpdateStage(QString name, QString stage);
+	void Failure(QString message);
+	void Progress(int percentage);
+	void FinalizeResults();
+
+public slots:
+	void StreamIndexChanged();
+	void OnErrorButtonClicked();
 signals:
-	void Failure(int id, const QString &message);
-	void Finished(const OBSData &config);
+	void StageChanged(QString name, QString stage);
+	void Finished();
 };
