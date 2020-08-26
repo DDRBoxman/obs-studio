@@ -5,7 +5,7 @@
 
 void KeyedListWidget::AddNewItem(const QString &alias, int key) {
         QString name = alias;
-        QListWidgetItem* item = new QListWidgetItem(name);
+        QListWidgetItem* item = new QListWidgetItem(name, this);
         item->setData(Qt::UserRole, key);
         addItem(item);
         setCurrentItem(item);
@@ -40,6 +40,7 @@ void KeyedListWidget::RemoveItem() {
         if (count() != 0)
                 newItemKey = currentItem()->data(Qt::UserRole).toInt();
 
+        delete item;
         emit RemovedKey(removedItemKey, newItemKey);
 }
 
