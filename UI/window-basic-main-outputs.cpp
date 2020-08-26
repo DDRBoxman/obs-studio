@@ -445,7 +445,7 @@ OBSEncoder SimpleOutput::LoadStreamingPreset(const char *encoderId,
 	OBSEncoder videoEncoder = 
 		obs_video_encoder_create(encoderId, encoderName, 
 					 nullptr, nullptr);
-	if (!videoEncoder)
+	if (!(obs_encoder_t *)videoEncoder)
 		throw "Failed to create h264 streaming encoder (simple output)";
 	obs_encoder_release(videoEncoder);
 

@@ -2310,8 +2310,13 @@ void OBSBasicSettings::UpdateStreamOutputComboBox() {
 		const char *name = obs_data_get_string(output.second, "name");
 		ui->streamOutputComboBox->addItem(name, output.first);
 	}
-
 	ui->streamOutputComboBox->model()->sort(0);
+	
+	if (!loading) {
+		int id = ui->servicesList->currentItem()->data(Qt::UserRole).toInt();
+		int index = ui->streamOutputComboBox->findData(id);
+		ui->streamOutputComboBox->setCurrentIndex(index);
+	}
 }
 
 void OBSBasicSettings::SetAdvOutputFFmpegEnablement(ff_codec_type encoderType,

@@ -138,8 +138,6 @@ void OBSBasicSettings::LoadStream1Settings() {
 			selectedIndex = i;
 		
 		serviceSettings.Add(data);
-		qDebug() << obs_data_get_int(data, "output_id");
-		qDebug() << obs_data_get_json(data);
 		obs_data_release(data);
 	}
 
