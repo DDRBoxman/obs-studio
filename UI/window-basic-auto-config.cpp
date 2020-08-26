@@ -373,14 +373,14 @@ bool AutoConfigStreamPage::validatePage()
 		QString detailedMessage;
 
 		if (defaultSets.size() != 0) {
-			detailedMessage += "The following services will get default output configuartions:\n\n";
+			detailedMessage += "The following services will get default output configurations:\n\n";
 			detailedMessage += defaultSets;
 			detailedMessage += "\n-------------------------------------";
 			detailedMessage += "\n-------------------------------------\n\n";
 		}
 
 		if (testSets.size() != 0) {
-			detailedMessage += "The following services will get default output configuartions from bandwidth tests:\n";
+			detailedMessage += "The following services will get their output configurations from bandwidth tests:\n";
 			detailedMessage += testSets;
 		}
 
@@ -758,6 +758,8 @@ void AutoConfigStreamPage::LoadStreamSettings() {
 	ready = true;
 	for (unsigned int i = 0; i < services.size(); i++) {
 		OBSData data = ServiceToSettingData(services[i]);
+		obs_data_release(data);
+
 		int id = obs_data_get_int(data, "id");
 		ui->serviceList->AddNewItem(obs_data_get_string(data, "name"),
 					     id);
