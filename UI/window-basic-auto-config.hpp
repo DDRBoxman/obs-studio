@@ -35,7 +35,6 @@ class AutoConfig : public QWizard {
 	friend class AutoConfigVideoPage;
 	friend class AutoConfigStreamPage;
 	friend class AutoConfigTestPage;
-	friend class Test;
 
 	enum class Type {
 		Invalid,
@@ -105,7 +104,10 @@ class AutoConfig : public QWizard {
 	int specificFPSNum = 0;
 	int specificFPSDen = 0;
 
+	std::map<int, OBSData> serviceConfigs;
 	std::map<int, OBSData> existingOutputs;
+	std::map<int, OBSData> successfulTests;
+
 	std::mutex m;
 
 	void TestHardwareEncoding();
@@ -132,12 +134,18 @@ public:
 	void AddOutput(int id, OBSData config) { 
 		existingOutputs.insert({id, config}); 
 	}
+
 	int AddDefaultOutput(const char* name);
+	int AddTestedOutputData(const OBSData &config);
+	OBSService ExtractServiceData(const OBSData &config);
+	void SetSuccessfulTests(const std::map<int, OBSData> &results);
+	
 	enum Page {
 		StartPage,
 		VideoPage,
 		StreamPage,
 		TestPage,
+		FinalPage
 	};
 };
 
@@ -266,12 +274,6 @@ class AutoConfigTestPage : public QWizardPage {
 	QString failureMessages;
 	std::map<int, QString> failures;
 
-	int baseCX;
-	int baseCY;
-	int specFpsNum;
-	int specFpsDen;
-	bool preferHighFps;
-
 	std::thread testThread;
 	std::condition_variable cv;
 	std::mutex m;
@@ -296,7 +298,8 @@ class AutoConfigTestPage : public QWizardPage {
 	void TestStreamEncoderThread(const OBSData &settings);
 	void TestRecordingEncoderThread(const OBSData &settings);
 
-	void FinalizeResults();
+	QWidget *CreateResultWidget(const OBSData& result, QWidget *parent = nullptr);
+	void ClearResults();
 
 	std::vector<int> completeTests;
 	bool cancel = false;
@@ -309,6 +312,7 @@ public:
 	~AutoConfigTestPage();
 
 	virtual void initializePage() override;
+	virtual bool validatePage() override;
 	virtual void cleanupPage() override;
 	virtual bool isComplete() const override;
 	virtual int nextId() const override;
@@ -316,6 +320,15 @@ public:
 private slots:
 	void NextStage();
 	void UpdateMessage(QString message);
+	void UpdateStage(QString name, QString stage);
 	void Failure(QString message);
 	void Progress(int percentage);
+	void FinalizeResults();
+
+public slots:
+	void StreamIndexChanged();
+	void OnErrorButtonClicked();
+signals:
+	void StageChanged(QString name, QString stage);
+	void Finished();
 };

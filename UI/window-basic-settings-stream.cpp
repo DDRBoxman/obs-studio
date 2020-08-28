@@ -101,6 +101,9 @@ void OBSBasicSettings::InitStreamPage()
 
 OBSData OBSBasicSettings::ServiceToSettingData(const OBSService& service) {
 	OBSData serviceSetting = obs_service_get_settings(service);
+	obs_data_set_int(serviceSetting, "output_id",
+			 obs_service_get_output_id(service));
+
 	OBSData hotkeys = obs_hotkeys_save_service(service);
 	if (hotkeys) {
 		obs_data_set_obj(serviceSetting, "hotkey-data", hotkeys);

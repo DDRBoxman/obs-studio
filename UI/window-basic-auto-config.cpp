@@ -1,5 +1,6 @@
 #include <QMessageBox>
 #include <QScreen>
+#include <QDebug>
 
 #include <algorithm>
 #include <obs.hpp>
@@ -309,7 +310,16 @@ bool AutoConfigStreamPage::isComplete() const
 
 int AutoConfigStreamPage::nextId() const
 {
-	return AutoConfig::TestPage;
+	bool test;
+
+	for (auto &service : serviceConfigs) {
+		if (obs_data_get_int(service.second, "output_id") == -1 &&
+		    obs_data_get_bool(service.second, "bwtest")) {
+			test = true;
+			break;
+		}
+	}
+	return test ? AutoConfig::TestPage : -1;
 }
 
 inline bool AutoConfigStreamPage::IsCustomService() const
@@ -339,7 +349,7 @@ bool AutoConfigStreamPage::validatePage()
 		if (obs_data_get_int(config.second, "output_id") == -1) {
 			const char *name = 
 				obs_data_get_string(config.second, "name");
-			if (obs_data_get_bool(config.second, "bwTest")){
+			if (obs_data_get_bool(config.second, "bwtest")){
 				testSets += "\n";
 				testSets += name;
 			}
@@ -363,14 +373,14 @@ bool AutoConfigStreamPage::validatePage()
 		QString detailedMessage;
 
 		if (defaultSets.size() != 0) {
-			detailedMessage += "The following services will get default output configuartions:\n\n";
+			detailedMessage += "The following services will get default output configurations:\n\n";
 			detailedMessage += defaultSets;
 			detailedMessage += "\n-------------------------------------";
 			detailedMessage += "\n-------------------------------------\n\n";
 		}
 
 		if (testSets.size() != 0) {
-			detailedMessage += "The following services will get default output configuartions from bandwidth tests:\n";
+			detailedMessage += "The following services will get their output configurations from bandwidth tests:\n";
 			detailedMessage += testSets;
 		}
 
@@ -387,6 +397,7 @@ bool AutoConfigStreamPage::validatePage()
 			return false;
 	}
 
+	wiz->serviceConfigs = serviceConfigs;
 	return true;
 }
 
@@ -497,7 +508,7 @@ void AutoConfigStreamPage::ServiceChanged()
 	if (!loading && QObject::sender() && 
 	    QObject::sender() == ui->doBandwidthTest &&
 	    ui->doBandwidthTest->isChecked()) {
-		if (QT_TO_UTF8(ui->service->currentText()) != "Twitch") {
+		if (ui->service->currentText().toStdString() != "Twitch") {
 			QMessageBox::StandardButton button;
 #define WARNING_TEXT(x) QTStr("Basic.AutoConfig.StreamPage.StreamWarning." x)
 			button = OBSMessageBox::question(this, 
@@ -736,16 +747,8 @@ void AutoConfigStreamPage::LoadOutputComboBox(
 	}
 	ui->output->model()->sort(0);
 
-	if (!autoConfigSet) {
-		std::sort(outputIDs.begin(), outputIDs.end());
-		for (int i = 0; i < (int)outputIDs.size(); i++){
-			if (i != outputIDs[i]) {
-				autoConfigID = i;
-				break;
-			}
-		}
-		ui->output->insertItem(0, "Auto-Config Output", autoConfigID);
-	}
+	if (!autoConfigSet)
+		ui->output->insertItem(0, "Auto-Config Output", -1);
 }
 
 void AutoConfigStreamPage::LoadStreamSettings() {
@@ -755,6 +758,8 @@ void AutoConfigStreamPage::LoadStreamSettings() {
 	ready = true;
 	for (unsigned int i = 0; i < services.size(); i++) {
 		OBSData data = ServiceToSettingData(services[i]);
+		obs_data_release(data);
+
 		int id = obs_data_get_int(data, "id");
 		ui->serviceList->AddNewItem(obs_data_get_string(data, "name"),
 					     id);
@@ -821,7 +826,7 @@ void AutoConfigStreamPage::PopulateStreamSettings() {
 			obs_data_get_bool(settings, "preferHardware"));
 	}
 	ui->doBandwidthTest->setChecked(
-			obs_data_get_bool(settings, "bwTest"));
+			obs_data_get_bool(settings, "bwtest"));
 	ui->regionUS->setChecked(
 			obs_data_get_bool(settings, "regionUS"));
 	ui->regionEU->setChecked(
@@ -837,7 +842,7 @@ void AutoConfigStreamPage::PopulateStreamSettings() {
 void AutoConfigStreamPage::ClearStreamSettings() {
 	ui->streamName->setText("");
 	ui->key->setText("");
-	ui->output->setCurrentIndex(ui->output->findText("Auto-Config Output"));
+	ui->output->setCurrentIndex(ui->output->findData(-1));
 	ui->bitrate->setValue(2500);
 
 	ui->preferHardware->setChecked(false);
@@ -922,7 +927,9 @@ void AutoConfigStreamPage::GetStreamSettings()
 		obs_data_set_string(service_settings, "server", QT_TO_UTF8(server));
 	}
 
-	obs_data_set_bool(service_settings, "bwTest",
+	obs_data_set_int(service_settings, "output_id", 
+					 ui->output->currentData().toInt());
+	obs_data_set_bool(service_settings, "bwtest",
 			  ui->doBandwidthTest->isChecked());
 	obs_data_set_int(service_settings, "startingBitrate",
 			  (int)obs_data_get_int(service_settings, "bitrate"));
@@ -1278,34 +1285,41 @@ bool AutoConfig::CanTestServer(const char *server)
 OBSData AutoConfig::GetDefaultOutput(const char* outputName, int id) {
 	OBSBasic *main = OBSBasic::Get();
 	int videoBitrate =
-		config_get_uint(main->Config(), "SimpleOutput", "VBitrate");
-	const char *streamEnc = config_get_string(
+		config_get_default_uint(main->Config(), "SimpleOutput", "VBitrate");
+	const char *streamEnc = config_get_default_string(
 		main->Config(), "SimpleOutput", "StreamEncoder");
 	int audioBitrate =
-		config_get_uint(main->Config(), "SimpleOutput", "ABitrate");
+		config_get_default_uint(main->Config(), "SimpleOutput", "ABitrate");
 	bool advanced =
-		config_get_bool(main->Config(), "SimpleOutput", "UseAdvanced");
-	bool enforceBitrate = config_get_bool(main->Config(), "SimpleOutput",
-					      "EnforceBitrate");
+		config_get_default_bool(main->Config(), "SimpleOutput", "UseAdvanced");
+	bool enforceBitrate = 
+		config_get_default_bool(main->Config(), "SimpleOutput",
+					"EnforceBitrate");
 	
-	const char *custom = config_get_string(main->Config(), "SimpleOutput",
-					       "x264Settings");
+	const char *custom =
+		config_get_default_string(main->Config(), "SimpleOutput",
+				  "x264Settings");
 
-	bool rescale = config_get_bool(main->Config(), "AdvOut", "Rescale");
+	bool rescale =
+		config_get_default_bool(main->Config(), "AdvOut", "Rescale");
 	const char *rescaleRes =
-		config_get_string(main->Config(), "AdvOut", "RescaleRes");
-	int trackIndex = config_get_int(main->Config(), "AdvOut", "TrackIndex");
-	bool applyServiceSettings = config_get_bool(main->Config(), "AdvOut",
-						    "ApplyServiceSettings");
+		config_get_default_string(main->Config(), "AdvOut", "RescaleRes");
+	int trackIndex =
+		config_get_default_int(main->Config(), "AdvOut", "TrackIndex");
+	bool applyServiceSettings =
+		config_get_default_bool(main->Config(), "AdvOut",
+					"ApplyServiceSettings");
 	
 	const char *curPreset = 
-		config_get_string(main->Config(), "SimpleOutput", "Preset");
-	const char *curQSVPreset = config_get_string(main->Config(), "SimpleOutput",
+		config_get_default_string(main->Config(), "SimpleOutput", "Preset");
+	const char *curQSVPreset =
+		config_get_default_string(main->Config(), "SimpleOutput",
 					 "QSVPreset");
-	const char *curNVENCPreset = config_get_string(main->Config(), "SimpleOutput",
-						 "NVENCPreset");
+	const char *curNVENCPreset =
+		config_get_default_string(main->Config(), "SimpleOutput",
+					   "NVENCPreset");
 	const char *curAMDPreset = 
-		config_get_string(main->Config(), "SimpleOutput", "AMDPreset");
+		config_get_default_string(main->Config(), "SimpleOutput", "AMDPreset");
 	
 	OBSData newOutput = obs_data_create();
 	obs_data_release(newOutput);
@@ -1364,45 +1378,41 @@ inline const char *AutoConfig::GetEncoderId(Encoder enc)
 void AutoConfig::SaveStreamSettings()
 {
 	OBSBasic *main = reinterpret_cast<OBSBasic *>(App()->GetMainWindow());
+	
+	std::map<int, OBSData> configs = streamPage->GetConfigs();
+	std::vector<OBSService> services;
 
-	/* ---------------------------------- */
-	/* save service                       */
+	int defaultOutputID = -1;
 
-	const char *service_id = customServer ? "rtmp_custom" : "rtmp_common";
+	for (auto &config : configs) {
+		OBSService service = ExtractServiceData(config.second);
+		obs_service_release(service);
 
-	obs_service_t *oldService = main->GetService();
-	OBSData hotkeyData = obs_hotkeys_save_service(oldService);
-	obs_data_release(hotkeyData);
+		if (obs_data_get_int(config.second, "output_id") == -1) {
+			if (obs_data_get_bool(config.second, "tested") == true) {
+				int outputID = AddTestedOutputData(successfulTests[config.first]);
+				obs_service_set_output_id(service, outputID);
+			}
+			else {
+				if (defaultOutputID == -1) {
+					defaultOutputID =
+						AddDefaultOutput("Auto-config default");
+				}
+				obs_service_set_output_id(service, defaultOutputID);
+			}
+		}
 
-	OBSData settings = obs_data_create();
-	obs_data_release(settings);
+		services.push_back(service);
+	}
 
-	if (!customServer)
-		obs_data_set_string(settings, "service", serviceName.c_str());
-	obs_data_set_string(settings, "server", server.c_str());
-	obs_data_set_string(settings, "key", key.c_str());
+	main->SetStreamOutputSettings(existingOutputs);
+	main->SetServices(services);
 
-	OBSService newService = obs_service_create(
-		service_id, "default_service", settings, hotkeyData);
-	obs_service_release(newService);
-
-	if (!newService)
-		return;
-
-	main->SetService(newService);
+	main->SaveStreamOutputs();
 	main->SaveService();
-	// main->auth = streamPage->auth;
-	// if (!!main->auth)
-	// 	main->auth->LoadUI();
 
-	/* ---------------------------------- */
-	/* save stream settings               */
-
-	config_set_int(main->Config(), "SimpleOutput", "VBitrate",
-		       idealBitrate);
-	config_set_string(main->Config(), "SimpleOutput", "StreamEncoder",
-			  GetEncoderId(streamingEncoder));
-	config_remove_value(main->Config(), "SimpleOutput", "UseAdvanced");
+	main->SetAuths(streamPage->serviceAuths);
+	main->LoadAuthUIs();
 }
 
 int AutoConfig::AddDefaultOutput(const char* name) {
@@ -1410,6 +1420,97 @@ int AutoConfig::AddDefaultOutput(const char* name) {
 	OBSData newOutput = AutoConfig::GetDefaultOutput(name, newID);
 	existingOutputs[newID] = newOutput;
 	return newID;
+}
+
+int AutoConfig::AddTestedOutputData(const OBSData &config) {
+	OBSData output = obs_data_create();
+	obs_data_release(output);
+
+	auto encName = [](int enc) -> const char *{
+		QString name;
+		switch (enc) {
+		case (int)AutoConfig::Encoder::x264:
+			name = "x264";
+			break;
+		case (int)AutoConfig::Encoder::NVENC:
+			name = "ffmpeg_nvenc";
+			break;
+		case (int)AutoConfig::Encoder::QSV:
+			name = "obs_qsv11";
+			break;
+		case (int)AutoConfig::Encoder::AMD:
+			name = "amd_amf_h264";
+			break;
+		default:
+			name = "x264";
+			break;
+		}
+		return name.toStdString().c_str();
+	};
+
+	obs_data_set_string(output, "name", 
+			    obs_data_get_string(config, "name"));
+	obs_data_set_string(output, "stream_encoder",
+			    encName(obs_data_get_int(config, "videoEncoderType")));
+	obs_data_set_int(output, "track_index", 1);
+	obs_data_set_bool(output, "apply_service_settings", false);
+	obs_data_set_bool(output, "use_advanced", false);
+	obs_data_set_bool(output, "enforce_bitrate", false);
+
+	int resX = obs_data_get_int(config, "resX");
+	int resY = obs_data_get_int(config, "resY");
+	const char* resString =
+		QString("%1x%2").arg(resX, resY).toStdString().c_str();
+	obs_data_set_string(output, "rescale_resolution", resString);
+	obs_data_set_bool(output, "rescale", true);
+
+
+	obs_data_set_string(output, "stream_encoder", 
+			encName(obs_data_get_int(config, "videoEncoderType")));
+	obs_data_set_int(output, "video_bitrate",
+			 obs_data_get_int(config, "idealBitrate"));
+	obs_data_set_int(output, "audio_bitrate",
+			 obs_data_get_int(config, "audio_bitrate"));
+	obs_data_set_string(output, "x264Settings", "");
+	obs_data_set_string(output, "preset",
+			obs_data_get_string(config, "preset"));
+
+	int newID = GetNewSettingID(existingOutputs);
+	obs_data_set_int(output, "id_num", newID);
+	existingOutputs[newID] = output;
+	
+	return newID;
+}
+
+OBSService AutoConfig::ExtractServiceData(const OBSData &config) {
+	const char *type = obs_data_get_string(config, "type");
+	const char *name = obs_data_get_string(config, "name");
+	int id = obs_data_get_int(config, "id");
+
+	OBSData settings = obs_data_create();
+	obs_data_release(settings);
+
+	obs_data_set_string(settings, "name", name);
+	obs_data_set_string(settings, "type", type);
+	obs_data_set_string(settings, "key", 
+			    obs_data_get_string(config, "key"));
+	obs_data_set_string(settings, "server",
+			    obs_data_get_string(config, "server"));
+	obs_data_set_string(settings, "service",
+			    obs_data_get_string(config, "service"));
+
+	obs_data_set_bool(settings, "bwtest", false);
+	obs_data_set_bool(settings, "connectedAccount",
+			  streamPage->serviceAuths.find(id) != 
+			  	streamPage->serviceAuths.end());
+
+	obs_data_set_int(settings, "id", obs_data_get_int(config, "id"));
+	obs_data_set_int(settings, "output_id",
+			 obs_data_get_int(config, "output_id"));
+	
+	OBSService tmp = obs_service_create(type, name, settings, nullptr);
+	
+	return tmp;
 }
 
 void AutoConfig::SaveSettings()

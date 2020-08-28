@@ -17,7 +17,6 @@ public:
             QObject::connect(this, SIGNAL(itemClicked(QListWidgetItem*)),
                 this, SLOT(SelectionChanged(QListWidgetItem*)));
         }
-        virtual ~KeyedListWidget() {}
 public slots:
         void AddNewItem(const QString &alias, int key);
         void UpdateItemName(const QString &alias);

@@ -1481,6 +1481,8 @@ void OBSPropertiesView::SetSettings(const OBSData& newSettings) {
 	}
 	else {
 		settings = obs_encoder_defaults(type.c_str());
+		if (settings)
+			obs_data_release(settings);
 	}
 	ReloadProperties();
 }

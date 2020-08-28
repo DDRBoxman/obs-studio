@@ -1171,8 +1171,8 @@ bool OBSBasic::LoadService() {
 			services.push_back(tmp);
 		}
 	}
-
-	return !!services[0];
+	
+	return services.size() != 0 && !!services[0];
 }
 
 bool OBSBasic::InitService()
