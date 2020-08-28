@@ -747,6 +747,9 @@ public:
 	void SetServices(const std::vector<OBSService>& newServices);
 	std::vector<OBSService> GetServices() const { return services; }
 
+	void AddService(obs_service_t* service) { services.push_back(service); }
+	bool RemoveService(obs_service_t* service);
+
 	void SetStreamOutputSettings(const std::map<int, OBSData>& settings) {
 		streamOutputSettings = settings;
 		ResetOutputs();

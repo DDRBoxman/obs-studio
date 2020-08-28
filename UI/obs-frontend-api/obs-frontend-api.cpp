@@ -398,6 +398,42 @@ void obs_frontend_set_streaming_service(obs_service_t *service)
 		c->obs_frontend_set_streaming_service(service);
 }
 
+void obs_frontend_get_streaming_services(
+			struct obs_frontend_service_list *services)
+{
+	if (!!callbacks_valid())
+		return;
+	if (services)
+		obs_frontend_service_list_free(services);
+
+	services = c->obs_frontend_get_streaming_services();
+}
+
+void obs_frontend_add_streaming_service(obs_service_t *service) {
+	if (!service || !!callbacks_valid())
+		return;
+
+	c->obs_frontend_add_streaming_service(service);
+}
+
+bool obs_frontend_remove_streaming_service(obs_service_t *service) {
+	if (!service || !!callbacks_valid())
+		return false;
+
+	return c->obs_frontend_remove_streaming_service(service);
+}
+
+void obs_frontend_get_streaming_outputs(
+			struct obs_frontend_output_list *outputs)
+{
+	if (!!callbacks_valid())
+		return;
+	if (outputs)
+		obs_frontend_output_list_free(outputs);
+
+	outputs = c->obs_frontend_get_streaming_outputs();
+}
+
 obs_service_t *obs_frontend_get_streaming_service(void)
 {
 	return !!callbacks_valid() ? c->obs_frontend_get_streaming_service()
@@ -408,6 +444,18 @@ void obs_frontend_save_streaming_service(void)
 {
 	if (callbacks_valid())
 		c->obs_frontend_save_streaming_service();
+}
+
+void obs_frontend_save_streaming_services(void)
+{
+	if (callbacks_valid())
+		c->obs_frontend_save_streaming_services();
+}
+
+void obs_frontend_save_streaming_outputs(void)
+{
+	if (callbacks_valid())
+		c->obs_frontend_save_streaming_outputs();
 }
 
 bool obs_frontend_preview_program_mode_active(void)

@@ -3773,6 +3773,23 @@ void OBSBasic::LoadAuthUIs() {
 	}
 }
 
+bool OBSBasic::RemoveService(obs_service_t* service) {
+	if (outputHandler && outputHandler->StreamingActive()) {
+		blog(LOG_ERROR, "you cannot remove a stream during live streaming.");
+		return false;
+	}
+	
+	for (std::vector<OBSService>::iterator it = services.begin();
+	     it != services.end(); it++) {
+		if (*it == service) {
+			services.erase(it);
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void OBSBasic::SetService(obs_service_t *newService) {
 	services[0] = newService;
 }

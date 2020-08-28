@@ -59,6 +59,14 @@ struct obs_frontend_source_list {
 	DARRAY(obs_source_t *) sources;
 };
 
+struct obs_frontend_service_list {
+	DARRAY(obs_service_t *) services;
+};
+
+struct obs_frontend_output_list {
+	DARRAY(obs_output_t *) outputs;
+};
+
 static inline void
 obs_frontend_source_list_free(struct obs_frontend_source_list *source_list)
 {
@@ -66,6 +74,24 @@ obs_frontend_source_list_free(struct obs_frontend_source_list *source_list)
 	for (size_t i = 0; i < num; i++)
 		obs_source_release(source_list->sources.array[i]);
 	da_free(source_list->sources);
+}
+
+static inline void
+obs_frontend_service_list_free(struct obs_frontend_service_list *service_list)
+{
+	size_t num = service_list->services.num;
+	for (size_t i = 0; i < num; i++)
+		obs_service_release(service_list->services.array[i]);
+	da_free(service_list->services);
+}
+
+static inline void
+obs_frontend_output_list_free(struct obs_frontend_output_list *output_list)
+{
+	size_t num = output_list->outputs.num;
+	for (size_t i = 0; i < num; i++)
+		obs_output_release(output_list->outputs.array[i]);
+	da_free(output_list->outputs);
 }
 
 #endif //!SWIG
@@ -100,6 +126,14 @@ EXPORT obs_source_t *obs_frontend_get_current_transition(void);
 EXPORT void obs_frontend_set_current_transition(obs_source_t *transition);
 EXPORT int obs_frontend_get_transition_duration(void);
 EXPORT void obs_frontend_set_transition_duration(int duration);
+
+EXPORT void obs_frontend_get_streaming_services(
+				struct obs_frontend_service_list *services);
+EXPORT void obs_frontend_add_streaming_service(obs_service_t *service);
+EXPORT bool obs_frontend_remove_streaming_service(obs_service_t *service);
+
+EXPORT void obs_frontend_get_streaming_outputs(
+				struct obs_frontend_output_list *outputs);
 
 EXPORT char **obs_frontend_get_scene_collections(void);
 EXPORT char *obs_frontend_get_current_scene_collection(void);
@@ -181,6 +215,8 @@ EXPORT config_t *obs_frontend_get_global_config(void);
 EXPORT void obs_frontend_set_streaming_service(obs_service_t *service);
 EXPORT obs_service_t *obs_frontend_get_streaming_service(void);
 EXPORT void obs_frontend_save_streaming_service(void);
+EXPORT void obs_frontend_save_streaming_services(void);
+EXPORT void obs_frontend_save_streaming_outputs(void);
 
 EXPORT bool obs_frontend_preview_program_mode_active(void);
 EXPORT void obs_frontend_set_preview_program_mode(bool enable);

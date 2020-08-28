@@ -98,8 +98,20 @@ struct obs_frontend_callbacks {
 
 	virtual void
 	obs_frontend_set_streaming_service(obs_service_t *service) = 0;
+	virtual obs_frontend_service_list *
+	obs_frontend_get_streaming_services(void) = 0;
+	virtual obs_frontend_output_list *
+	obs_frontend_get_streaming_outputs(void) = 0;
+
+	virtual void
+	obs_frontend_add_streaming_service(obs_service_t *service) = 0;
+	virtual bool
+	obs_frontend_remove_streaming_service(obs_service_t *service) = 0;
+
 	virtual obs_service_t *obs_frontend_get_streaming_service(void) = 0;
 	virtual void obs_frontend_save_streaming_service() = 0;
+	virtual void obs_frontend_save_streaming_services() = 0;
+	virtual void obs_frontend_save_streaming_outputs() = 0;
 
 	virtual bool obs_frontend_preview_program_mode_active(void) = 0;
 	virtual void obs_frontend_set_preview_program_mode(bool enable) = 0;

@@ -464,6 +464,43 @@ struct OBSStudioAPI : obs_frontend_callbacks {
 		main->SetService(service);
 	}
 
+	obs_frontend_service_list *obs_frontend_get_streaming_services(void) override
+	{
+		std::vector<OBSService> services = main->GetServices();
+		obs_frontend_service_list *service_array = {0};
+
+		for (auto &service : services) {
+			obs_service_addref(service);
+			da_push_back(service_array->services, service);
+		}
+		return service_array;
+	}
+
+	obs_frontend_output_list *obs_frontend_get_streaming_outputs(void) override
+	{
+		std::vector<OBSOutput> outputs = main->outputHandler->GetOutputs();
+		obs_frontend_output_list *output_array = {0};
+
+		for (auto &output : outputs) {
+			obs_output_addref(output);
+			da_push_back(output_array->outputs, output);
+		}
+		return output_array;
+	}
+	
+	virtual void
+	obs_frontend_add_streaming_service(obs_service_t *service) override {
+		if (service)
+			main->AddService(service);
+	}
+
+	virtual bool
+	obs_frontend_remove_streaming_service(obs_service_t *service) override {
+		if (service)
+			return main->RemoveService(service);
+		return false;
+	}
+
 	obs_service_t *obs_frontend_get_streaming_service(void) override
 	{
 		return main->GetService();
@@ -472,6 +509,16 @@ struct OBSStudioAPI : obs_frontend_callbacks {
 	void obs_frontend_save_streaming_service(void) override
 	{
 		main->SaveService();
+	}
+
+	void obs_frontend_save_streaming_services(void) override
+	{
+		main->SaveService();
+	}
+
+	void obs_frontend_save_streaming_outputs(void) override
+	{
+		main->SaveStreamOutputs();
 	}
 
 	bool obs_frontend_preview_program_mode_active(void) override
