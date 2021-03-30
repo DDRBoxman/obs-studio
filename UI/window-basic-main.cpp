@@ -1109,22 +1109,39 @@ void OBSBasic::SaveService() {
 	if (ret <= 0)
 		return;
 
-	OBSDataArray servicesContainer = obs_data_array_create();
-	obs_data_array_release(servicesContainer);
+	OBSDataArray servicesData = obs_data_array_create();
+	obs_data_array_release(servicesData);
+	std::map<std::string, OBSData> service_name_to_settings;
 
-	for (unsigned int i = 0; i < services.size(); i++) {
-		OBSData serviceData = obs_service_get_settings(services[i]);
-		obs_data_release(serviceData);
-		obs_data_array_push_back(servicesContainer, serviceData);
+	for (const auto &service : services) {
+		OBSData settings = obs_service_get_settings(service);
+		obs_data_release(settings);
+		const std::string type = obs_data_get_string(settings, "type");
+		const std::string name = obs_data_get_string(settings, "name");
+		const std::string key = type + "|" + name;
+
+		if (service_name_to_settings.find(key) ==
+		    service_name_to_settings.end()) {
+			service_name_to_settings[key] = settings;
+			obs_data_array_push_back(servicesData, settings);
+		} else {
+			std::string prev_servers = obs_data_get_string(
+				service_name_to_settings[key], "server");
+			std::string current_server =
+				obs_data_get_string(settings, "server");
+			obs_data_set_string(
+				service_name_to_settings[key], "server",
+				(prev_servers + "," + current_server).c_str());
+		}
 	}
 
 	OBSData settingList = obs_data_create();
 	obs_data_release(settingList);
 
-	obs_data_set_array(settingList, "services", servicesContainer);
+	obs_data_set_array(settingList, "services", servicesData);
 
 	if (!obs_data_save_json_safe(settingList, serviceJsonPath, "tmp", "bak"))
-	    	blog(LOG_WARNING, "Failed to save service");
+		blog(LOG_WARNING, "Failed to save service");
 }
 
 bool OBSBasic::LoadService() {
@@ -1165,10 +1182,24 @@ bool OBSBasic::LoadService() {
 		     i < obs_data_array_count(loadedServices);i++) {
 			OBSData data = obs_data_array_item(loadedServices, i);
 			obs_data_release(data);
-			OBSService tmp = ServicefromJsonObj(data);
-			obs_service_release(tmp);
 
-			services.push_back(tmp);
+			char **servers = strlist_split(
+				obs_data_get_string(data, "server"), ',',
+				false);
+			char **curr = servers;
+
+			while (*curr) {
+				OBSData data_copy = obs_data_create();
+				obs_data_apply(data_copy, data);
+				obs_data_set_string(data_copy, "server", *curr);
+				OBSService tmp = ServicefromJsonObj(data_copy);
+				obs_service_release(tmp);
+				services.push_back(tmp);
+				obs_data_release(data_copy);
+				curr++;
+			}
+
+			strlist_free(servers);
 		}
 	}
 	

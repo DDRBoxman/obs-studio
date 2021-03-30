@@ -162,26 +162,42 @@ void OBSBasicSettings::SaveStream1Settings() {
 	for (int i = 0; i < serviceSettings.GetCount(); i++) {
 		int id = serviceSettings.GetIdAtIndex(i);
 		OBSData settings = serviceSettings.GetSettings(id);
-		
+
 		if (serviceAuths.find(id) != serviceAuths.end()) {
 			const char *name = serviceAuths.at(id)->Name();
-			int addOnChoice = 
+			int addOnChoice =
 				obs_data_get_int(settings, "AddonChoice");
 			obs_data_erase(settings, "AddonChoice");
 			config_set_int(main->Config(), name, "AddonChoice",
 				       addOnChoice);
 		}
 
-		const char* type = obs_data_get_string(settings, "type");
-		const char* name = obs_data_get_string(settings, "name");
+		const char *type = obs_data_get_string(settings, "type");
+		const char *name = obs_data_get_string(settings, "name");
+		char **servers = strlist_split(
+			obs_data_get_string(settings, "server"), ',', false);
+		char **curr = servers;
 
-		OBSData hotkeyData = obs_data_get_obj(settings, "hotkey-data");
+		while (*curr) {
+			OBSData settings_copy = obs_data_create();
+			obs_data_apply(settings_copy, settings);
+			obs_data_set_string(settings_copy, "server", *curr);
+			obs_data_release(settings_copy);
 
-		OBSService tmp = obs_service_create(type, name, settings, hotkeyData);
-		services.push_back(tmp);
-		if (hotkeyData)
-			obs_data_release(hotkeyData);
-		obs_service_release(tmp);
+			OBSData hotkeyData =
+				obs_data_get_obj(settings, "hotkey-data");
+			OBSService tmp = obs_service_create(
+				type, name, settings_copy, hotkeyData);
+			services.push_back(tmp);
+
+			if (hotkeyData)
+				obs_data_release(hotkeyData);
+			obs_service_release(tmp);
+
+			curr++;
+		}
+
+		strlist_free(servers);
 	}
 
 	main->SetServices(services);
