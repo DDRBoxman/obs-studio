@@ -45,7 +45,7 @@ void Auth::Load()
 	OBSBasic *main = OBSBasic::Get();
 	const char *type = config_get_string(main->Config(), "Auth", "Type");
 
-	std::string types = "";	
+	std::string types = "";
 	if (type && std::strlen(type) != 0)
 		types = type;
 
@@ -88,30 +88,32 @@ void Auth::Save()
 	config_save_safe(main->Config(), "tmp", nullptr);
 }
 
-const char *Auth::Name() const {
+const char *Auth::Name() const
+{
 	std::string name = def.service;
 	name += "_service#";
 	name += std::to_string(id);
 	return name.c_str();
 }
 
-std::map<int, std::string> Auth::ParseAuthTypes(const std::string types) {
+std::map<int, std::string> Auth::ParseAuthTypes(const std::string types)
+{
 	std::map<int, std::string> services;
 	if (types.size() == 0)
 		return services;
 
 	const std::regex comma(",");
-	std::vector<std::string> auths(
-	    std::sregex_token_iterator(types.begin(), types.end(), comma, -1),
-	    std::sregex_token_iterator()
-	);
+	std::vector<std::string> auths(std::sregex_token_iterator(types.begin(),
+								  types.end(),
+								  comma, -1),
+				       std::sregex_token_iterator());
 
 	const std::regex sep("_service#");
 	for (auto &auth : auths) {
 		std::vector<std::string> info(
-		    std::sregex_token_iterator(auth.begin(), auth.end(), sep, -1),
-		    std::sregex_token_iterator()
-		);
+			std::sregex_token_iterator(auth.begin(), auth.end(),
+						   sep, -1),
+			std::sregex_token_iterator());
 		if (info.size() > 0) {
 			std::string name = info[0];
 			int id = 0;
@@ -124,7 +126,8 @@ std::map<int, std::string> Auth::ParseAuthTypes(const std::string types) {
 	return services;
 }
 
-void Auth::ConfigStreamAuths() {
+void Auth::ConfigStreamAuths()
+{
 	OBSBasic *main = OBSBasic::Get();
 	std::vector<OBSService> services = main->GetServices();
 	std::map<int, std::shared_ptr<Auth>> auths = main->GetAuths();
@@ -136,13 +139,16 @@ void Auth::ConfigStreamAuths() {
 
 		if (obs_data_get_bool(settings, "connectedAccount")) {
 			Auth *auth = auths.at(id).get();
-			if(auth->key().empty())
+			if (auth->key().empty())
 				continue;
 			if (bwtest && strcmp(auth->service(), "Twitch") == 0)
-				obs_data_set_string(settings, "key",
-						(auth->key() + "?bandwidthtest=true").c_str());
+				obs_data_set_string(
+					settings, "key",
+					(auth->key() + "?bandwidthtest=true")
+						.c_str());
 			else
-				obs_data_set_string(settings, "key", auth->key().c_str());
+				obs_data_set_string(settings, "key",
+						    auth->key().c_str());
 
 			obs_service_update(service, settings);
 		}

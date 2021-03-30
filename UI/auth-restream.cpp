@@ -29,7 +29,9 @@ static Auth::Def restreamDef = {"Restream", Auth::Type::OAuth_StreamKey};
 
 /* ------------------------------------------------------------------------- */
 
-RestreamAuth::RestreamAuth(const Def &d, int id_ = 0) : OAuthStreamKey(d, id_) {}
+RestreamAuth::RestreamAuth(const Def &d, int id_ = 0) : OAuthStreamKey(d, id_)
+{
+}
 
 bool RestreamAuth::GetChannelInfo()
 try {
@@ -82,9 +84,9 @@ try {
 	return true;
 } catch (ErrorInfo info) {
 	QString title = QTStr("Auth.ChannelFailure.Title");
-	QString text = QTStr("Auth.ChannelFailure.Text")
-			       .arg(Name(), info.message.c_str(),
-				    info.error.c_str());
+	QString text =
+		QTStr("Auth.ChannelFailure.Text")
+			.arg(Name(), info.message.c_str(), info.error.c_str());
 
 	QMessageBox::warning(OBSBasic::Get(), title, text);
 
@@ -197,8 +199,8 @@ void RestreamAuth::LoadUI()
 		info->setVisible(true);
 		channels->setVisible(true);
 	} else {
-		const char *dockStateStr = config_get_string(
-			main->Config(), Name(), "DockState");
+		const char *dockStateStr =
+			config_get_string(main->Config(), Name(), "DockState");
 		QByteArray dockState =
 			QByteArray::fromBase64(QByteArray(dockStateStr));
 		main->restoreState(dockState);

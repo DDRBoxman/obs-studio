@@ -464,7 +464,8 @@ struct OBSStudioAPI : obs_frontend_callbacks {
 		main->SetService(service);
 	}
 
-	obs_frontend_service_list *obs_frontend_get_streaming_services(void) override
+	obs_frontend_service_list *
+	obs_frontend_get_streaming_services(void) override
 	{
 		std::vector<OBSService> services = main->GetServices();
 		obs_frontend_service_list *service_array = {0};
@@ -476,9 +477,11 @@ struct OBSStudioAPI : obs_frontend_callbacks {
 		return service_array;
 	}
 
-	obs_frontend_output_list *obs_frontend_get_streaming_outputs(void) override
+	obs_frontend_output_list *
+	obs_frontend_get_streaming_outputs(void) override
 	{
-		std::vector<OBSOutput> outputs = main->outputHandler->GetOutputs();
+		std::vector<OBSOutput> outputs =
+			main->outputHandler->GetOutputs();
 		obs_frontend_output_list *output_array = {0};
 
 		for (auto &output : outputs) {
@@ -487,15 +490,17 @@ struct OBSStudioAPI : obs_frontend_callbacks {
 		}
 		return output_array;
 	}
-	
+
 	virtual void
-	obs_frontend_add_streaming_service(obs_service_t *service) override {
+	obs_frontend_add_streaming_service(obs_service_t *service) override
+	{
 		if (service)
 			main->AddService(service);
 	}
 
 	virtual bool
-	obs_frontend_remove_streaming_service(obs_service_t *service) override {
+	obs_frontend_remove_streaming_service(obs_service_t *service) override
+	{
 		if (service)
 			return main->RemoveService(service);
 		return false;

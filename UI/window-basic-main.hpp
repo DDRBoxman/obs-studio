@@ -744,28 +744,41 @@ public:
 	obs_service_t *GetService();
 	void SetService(obs_service_t *service);
 
-	void SetServices(const std::vector<OBSService>& newServices);
+	void SetServices(const std::vector<OBSService> &newServices);
 	std::vector<OBSService> GetServices() const { return services; }
 
-	void AddService(obs_service_t* service) { services.push_back(service); }
-	bool RemoveService(obs_service_t* service);
+	void AddService(obs_service_t *service) { services.push_back(service); }
+	bool RemoveService(obs_service_t *service);
 
-	void SetStreamOutputSettings(const std::map<int, OBSData>& settings) {
+	void SetStreamOutputSettings(const std::map<int, OBSData> &settings)
+	{
 		streamOutputSettings = settings;
 		ResetOutputs();
 	}
-	
-	std::map<int, OBSData> GetStreamOutputSettings() const { return streamOutputSettings; }
-	OBSData GetStreamOutputSettings(int id) const { return streamOutputSettings.at(id); }
+
+	std::map<int, OBSData> GetStreamOutputSettings() const
+	{
+		return streamOutputSettings;
+	}
+	OBSData GetStreamOutputSettings(int id) const
+	{
+		return streamOutputSettings.at(id);
+	}
 
 	std::vector<int> GetOutputSettingsIDs() { return streamOutputIDOrder; }
-	void SetOutputSettingIDs(const std::vector<int>& newIDs) { streamOutputIDOrder = newIDs; }
+	void SetOutputSettingIDs(const std::vector<int> &newIDs)
+	{
+		streamOutputIDOrder = newIDs;
+	}
 
-	int GetSelectedSettingID() { return selectedServiceID;}
+	int GetSelectedSettingID() { return selectedServiceID; }
 	void SetSelectedSettingID(int id) { selectedServiceID = id; }
 
-	int GetSelectedOutputSettingID() { return selectedServiceOutputID;}
-	void SetSelectedOutputSettingID(int id) { selectedServiceOutputID = id; }
+	int GetSelectedOutputSettingID() { return selectedServiceOutputID; }
+	void SetSelectedOutputSettingID(int id)
+	{
+		selectedServiceOutputID = id;
+	}
 
 	int GetTransitionDuration();
 
@@ -813,7 +826,8 @@ public:
 	inline Auth *GetAuth() { return auths.begin()->second.get(); }
 	Auth *GetAuth(int id);
 	inline std::map<int, std::shared_ptr<Auth>> GetAuths() { return auths; }
-	inline void SetAuths(const std::map<int, std::shared_ptr<Auth>> &auths_) {
+	inline void SetAuths(const std::map<int, std::shared_ptr<Auth>> &auths_)
+	{
 		auths = auths_;
 	}
 	void LoadAuthUIs();

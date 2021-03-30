@@ -156,24 +156,24 @@ private:
 	SettingsListContainer serviceSettings;
 	std::map<int, std::shared_ptr<Auth>> serviceAuths;
 	std::map<int, OBSData> streamOutputSettings;
-	
+
 	std::mutex streamMutex;
 	std::mutex outputMutex;
 
 	int selectedServiceID = -1;
 	int selectedOutputID = -1;
 
-	int GetNewSettingID(const std::map<int, OBSData>& settings);
+	int GetNewSettingID(const std::map<int, OBSData> &settings);
 	void ResetServiceOutputs();
-	int GetNewID(std::vector<int>& usedIDs);
+	int GetNewID(std::vector<int> &usedIDs);
 
-	OBSData ServiceToSettingData(const OBSService& service);
+	OBSData ServiceToSettingData(const OBSService &service);
 	void PopulateStreamSettingsForm(int id);
 	void SaveStreamSettingsChanges(int selectedServiceID);
 	OBSData GetStreamFormChanges();
 
-	void PopulateStreamOutputList(KeyedListWidget* list, 
-				      const std::vector<int>& idOrder,
+	void PopulateStreamOutputList(KeyedListWidget *list,
+				      const std::vector<int> &idOrder,
 				      const int currentID);
 	void PopulateSimpleStreamOutputForm(int id);
 	void PopulateAdvStreamOutputForm(int id);
@@ -348,12 +348,12 @@ private:
 	int CurrentFLVTrack();
 	void AddEmptyServiceSetting(int id, bool isDefault);
 	void AddDefaultOutputSetting(int id);
-	OBSData GetDefaultOutput(const char* outputName, int id);
+	OBSData GetDefaultOutput(const char *outputName, int id);
 
-	void LoadStreamingEncoderPresets(const char* currentPreset,
-					 const char* currentQSVPreset,
-					 const char* currentNVENCPreset,
-					 const char* currentAMDPreset);
+	void LoadStreamingEncoderPresets(const char *currentPreset,
+					 const char *currentQSVPreset,
+					 const char *currentNVENCPreset,
+					 const char *currentAMDPreset);
 
 private slots:
 	void on_theme_activated(int idx);
@@ -421,6 +421,7 @@ private slots:
 	void SetVideoIcon(const QIcon &icon);
 	void SetHotkeysIcon(const QIcon &icon);
 	void SetAdvancedIcon(const QIcon &icon);
+
 protected:
 	virtual void closeEvent(QCloseEvent *event);
 
@@ -440,10 +441,8 @@ public slots:
 	void DisplayToggledOutput(QListWidgetItem *item);
 	void UpdateOutputPage();
 
-	void StreamOutputChanged() {
-		outputsChanged = true;
-	}
-	void UpdateOutputName(const QString& name);
+	void StreamOutputChanged() { outputsChanged = true; }
+	void UpdateOutputName(const QString &name);
 signals:
-	void UpdateOutputListName(const QString& name);
+	void UpdateOutputListName(const QString &name);
 };

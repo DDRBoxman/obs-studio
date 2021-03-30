@@ -399,7 +399,7 @@ void obs_frontend_set_streaming_service(obs_service_t *service)
 }
 
 void obs_frontend_get_streaming_services(
-			struct obs_frontend_service_list *services)
+	struct obs_frontend_service_list *services)
 {
 	if (!!callbacks_valid())
 		return;
@@ -409,22 +409,23 @@ void obs_frontend_get_streaming_services(
 	services = c->obs_frontend_get_streaming_services();
 }
 
-void obs_frontend_add_streaming_service(obs_service_t *service) {
+void obs_frontend_add_streaming_service(obs_service_t *service)
+{
 	if (!service || !!callbacks_valid())
 		return;
 
 	c->obs_frontend_add_streaming_service(service);
 }
 
-bool obs_frontend_remove_streaming_service(obs_service_t *service) {
+bool obs_frontend_remove_streaming_service(obs_service_t *service)
+{
 	if (!service || !!callbacks_valid())
 		return false;
 
 	return c->obs_frontend_remove_streaming_service(service);
 }
 
-void obs_frontend_get_streaming_outputs(
-			struct obs_frontend_output_list *outputs)
+void obs_frontend_get_streaming_outputs(struct obs_frontend_output_list *outputs)
 {
 	if (!!callbacks_valid())
 		return;

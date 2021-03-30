@@ -1081,9 +1081,10 @@ retryScene:
 	}
 }
 
-OBSService OBSBasic::ServicefromJsonObj(OBSData data) {
+OBSService OBSBasic::ServicefromJsonObj(OBSData data)
+{
 	const char *type = obs_data_get_string(data, "type");
-	const char *name = obs_data_get_string(data, "name"); 
+	const char *name = obs_data_get_string(data, "name");
 	OBSData hotkeyData = obs_data_get_obj(data, "hotkey-data");
 	if (hotkeyData)
 		obs_data_release(hotkeyData);
@@ -1099,7 +1100,8 @@ OBSService OBSBasic::ServicefromJsonObj(OBSData data) {
 #define STREAM_OUTPUTS_PATH "stream-outputs.json"
 #define SERVICES_PATH "service.json"
 
-void OBSBasic::SaveService() {
+void OBSBasic::SaveService()
+{
 	if (services.size() == 0)
 		return;
 
@@ -1140,46 +1142,49 @@ void OBSBasic::SaveService() {
 
 	obs_data_set_array(settingList, "services", servicesData);
 
-	if (!obs_data_save_json_safe(settingList, serviceJsonPath, "tmp", "bak"))
+	if (!obs_data_save_json_safe(settingList, serviceJsonPath, "tmp",
+				     "bak"))
 		blog(LOG_WARNING, "Failed to save service");
 }
 
-bool OBSBasic::LoadService() {
+bool OBSBasic::LoadService()
+{
 	char serviceJsonPath[512];
 	int ret = GetProfilePath(serviceJsonPath, sizeof(serviceJsonPath),
 				 SERVICES_PATH);
 	if (ret <= 0)
 		return false;
 
-	OBSData serviceData = obs_data_create_from_json_file_safe(serviceJsonPath, "bak");
+	OBSData serviceData =
+		obs_data_create_from_json_file_safe(serviceJsonPath, "bak");
 	obs_data_release(serviceData);
 
 	if (!serviceData)
 		return false;
-	
-	OBSDataArray loadedServices = obs_data_get_array(serviceData, "services");
+
+	OBSDataArray loadedServices =
+		obs_data_get_array(serviceData, "services");
 
 	/* For backward compatibility */
 	if (!loadedServices) {
 		OBSData setting = obs_data_get_obj(serviceData, "settings");
 		obs_data_release(setting);
 
-		obs_data_set_string(setting, "name", 
-			 	obs_data_get_string(setting, "service"));
+		obs_data_set_string(setting, "name",
+				    obs_data_get_string(setting, "service"));
 		obs_data_set_int(setting, "id", 0);
 		obs_data_set_int(setting, "output_id", 0);
-		obs_data_set_string(setting, "type", 
-			 	obs_data_get_string(serviceData, "type"));
+		obs_data_set_string(setting, "type",
+				    obs_data_get_string(serviceData, "type"));
 
 		OBSService tmp = ServicefromJsonObj(setting);
 		obs_service_release(tmp);
 
 		services.push_back(tmp);
-	} 
-	else {
+	} else {
 		obs_data_array_release(loadedServices);
-		for (unsigned int i = 0; 
-		     i < obs_data_array_count(loadedServices);i++) {
+		for (unsigned int i = 0;
+		     i < obs_data_array_count(loadedServices); i++) {
 			OBSData data = obs_data_array_item(loadedServices, i);
 			obs_data_release(data);
 
@@ -1202,7 +1207,7 @@ bool OBSBasic::LoadService() {
 			strlist_free(servers);
 		}
 	}
-	
+
 	return services.size() != 0 && !!services[0];
 }
 
@@ -1217,11 +1222,11 @@ bool OBSBasic::InitService()
 	obs_data_release(defaultSettings);
 
 	obs_data_set_int(defaultSettings, "id", 0);
-	obs_data_set_string(defaultSettings, "name", 
-			    "Default Service (Empty)");
+	obs_data_set_string(defaultSettings, "name", "Default Service (Empty)");
 
-	OBSService service = obs_service_create("rtmp_common", "Default Service (Empty)", 
-				     defaultSettings, nullptr);
+	OBSService service = obs_service_create("rtmp_common",
+						"Default Service (Empty)",
+						defaultSettings, nullptr);
 
 	if (!service)
 		return false;
@@ -1232,7 +1237,8 @@ bool OBSBasic::InitService()
 	return true;
 }
 
-void OBSBasic::SaveStreamOutputs() {
+void OBSBasic::SaveStreamOutputs()
+{
 	if (streamOutputSettings.size() == 0)
 		return;
 
@@ -1245,8 +1251,8 @@ void OBSBasic::SaveStreamOutputs() {
 	OBSDataArray outputsContainer = obs_data_array_create();
 	obs_data_array_release(outputsContainer);
 
-	for (auto i = streamOutputSettings.begin(); 
-	     i !=streamOutputSettings.end(); i++) {
+	for (auto i = streamOutputSettings.begin();
+	     i != streamOutputSettings.end(); i++) {
 		obs_data_array_push_back(outputsContainer, i->second);
 	}
 
@@ -1256,10 +1262,11 @@ void OBSBasic::SaveStreamOutputs() {
 	obs_data_set_array(settingList, "outputs", outputsContainer);
 
 	if (!obs_data_save_json_safe(settingList, outputJsonPath, "tmp", "bak"))
-	    	blog(LOG_WARNING, "Failed to save service");
+		blog(LOG_WARNING, "Failed to save service");
 }
 
-bool OBSBasic::LoadStreamOutputs() {
+bool OBSBasic::LoadStreamOutputs()
+{
 	streamOutputIDOrder.clear();
 
 	char outputJsonPath[512];
@@ -1268,7 +1275,7 @@ bool OBSBasic::LoadStreamOutputs() {
 	if (ret <= 0)
 		return false;
 
-	OBSData outputsData = 
+	OBSData outputsData =
 		obs_data_create_from_json_file_safe(outputJsonPath, "bak");
 	obs_data_release(outputsData);
 
@@ -1290,53 +1297,58 @@ bool OBSBasic::LoadStreamOutputs() {
 	return streamOutputSettings.size() != 0;
 }
 
-bool OBSBasic::InitStreamOutputs() {
+bool OBSBasic::InitStreamOutputs()
+{
 	ProfileScope("OBSBasic::InitStreamOutputs");
 
 	if (LoadStreamOutputs())
 		return true;
-	
+
 	return SetDefaultOutputSetting();
 }
 
-bool OBSBasic::SetDefaultOutputSetting() {
+bool OBSBasic::SetDefaultOutputSetting()
+{
 	int videoBitrate =
 		config_get_uint(basicConfig, "SimpleOutput", "VBitrate");
-	const char *streamEnc = config_get_string(
-		basicConfig, "SimpleOutput", "StreamEncoder");
+	const char *streamEnc =
+		config_get_string(basicConfig, "SimpleOutput", "StreamEncoder");
 	int audioBitrate =
 		config_get_uint(basicConfig, "SimpleOutput", "ABitrate");
 	bool advanced =
 		config_get_bool(basicConfig, "SimpleOutput", "UseAdvanced");
-	bool enforceBitrate = config_get_bool(basicConfig, "SimpleOutput",
-					      "EnforceBitrate");
+	bool enforceBitrate =
+		config_get_bool(basicConfig, "SimpleOutput", "EnforceBitrate");
 
 	const char *preset =
 		config_get_string(basicConfig, "SimpleOutput", "Preset");
 	const char *qsvPreset =
 		config_get_string(basicConfig, "SimpleOutput", "QSVPreset");
-	const char *nvPreset = config_get_string(basicConfig, "SimpleOutput",
-						 "NVENCPreset");
+	const char *nvPreset =
+		config_get_string(basicConfig, "SimpleOutput", "NVENCPreset");
 	const char *amdPreset =
 		config_get_string(basicConfig, "SimpleOutput", "AMDPreset");
 
-	const char *custom = config_get_string(basicConfig, "SimpleOutput",
-						"x264Settings");
-	
-	bool advApplyServiceSettings = 
+	const char *custom =
+		config_get_string(basicConfig, "SimpleOutput", "x264Settings");
+
+	bool advApplyServiceSettings =
 		config_get_bool(basicConfig, "AdvOut", "ApplyServiceSettings");
-	bool advUseRescale = config_get_bool(basicConfig, "AdvOut", "UseRescale");
-	int advTrackIndex = config_get_uint(basicConfig, "AdvOut", "TrackIndex");
-	const char *advEncoder = config_get_string(basicConfig, "AdvOut", "Encoder");
+	bool advUseRescale =
+		config_get_bool(basicConfig, "AdvOut", "UseRescale");
+	int advTrackIndex =
+		config_get_uint(basicConfig, "AdvOut", "TrackIndex");
+	const char *advEncoder =
+		config_get_string(basicConfig, "AdvOut", "Encoder");
 
 	OBSData outputSetting = obs_data_create();
 	obs_data_release(outputSetting);
 
 	if (!outputSetting)
 		return false;
-	
+
 	obs_data_set_string(outputSetting, "stream_encoder", streamEnc);
-	
+
 	obs_data_set_int(outputSetting, "video_bitrate", videoBitrate);
 	obs_data_set_int(outputSetting, "audio_bitrate", audioBitrate);
 
@@ -1349,7 +1361,7 @@ bool OBSBasic::SetDefaultOutputSetting() {
 	obs_data_set_string(outputSetting, "AMDPreset", amdPreset);
 	obs_data_set_string(outputSetting, "x264Settings", custom);
 	obs_data_set_string(outputSetting, "name", "Default Output");
-	
+
 	obs_data_set_int(outputSetting, "adv_audio_track", advTrackIndex);
 	obs_data_set_bool(outputSetting, "apply_service_settings",
 			  advApplyServiceSettings);
@@ -1726,8 +1738,11 @@ void OBSBasic::ResetOutputs()
 
 	if (!outputHandler || !outputHandler->Active()) {
 		outputHandler.reset();
-		outputHandler.reset(advOut ? CreateAdvancedOutputHandler(this, streamOutputSettings)
-					   : CreateSimpleOutputHandler(this, streamOutputSettings));
+		outputHandler.reset(
+			advOut ? CreateAdvancedOutputHandler(
+					 this, streamOutputSettings)
+			       : CreateSimpleOutputHandler(
+					 this, streamOutputSettings));
 
 		delete replayBufferButton;
 		delete replayLayout;
@@ -3791,25 +3806,29 @@ obs_service_t *OBSBasic::GetService()
 	return services[0];
 }
 
-Auth *OBSBasic::GetAuth(int id) { 
+Auth *OBSBasic::GetAuth(int id)
+{
 	if (auths.find(id) != auths.end())
-		return auths.at(id).get(); 
+		return auths.at(id).get();
 	return nullptr;
 }
 
-void OBSBasic::LoadAuthUIs() {
+void OBSBasic::LoadAuthUIs()
+{
 	for (auto &item : auths) {
 		if (!!item.second)
 			item.second->LoadUI();
 	}
 }
 
-bool OBSBasic::RemoveService(obs_service_t* service) {
+bool OBSBasic::RemoveService(obs_service_t *service)
+{
 	if (outputHandler && outputHandler->StreamingActive()) {
-		blog(LOG_ERROR, "you cannot remove a stream during live streaming.");
+		blog(LOG_ERROR,
+		     "you cannot remove a stream during live streaming.");
 		return false;
 	}
-	
+
 	for (std::vector<OBSService>::iterator it = services.begin();
 	     it != services.end(); it++) {
 		if (*it == service) {
@@ -3821,16 +3840,17 @@ bool OBSBasic::RemoveService(obs_service_t* service) {
 	return false;
 }
 
-void OBSBasic::SetService(obs_service_t *newService) {
+void OBSBasic::SetService(obs_service_t *newService)
+{
 	services[0] = newService;
 }
 
-void OBSBasic::SetServices(const std::vector<OBSService>& newServices) {
+void OBSBasic::SetServices(const std::vector<OBSService> &newServices)
+{
 	services = newServices;
 	if (newServices.size() == 0) {
-		OBSService defaultService = 
-			obs_service_create("rtmp_common", "Default Service",
-					   nullptr, nullptr);
+		OBSService defaultService = obs_service_create(
+			"rtmp_common", "Default Service", nullptr, nullptr);
 		services.push_back(defaultService);
 	}
 }
@@ -5501,7 +5521,7 @@ void OBSBasic::StartStreaming()
 		}
 
 		QMessageBox::critical(this, QTStr("Output.StartStreamFailed"),
-				message);
+				      message);
 		return;
 	}
 
@@ -5660,7 +5680,7 @@ void OBSBasic::ForceStopStreaming()
 		StopReplayBuffer();
 }
 
-void OBSBasic::StreamDelayStarting(OBSOutput output) 
+void OBSBasic::StreamDelayStarting(OBSOutput output)
 {
 	ui->statusbar->StreamDelayStarting(output);
 
@@ -5680,8 +5700,9 @@ void OBSBasic::StreamDelayStarting(OBSOutput output)
 		startStreamMenu = new QMenu();
 		startStreamMenu->addAction(QTStr("Basic.Main.StopStreaming"),
 					   this, SLOT(StopStreaming()));
-		startStreamMenu->addAction(QTStr("Basic.Main.ForceStopStreaming"),
-					   this, SLOT(ForceStopStreaming()));
+		startStreamMenu->addAction(
+			QTStr("Basic.Main.ForceStopStreaming"), this,
+			SLOT(ForceStopStreaming()));
 		ui->streamButton->setMenu(startStreamMenu);
 	}
 
@@ -5706,10 +5727,10 @@ void OBSBasic::StreamDelayStopping(OBSOutput output)
 		startStreamMenu->deleteLater();
 
 	startStreamMenu = new QMenu();
-	startStreamMenu->addAction(QTStr("Basic.Main.StartStreaming"), 
-					this, SLOT(StartStreaming()));
-	startStreamMenu->addAction(QTStr("Basic.Main.ForceStopStreaming"),
-					this, SLOT(ForceStopStreaming()));
+	startStreamMenu->addAction(QTStr("Basic.Main.StartStreaming"), this,
+				   SLOT(StartStreaming()));
+	startStreamMenu->addAction(QTStr("Basic.Main.ForceStopStreaming"), this,
+				   SLOT(ForceStopStreaming()));
 	ui->streamButton->setMenu(startStreamMenu);
 
 	if (api)
@@ -5747,7 +5768,7 @@ void OBSBasic::StreamStopping()
 	streamingStopping = true;
 	if (api)
 		api->on_event(OBS_FRONTEND_EVENT_STREAMING_STOPPING);
-	
+
 	activeStreams--;
 }
 
@@ -6223,8 +6244,8 @@ void OBSBasic::on_streamButton_clicked()
 		auto action = StreamSettingsAction::Cancel;
 
 		for (auto &service : services) {
-			action =
-				UIValidation::StreamSettingsConfirmation(this, service);
+			action = UIValidation::StreamSettingsConfirmation(
+				this, service);
 			if (action != StreamSettingsAction::ContinueStream)
 				break;
 		}
@@ -6248,7 +6269,7 @@ void OBSBasic::on_streamButton_clicked()
 		for (auto &service : services) {
 			OBSData settings = obs_service_get_settings(service);
 			bwtest = obs_data_get_bool(settings, "bwtest");
-			
+
 			if (bwtest)
 				break;
 		}

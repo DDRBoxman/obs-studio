@@ -117,7 +117,7 @@ void OAuth::RegisterOAuth(const Def &d, create_cb create, login_cb login,
 }
 
 std::shared_ptr<Auth> OAuth::Login(QWidget *parent, const std::string &service,
-                                   int id)
+				   int id)
 {
 	for (auto &a : loginCBs) {
 		if (service.find(a.def.service) != std::string::npos) {

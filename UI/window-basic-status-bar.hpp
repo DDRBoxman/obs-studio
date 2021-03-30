@@ -17,12 +17,13 @@ struct StreamStats {
 	uint64_t lastBytesSent;
 	QLabel *droppedFrame;
 
-	~StreamStats() {
+	~StreamStats()
+	{
 		if (!droppedFrame) {
 			delete droppedFrame;
 			droppedFrame = nullptr;
 		}
-	} 
+	}
 };
 
 class OBSBasicStatusBar : public QStatusBar {

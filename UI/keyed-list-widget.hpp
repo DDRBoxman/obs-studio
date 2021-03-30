@@ -10,24 +10,26 @@
 #define NONE_SELECTED -1
 
 class KeyedListWidget : public QListWidget {
-       Q_OBJECT
+	Q_OBJECT
 
 public:
-        KeyedListWidget(QWidget *parent = nullptr) : QListWidget(parent) {
-            QObject::connect(this, SIGNAL(itemClicked(QListWidgetItem*)),
-                this, SLOT(SelectionChanged(QListWidgetItem*)));
-        }
+	KeyedListWidget(QWidget *parent = nullptr) : QListWidget(parent)
+	{
+		QObject::connect(this, SIGNAL(itemClicked(QListWidgetItem *)),
+				 this,
+				 SLOT(SelectionChanged(QListWidgetItem *)));
+	}
 public slots:
-        void AddNewItem(const QString &alias, int key);
-        void UpdateItemName(const QString &alias);
-        void RemoveItem();
-        void ScrollUp();
-        void ScrollDown();
+	void AddNewItem(const QString &alias, int key);
+	void UpdateItemName(const QString &alias);
+	void RemoveItem();
+	void ScrollUp();
+	void ScrollDown();
 
 private slots:
-        void SelectionChanged(QListWidgetItem* current);
+	void SelectionChanged(QListWidgetItem *current);
 
 signals:
-        void RemovedKey(int removedKey, int currentKey);
-        void ItemClicked(int key);
+	void RemovedKey(int removedKey, int currentKey);
+	void ItemClicked(int key);
 };

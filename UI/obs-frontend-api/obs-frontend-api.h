@@ -127,13 +127,13 @@ EXPORT void obs_frontend_set_current_transition(obs_source_t *transition);
 EXPORT int obs_frontend_get_transition_duration(void);
 EXPORT void obs_frontend_set_transition_duration(int duration);
 
-EXPORT void obs_frontend_get_streaming_services(
-				struct obs_frontend_service_list *services);
+EXPORT void
+obs_frontend_get_streaming_services(struct obs_frontend_service_list *services);
 EXPORT void obs_frontend_add_streaming_service(obs_service_t *service);
 EXPORT bool obs_frontend_remove_streaming_service(obs_service_t *service);
 
-EXPORT void obs_frontend_get_streaming_outputs(
-				struct obs_frontend_output_list *outputs);
+EXPORT void
+obs_frontend_get_streaming_outputs(struct obs_frontend_output_list *outputs);
 
 EXPORT char **obs_frontend_get_scene_collections(void);
 EXPORT char *obs_frontend_get_current_scene_collection(void);

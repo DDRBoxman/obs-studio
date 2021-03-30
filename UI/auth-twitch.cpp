@@ -122,9 +122,9 @@ try {
 	return true;
 } catch (ErrorInfo info) {
 	QString title = QTStr("Auth.ChannelFailure.Title");
-	QString text = QTStr("Auth.ChannelFailure.Text")
-			       .arg(Name(), info.message.c_str(),
-				    info.error.c_str());
+	QString text =
+		QTStr("Auth.ChannelFailure.Text")
+			.arg(Name(), info.message.c_str(), info.error.c_str());
 
 	QMessageBox::warning(OBSBasic::Get(), title, text);
 
@@ -244,8 +244,8 @@ void TwitchAuth::LoadUI()
 	if (firstLoad) {
 		chat->setVisible(true);
 	} else {
-		const char *dockStateStr = config_get_string(
-			main->Config(), Name(), "DockState");
+		const char *dockStateStr =
+			config_get_string(main->Config(), Name(), "DockState");
 		QByteArray dockState =
 			QByteArray::fromBase64(QByteArray(dockStateStr));
 		main->restoreState(dockState);
@@ -368,8 +368,8 @@ void TwitchAuth::LoadSecondaryUIPanes()
 			feed->setVisible(false);
 		}
 
-		const char *dockStateStr = config_get_string(
-			main->Config(), Name(), "DockState");
+		const char *dockStateStr =
+			config_get_string(main->Config(), Name(), "DockState");
 		QByteArray dockState =
 			QByteArray::fromBase64(QByteArray(dockStateStr));
 		main->restoreState(dockState);

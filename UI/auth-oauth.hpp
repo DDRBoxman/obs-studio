@@ -38,8 +38,8 @@ public:
 	typedef std::function<std::shared_ptr<Auth>(QWidget *, int)> login_cb;
 	typedef std::function<void()> delete_cookies_cb;
 
-	static std::shared_ptr<Auth> Login(QWidget *parent,
-					   const std::string &service, int id = 0);
+	static std::shared_ptr<Auth>
+	Login(QWidget *parent, const std::string &service, int id = 0);
 	static void DeleteCookies(const std::string &service);
 
 	static void RegisterOAuth(const Def &d, create_cb create,

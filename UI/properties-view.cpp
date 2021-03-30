@@ -1475,11 +1475,11 @@ void OBSPropertiesView::SignalChanged()
 	emit Changed();
 }
 
-void OBSPropertiesView::SetSettings(const OBSData& newSettings) {
+void OBSPropertiesView::SetSettings(const OBSData &newSettings)
+{
 	if (newSettings) {
 		settings = newSettings;
-	}
-	else {
+	} else {
 		settings = obs_encoder_defaults(type.c_str());
 		if (settings)
 			obs_data_release(settings);

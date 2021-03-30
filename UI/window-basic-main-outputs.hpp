@@ -45,15 +45,16 @@ struct BasicOutputHandler {
 	virtual ~BasicOutputHandler(){};
 
 	virtual bool StartStreaming(obs_service_t *service) = 0;
-	virtual bool StartStreaming(const std::vector<OBSService> &services,
-				    const std::map<int, OBSData> &outputConfigs) = 0;
+	virtual bool
+	StartStreaming(const std::vector<OBSService> &services,
+		       const std::map<int, OBSData> &outputConfigs) = 0;
 	virtual bool StartRecording() = 0;
 	virtual bool StartReplayBuffer() { return false; }
-	
+
 	virtual void StopStreaming(bool force = false) = 0;
 	virtual void StopRecording(bool force = false) = 0;
 	virtual void StopReplayBuffer(bool force = false) { (void)force; }
-	
+
 	virtual bool StreamingActive() const = 0;
 	virtual bool RecordingActive() const = 0;
 	virtual bool ReplayBufferActive() const { return false; }
@@ -62,8 +63,9 @@ struct BasicOutputHandler {
 	virtual void ConnectToSignals(const OBSOutput &output);
 	virtual void SetStreamOutputConfig();
 	virtual bool StartStreamOutputs();
-	virtual bool StartStreamOutputs(int retryDelay, int maxRetries, bool useDelay, 
-				      int delaySec, int preserveDelay);
+	virtual bool StartStreamOutputs(int retryDelay, int maxRetries,
+					bool useDelay, int delaySec,
+					int preserveDelay);
 
 	virtual void Update() = 0;
 	virtual void Update(const std::vector<OBSService> &services,
@@ -81,7 +83,9 @@ struct BasicOutputHandler {
 BasicOutputHandler *CreateSimpleOutputHandler(OBSBasic *main);
 BasicOutputHandler *CreateAdvancedOutputHandler(OBSBasic *main);
 
-BasicOutputHandler *CreateSimpleOutputHandler(OBSBasic *main,
-				const std::map<int, OBSData> &outputConfig);
-BasicOutputHandler *CreateAdvancedOutputHandler(OBSBasic *main,
-				const std::map<int, OBSData> &outputConfig);
+BasicOutputHandler *
+CreateSimpleOutputHandler(OBSBasic *main,
+			  const std::map<int, OBSData> &outputConfig);
+BasicOutputHandler *
+CreateAdvancedOutputHandler(OBSBasic *main,
+			    const std::map<int, OBSData> &outputConfig);

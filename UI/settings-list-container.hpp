@@ -12,25 +12,23 @@ and a vector to store the order.
 class SettingsListContainer {
 
 public:
-        SettingsListContainer() {}
-        SettingsListContainer(std::vector<OBSData> settings);
-        
-        std::map<int, OBSData> GetSettings() const { return settings; }
-        OBSData GetSettings(int id) const;
-        int GetIdAtIndex(int index) const {
-               return orderedIDList[index];
-        }
-        std::vector<int> GetOrder() const;
-        int GetCount() const;
+	SettingsListContainer() {}
+	SettingsListContainer(std::vector<OBSData> settings);
 
-        const SettingsListContainer& SetSetting(int settingID,
-                                                const OBSData &newSetting);
-        const SettingsListContainer& SetOrder(const std::vector<int>& newOrder);
+	std::map<int, OBSData> GetSettings() const { return settings; }
+	OBSData GetSettings(int id) const;
+	int GetIdAtIndex(int index) const { return orderedIDList[index]; }
+	std::vector<int> GetOrder() const;
+	int GetCount() const;
 
-        int Add(const OBSData& setting);
-        void Remove(int settingID);
+	const SettingsListContainer &SetSetting(int settingID,
+						const OBSData &newSetting);
+	const SettingsListContainer &SetOrder(const std::vector<int> &newOrder);
+
+	int Add(const OBSData &setting);
+	void Remove(int settingID);
 
 private:
-        std::vector<int> orderedIDList;
-        std::map<int, OBSData> settings;
+	std::vector<int> orderedIDList;
+	std::map<int, OBSData> settings;
 };

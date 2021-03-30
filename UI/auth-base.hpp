@@ -49,7 +49,8 @@ public:
 	static void ConfigStreamAuths();
 	virtual const std::string &key() const = 0;
 
-	static std::shared_ptr<Auth> Create(const std::string &service, int id = 0);
+	static std::shared_ptr<Auth> Create(const std::string &service,
+					    int id = 0);
 	static Type AuthType(const std::string &service);
 	static void Load();
 	static void Save();
@@ -60,5 +61,6 @@ protected:
 private:
 	Def def;
 	int id;
-	static std::map<int, std::string> ParseAuthTypes(const std::string types);
+	static std::map<int, std::string>
+	ParseAuthTypes(const std::string types);
 };

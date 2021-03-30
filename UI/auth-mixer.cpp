@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #include "auth-mixer.hpp"
 
@@ -137,9 +137,9 @@ try {
 	return true;
 } catch (ErrorInfo info) {
 	QString title = QTStr("Auth.ChannelFailure.Title");
-	QString text = QTStr("Auth.ChannelFailure.Text")
-			       .arg(Name(), info.message.c_str(),
-				    info.error.c_str());
+	QString text =
+		QTStr("Auth.ChannelFailure.Text")
+			.arg(Name(), info.message.c_str(), info.error.c_str());
 
 	QMessageBox::warning(OBSBasic::Get(), title, text);
 
@@ -234,8 +234,8 @@ void MixerAuth::LoadUI()
 	if (firstLoad) {
 		chat->setVisible(true);
 	} else {
-		const char *dockStateStr = config_get_string(
-			main->Config(), Name(), "DockState");
+		const char *dockStateStr =
+			config_get_string(main->Config(), Name(), "DockState");
 		QByteArray dockState =
 			QByteArray::fromBase64(QByteArray(dockStateStr));
 		main->restoreState(dockState);
@@ -277,7 +277,8 @@ std::shared_ptr<Auth> MixerAuth::Login(QWidget *parent, int id)
 		return nullptr;
 	}
 
-	std::shared_ptr<MixerAuth> auth = std::make_shared<MixerAuth>(mixerDef, id);
+	std::shared_ptr<MixerAuth> auth =
+		std::make_shared<MixerAuth>(mixerDef, id);
 
 	std::string client_id = MIXER_CLIENTID;
 	deobfuscate_str(&client_id[0], MIXER_HASH);

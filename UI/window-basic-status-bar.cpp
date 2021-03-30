@@ -38,7 +38,7 @@ OBSBasicStatusBar::OBSBasicStatusBar(QWidget *parent)
 					  .pixmap(QSize(20, 20)))
 {
 	messageDuration->setSingleShot(true);
-	connect(messageDuration, SIGNAL(timeout()), this, 
+	connect(messageDuration, SIGNAL(timeout()), this,
 		SLOT(messageTimeout()));
 
 	streamTime->setText(QString("LIVE: 00:00:00"));
@@ -60,7 +60,7 @@ OBSBasicStatusBar::OBSBasicStatusBar(QWidget *parent)
 
 	brWidget->setLayout(brLayout);
 
-	QHBoxLayout *droppedFramesLayout = 
+	QHBoxLayout *droppedFramesLayout =
 		new QHBoxLayout(multipleDroppedFrames);
 	droppedFramesLayout->setContentsMargins(0, 0, 0, 0);
 	multipleDroppedFrames->setLayout(droppedFramesLayout);
@@ -143,7 +143,8 @@ void OBSBasicStatusBar::Activate()
 	}
 }
 
-void OBSBasicStatusBar::Deactivate() {
+void OBSBasicStatusBar::Deactivate()
+{
 	OBSBasic *main = qobject_cast<OBSBasic *>(parent());
 	if (!main)
 		return;
@@ -165,13 +166,12 @@ void OBSBasicStatusBar::Deactivate() {
 
 		delayInfo->setText("");
 		droppedFrames->setText("");
-		
+
 		QLayout *layout = multipleDroppedFrames->layout();
 		delete layout;
-		multipleDroppedFrames->
-			setLayout(new QHBoxLayout(multipleDroppedFrames));
-		multipleDroppedFrames->layout()->
-					   setContentsMargins(0, 0, 0, 0);
+		multipleDroppedFrames->setLayout(
+			new QHBoxLayout(multipleDroppedFrames));
+		multipleDroppedFrames->layout()->setContentsMargins(0, 0, 0, 0);
 
 		kbps->setText("");
 
@@ -230,16 +230,16 @@ void OBSBasicStatusBar::UpdateBandwidth()
 
 		uint64_t bytesSent = obs_output_get_total_bytes(output);
 		uint64_t bytesSentTime = os_gettime_ns();
-		
+
 		if (bytesSent < lastBytesSent)
 			bytesSent = 0;
 		if (bytesSent == 0)
 			lastBytesSent = 0;
-		
+
 		uint64_t bitsBetween = (bytesSent - lastBytesSent) * 8;
 
-		double timePassed =
-			double(bytesSentTime - lastBytesSentTime) / 1000000000.0;
+		double timePassed = double(bytesSentTime - lastBytesSentTime) /
+				    1000000000.0;
 
 		double kbitsPerSec = double(bitsBetween) / timePassed / 1000.0;
 		sum += kbitsPerSec;
@@ -256,8 +256,8 @@ void OBSBasicStatusBar::UpdateBandwidth()
 	kbps->setText(text);
 	kbps->setMinimumWidth(kbps->width());
 
-	lastBytesSent = (uint64_t) (sumBytesSent / streamStats.size());
-	lastBytesSentTime = (uint64_t) (sumBytesTime / streamStats.size());
+	lastBytesSent = (uint64_t)(sumBytesSent / streamStats.size());
+	lastBytesSentTime = (uint64_t)(sumBytesTime / streamStats.size());
 	bitrateUpdateSeconds = 0;
 }
 
@@ -291,7 +291,8 @@ void OBSBasicStatusBar::UpdateStreamTime()
 	streamTime->setMinimumWidth(streamTime->width());
 
 	if (reconnectingServices > 0) {
-		QString msg = QString("%1 services are reconnecting...")
+		QString msg =
+			QString("%1 services are reconnecting...")
 				.arg(QString::number(reconnectingServices));
 		QString toolTip = "";
 
@@ -300,16 +301,19 @@ void OBSBasicStatusBar::UpdateStreamTime()
 			int retries = stat.retries;
 
 			if (reconnectTimeout > 0) {
-				toolTip += QTStr("Basic.StatusBar.Reconnecting")
+				toolTip +=
+					QTStr("Basic.StatusBar.Reconnecting")
 						.arg(QString::number(retries),
-							QString::number(reconnectTimeout));
+						     QString::number(
+							     reconnectTimeout));
 				toolTip += "\n";
 				stat.reconnectTimeout--;
 
 			} else if (retries > 0) {
-				QString msg = QTStr("Basic.StatusBar.AttemptingReconnect")
-						    .arg(QString::number(retries));
-			        toolTip += "\n";
+				QString msg =
+					QTStr("Basic.StatusBar.AttemptingReconnect")
+						.arg(QString::number(retries));
+				toolTip += "\n";
 			}
 		}
 
@@ -353,30 +357,29 @@ void OBSBasicStatusBar::UpdateRecordTime()
 	}
 }
 
-void OBSBasicStatusBar::UpdateDroppedFrames() {
+void OBSBasicStatusBar::UpdateDroppedFrames()
+{
 	if (streamStats.size() == 0)
 		return;
-	
+
 	float congestion = 0.0;
 
 	for (auto &stat : streamStats) {
 		OBSOutput output = stat.output;
 		QLabel *droppedFrames = stat.droppedFrame;
 
-		int totalDropped = 
-			obs_output_get_frames_dropped(output);
-		int totalFrames = 
-			obs_output_get_total_frames(output);
-		double percent = 
+		int totalDropped = obs_output_get_frames_dropped(output);
+		int totalFrames = obs_output_get_total_frames(output);
+		double percent =
 			(double)totalDropped / (double)totalFrames * 100.0;
-		
+
 		if (!totalFrames)
 			continue;
-		
-		QString text = QString("%1 (%2\%)").
-					arg(QString::number(totalDropped),
+
+		QString text = QString("%1 (%2\%)")
+				       .arg(QString::number(totalDropped),
 					    QString::number(percent, 'f', 1));
-		
+
 		droppedFrames->setText(text);
 		droppedFrames->setMinimumWidth(droppedFrames->width());
 
@@ -422,7 +425,7 @@ void OBSBasicStatusBar::OBSOutputReconnect(void *data, calldata_t *params)
 	int seconds = (int)calldata_int(params, "timeout_sec");
 	OBSOutput output = (obs_output_t *)calldata_ptr(params, "output");
 
-	QMetaObject::invokeMethod(statusBar, "Reconnect", Q_ARG(int, seconds), 
+	QMetaObject::invokeMethod(statusBar, "Reconnect", Q_ARG(int, seconds),
 				  Q_ARG(OBSOutput, output));
 	UNUSED_PARAMETER(params);
 }
@@ -434,7 +437,7 @@ void OBSBasicStatusBar::OBSOutputReconnectSuccess(void *data,
 		reinterpret_cast<OBSBasicStatusBar *>(data);
 
 	OBSOutput output = (obs_output_t *)calldata_ptr(params, "output");
-	QMetaObject::invokeMethod(statusBar, "ReconnectSuccess", 
+	QMetaObject::invokeMethod(statusBar, "ReconnectSuccess",
 				  Q_ARG(OBSOutput, output));
 	UNUSED_PARAMETER(params);
 }
@@ -457,9 +460,8 @@ void OBSBasicStatusBar::Reconnect(int seconds, OBSOutput output)
 			break;
 		}
 	}
-	
-	delaySecTotal = 
-		obs_output_get_active_delay(output);
+
+	delaySecTotal = obs_output_get_active_delay(output);
 	UpdateDelayMsg();
 }
 
@@ -527,7 +529,7 @@ void OBSBasicStatusBar::UpdateStatusBar()
 			overloadedNotify = false;
 		}
 	}
-	
+
 	lastSkippedFrameCount = skipped;
 }
 
@@ -535,7 +537,7 @@ void OBSBasicStatusBar::StreamDelayStarting(OBSOutput output)
 {
 	OBSBasic *main = qobject_cast<OBSBasic *>(parent());
 
-	if(!main)
+	if (!main)
 		return;
 
 	int sec = (int)obs_output_get_active_delay(output);
@@ -556,8 +558,9 @@ void OBSBasicStatusBar::StreamDelayStopping(OBSOutput output)
 	UpdateDelayMsg();
 }
 
-void OBSBasicStatusBar::StreamStarted() {
-	InitializeStats();	
+void OBSBasicStatusBar::StreamStarted()
+{
+	InitializeStats();
 
 	droppedFrames->setText(QString("Dropped Frames: "));
 
@@ -576,7 +579,7 @@ void OBSBasicStatusBar::StreamStopped()
 				"reconnect", OBSOutputReconnect, this);
 			signal_handler_disconnect(
 				obs_output_get_signal_handler(output),
-				"reconnect_success", OBSOutputReconnectSuccess, 
+				"reconnect_success", OBSOutputReconnectSuccess,
 				this);
 			delete stat.droppedFrame;
 		}
@@ -621,7 +624,8 @@ void OBSBasicStatusBar::RecordingUnpaused()
 	}
 }
 
-void OBSBasicStatusBar::showMessage(const QString &message_, int timeout) {
+void OBSBasicStatusBar::showMessage(const QString &message_, int timeout)
+{
 	if (messageDuration->isActive())
 		messageDuration->stop();
 	message->setText(message_);
@@ -629,25 +633,28 @@ void OBSBasicStatusBar::showMessage(const QString &message_, int timeout) {
 		messageDuration->start(timeout);
 }
 
-void OBSBasicStatusBar::showMessage(const QString &message_, 
-				    const QString &toolTip, int timeout) {
+void OBSBasicStatusBar::showMessage(const QString &message_,
+				    const QString &toolTip, int timeout)
+{
 	showMessage(message_, timeout);
 	message->setToolTip(toolTip);
 }
 
-void OBSBasicStatusBar::messageTimeout() {
+void OBSBasicStatusBar::messageTimeout()
+{
 	if (messageDuration->isActive())
 		messageDuration->stop();
 	message->setText("");
 	message->setToolTip("");
 }
 
-void OBSBasicStatusBar::InitializeStats() {
+void OBSBasicStatusBar::InitializeStats()
+{
 	OBSBasic *main = qobject_cast<OBSBasic *>(parent());
 
-	if(!main)
+	if (!main)
 		return;
-	
+
 	std::vector<OBSService> services = main->GetServices();
 	std::vector<OBSOutput> outputs = main->outputHandler->GetOutputs();
 
@@ -673,11 +680,10 @@ void OBSBasicStatusBar::InitializeStats() {
 				obs_service_get_settings(service), "name");
 			droppedFrames->setToolTip(QString(streamName));
 
-			streamStats.push_back({output, 0, 0, 0, 
-						 droppedFrames});
+			streamStats.push_back({output, 0, 0, 0, droppedFrames});
 
-			multipleDroppedFrames->layout()->
-						   addWidget(droppedFrames);
+			multipleDroppedFrames->layout()->addWidget(
+				droppedFrames);
 		}
 	}
 }

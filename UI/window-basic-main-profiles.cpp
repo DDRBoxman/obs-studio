@@ -563,9 +563,10 @@ void OBSBasic::on_actionExportProfile_triggered()
 
 			if (QFile::exists(outputDir + "/service.json"))
 				QFile::remove(outputDir + "/service.json");
-			
+
 			if (QFile::exists(outputDir + "/stream-outputs.json"))
-				QFile::remove(outputDir + "/stream-outputs.json");
+				QFile::remove(outputDir +
+					      "/stream-outputs.json");
 
 			if (QFile::exists(outputDir + "/streamEncoder.json"))
 				QFile::remove(outputDir +
