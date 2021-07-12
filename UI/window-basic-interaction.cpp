@@ -148,10 +148,13 @@ void OBSBasicInteraction::DrawPreview(void *data, uint32_t cx, uint32_t cy)
 
 	gs_viewport_push();
 	gs_projection_push();
+	const bool previous = gs_set_linear_srgb(true);
+
 	gs_ortho(0.0f, float(sourceCX), 0.0f, float(sourceCY), -100.0f, 100.0f);
 	gs_set_viewport(x, y, newCX, newCY);
 	obs_source_video_render(window->source);
 
+	gs_set_linear_srgb(previous);
 	gs_projection_pop();
 	gs_viewport_pop();
 }
@@ -218,6 +221,14 @@ static int TranslateQtMouseEventModifiers(QMouseEvent *event)
 bool OBSBasicInteraction::GetSourceRelativeXY(int mouseX, int mouseY, int &relX,
 					      int &relY)
 {
+#ifdef SUPPORTS_FRACTIONAL_SCALING
+	float pixelRatio = devicePixelRatioF();
+#else
+	float pixelRatio = devicePixelRatio();
+#endif
+	int mouseXscaled = (int)roundf(mouseX * pixelRatio);
+	int mouseYscaled = (int)roundf(mouseY * pixelRatio);
+
 	QSize size = GetPixelSize(ui->preview);
 
 	uint32_t sourceCX = max(obs_source_get_width(source), 1u);
@@ -230,11 +241,11 @@ bool OBSBasicInteraction::GetSourceRelativeXY(int mouseX, int mouseY, int &relX,
 			     y, scale);
 
 	if (x > 0) {
-		relX = int(float(mouseX - x) / scale);
-		relY = int(float(mouseY / scale));
+		relX = int(float(mouseXscaled - x) / scale);
+		relY = int(float(mouseYscaled / scale));
 	} else {
-		relX = int(float(mouseX / scale));
-		relY = int(float(mouseY - y) / scale);
+		relX = int(float(mouseXscaled / scale));
+		relY = int(float(mouseYscaled - y) / scale);
 	}
 
 	// Confirm mouse is inside the source
@@ -314,22 +325,32 @@ bool OBSBasicInteraction::HandleMouseWheelEvent(QWheelEvent *event)
 	int xDelta = 0;
 	int yDelta = 0;
 
+	const QPoint angleDelta = event->angleDelta();
 	if (!event->pixelDelta().isNull()) {
-		if (event->orientation() == Qt::Horizontal)
+		if (angleDelta.x())
 			xDelta = event->pixelDelta().x();
 		else
 			yDelta = event->pixelDelta().y();
 	} else {
-		if (event->orientation() == Qt::Horizontal)
-			xDelta = event->delta();
+		if (angleDelta.x())
+			xDelta = angleDelta.x();
 		else
-			yDelta = event->delta();
+			yDelta = angleDelta.y();
 	}
 
-	if (GetSourceRelativeXY(event->x(), event->y(), mouseEvent.x,
-				mouseEvent.y))
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+	const QPointF position = event->position();
+	const int x = position.x();
+	const int y = position.y();
+#else
+	const int x = event->x();
+	const int y = event->y();
+#endif
+
+	if (GetSourceRelativeXY(x, y, mouseEvent.x, mouseEvent.y)) {
 		obs_source_send_mouse_wheel(source, &mouseEvent, xDelta,
 					    yDelta);
+	}
 
 	return true;
 }

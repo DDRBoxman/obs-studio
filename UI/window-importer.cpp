@@ -22,7 +22,6 @@
 #include <QPushButton>
 #include <QLineEdit>
 #include <QToolButton>
-#include <QFileDialog>
 #include <QMimeData>
 #include <QStyledItemDelegate>
 #include <QDirIterator>
@@ -30,6 +29,8 @@
 
 #include "qt-wrappers.hpp"
 #include "importers/importers.hpp"
+
+extern bool SceneCollectionExists(const char *findName);
 
 enum ImporterColumn {
 	Selected,
@@ -82,7 +83,7 @@ QWidget *ImporterEntryPathItemDelegate::createEditor(
 	};
 
 	QHBoxLayout *layout = new QHBoxLayout();
-	layout->setMargin(0);
+	layout->setContentsMargins(0, 0, 0, 0);
 	layout->setSpacing(0);
 
 	QLineEdit *text = new QLineEdit();
@@ -169,7 +170,7 @@ void ImporterEntryPathItemDelegate::handleBrowse(QWidget *container)
 	QString currentPath = text->text();
 
 	bool isSet = false;
-	QStringList paths = QFileDialog::getOpenFileNames(
+	QStringList paths = OpenFiles(
 		container, QTStr("Importer.SelectCollection"), currentPath,
 		QTStr("Importer.Collection") + QString(" ") + Pattern);
 
@@ -284,7 +285,7 @@ void ImporterModel::checkInputPath(int row)
 		std::string program = DetectProgram(entry.path.toStdString());
 		entry.program = QTStr(program.c_str());
 
-		if (program == "") {
+		if (program.empty()) {
 			entry.selected = false;
 		} else {
 			std::string name =
@@ -518,24 +519,11 @@ void OBSImporter::dragEnterEvent(QDragEnterEvent *ev)
 		ev->accept();
 }
 
-static bool CheckConfigExists(const char *dir, QString name)
-{
-
-	QString dst = dir;
-	dst += "/";
-	dst += name;
-	dst += ".json";
-
-	dst.replace(" ", "_");
-
-	return os_file_exists(dst.toStdString().c_str());
-}
-
 void OBSImporter::browseImport()
 {
 	QString Pattern = "(*.json *.bpres *.xml *.xconfig)";
 
-	QStringList paths = QFileDialog::getOpenFileNames(
+	QStringList paths = OpenFiles(
 		this, QTStr("Importer.SelectCollection"), "",
 		QTStr("Importer.Collection") + QString(" ") + Pattern);
 
@@ -544,6 +532,23 @@ void OBSImporter::browseImport()
 			addImportOption(paths[i], false);
 		}
 	}
+}
+
+bool GetUnusedName(std::string &name)
+{
+	if (!SceneCollectionExists(name.c_str()))
+		return false;
+
+	std::string newName;
+	int inc = 2;
+	do {
+		newName = name;
+		newName += " ";
+		newName += std::to_string(inc++);
+	} while (SceneCollectionExists(newName.c_str()));
+
+	name = newName;
+	return true;
 }
 
 void OBSImporter::importCollections()
@@ -561,46 +566,48 @@ void OBSImporter::importCollections()
 		if (selected == Qt::Unchecked)
 			continue;
 
-		QString path = optionsModel->index(i, ImporterColumn::Path)
-				       .data(Qt::DisplayRole)
-				       .value<QString>();
-		QString name = optionsModel->index(i, ImporterColumn::Name)
-				       .data(Qt::DisplayRole)
-				       .value<QString>();
-
-		std::string pathStr = path.toStdString();
-		std::string nameStr = name.toStdString();
+		std::string pathStr =
+			optionsModel->index(i, ImporterColumn::Path)
+				.data(Qt::DisplayRole)
+				.value<QString>()
+				.toStdString();
+		std::string nameStr =
+			optionsModel->index(i, ImporterColumn::Name)
+				.data(Qt::DisplayRole)
+				.value<QString>()
+				.toStdString();
 
 		json11::Json res;
 		ImportSC(pathStr, nameStr, res);
 
 		if (res != json11::Json()) {
 			json11::Json::object out = res.object_items();
-			QString file = res["name"].string_value().c_str();
+			std::string name = res["name"].string_value();
+			std::string file;
 
-			bool safe = !CheckConfigExists(dst, file);
-			int x = 1;
-			while (!safe) {
-				file = name;
-				file += " (";
-				file += QString::number(x);
-				file += ")";
-
-				safe = !CheckConfigExists(dst, file);
-				x++;
+			if (GetUnusedName(name)) {
+				json11::Json::object newOut = out;
+				newOut["name"] = name;
+				out = newOut;
 			}
 
-			out["name"] = file.toStdString();
+			GetUnusedSceneCollectionFile(name, file);
 
 			std::string save = dst;
 			save += "/";
-			save += file.replace(" ", "_").toStdString();
+			save += file;
 			save += ".json";
 
 			std::string out_str = json11::Json(out).dump();
 
-			os_quick_write_utf8_file(save.c_str(), out_str.c_str(),
-						 out_str.size(), false);
+			bool success = os_quick_write_utf8_file(save.c_str(),
+								out_str.c_str(),
+								out_str.size(),
+								false);
+
+			blog(LOG_INFO, "Import Scene Collection: %s (%s) - %s",
+			     name.c_str(), file.c_str(),
+			     success ? "SUCCESS" : "FAILURE");
 		}
 	}
 

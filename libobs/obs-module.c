@@ -55,7 +55,27 @@ static int load_module_exports(struct obs_module *mod, const char *path)
 	mod->name = os_dlsym(mod->module, "obs_module_name");
 	mod->description = os_dlsym(mod->module, "obs_module_description");
 	mod->author = os_dlsym(mod->module, "obs_module_author");
+	mod->get_string = os_dlsym(mod->module, "obs_module_get_string");
 	return MODULE_SUCCESS;
+}
+
+bool obs_module_get_locale_string(const obs_module_t *mod,
+				  const char *lookup_string,
+				  const char **translated_string)
+{
+	if (mod->get_string) {
+		return mod->get_string(lookup_string, translated_string);
+	}
+
+	return false;
+}
+
+const char *obs_module_get_locale_text(const obs_module_t *mod,
+				       const char *text)
+{
+	const char *str = text;
+	obs_module_get_locale_string(mod, text, &str);
+	return str;
 }
 
 static inline char *get_module_name(const char *file)
@@ -189,6 +209,25 @@ const char *obs_get_module_data_path(obs_module_t *module)
 	return module ? module->data_path : NULL;
 }
 
+obs_module_t *obs_get_module(const char *name)
+{
+	obs_module_t *module = obs->first_module;
+	while (module) {
+		if (strcmp(module->mod_name, name) == 0) {
+			return module;
+		}
+
+		module = module->next;
+	}
+
+	return NULL;
+}
+
+void *obs_get_module_lib(obs_module_t *module)
+{
+	return module ? module->module : NULL;
+}
+
 char *obs_find_module_file(obs_module_t *module, const char *file)
 {
 	struct dstr output = {0};
@@ -238,6 +277,10 @@ void obs_add_module_path(const char *bin, const char *data)
 static void load_all_callback(void *param, const struct obs_module_info *info)
 {
 	obs_module_t *module;
+
+	if (!os_is_obs_plugin(info->bin_path))
+		blog(LOG_WARNING, "Skipping module '%s', not an OBS plugin",
+		     info->bin_path);
 
 	int code = obs_open_module(&module, info->bin_path, info->data_path);
 	if (code != MODULE_SUCCESS) {

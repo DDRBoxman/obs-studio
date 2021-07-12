@@ -111,17 +111,6 @@ else()
 	set(OBS_SCRIPT_PLUGIN_PATH "${OBS_INSTALL_PREFIX}${OBS_SCRIPT_PLUGIN_DESTINATION}")
 endif()
 
-function(obs_finish_bundle)
-	if(NOT APPLE OR UNIX_STRUCTURE)
-		return()
-	endif()
-
-	install(CODE
-		"if(DEFINED ENV{FIXUP_BUNDLE})
-			execute_process(COMMAND \"${CMAKE_SOURCE_DIR}/cmake/osxbundle/fixup_bundle.sh\" . bin WORKING_DIRECTORY \"\${CMAKE_INSTALL_PREFIX}\")
-		endif()")
-endfunction()
-
 function(obs_generate_multiarch_installer)
 	install(DIRECTORY "$ENV{obsInstallerTempDir}/"
 		DESTINATION "."
@@ -504,6 +493,23 @@ function(install_obs_data target datadir datadest)
 	endif()
 endfunction()
 
+function(install_obs_data_from_abs_path target datadir datadest)
+	install(DIRECTORY ${datadir}/
+		DESTINATION "${OBS_DATA_DESTINATION}/${datadest}"
+		USE_SOURCE_PERMISSIONS)
+	add_custom_command(TARGET ${target} POST_BUILD
+		COMMAND "${CMAKE_COMMAND}" -E copy_directory
+			"${datadir}" "${OBS_OUTPUT_DIR}/$<CONFIGURATION>/data/${datadest}"
+		VERBATIM)
+
+	if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND DEFINED ENV{obsInstallerTempDir})
+		add_custom_command(TARGET ${target} POST_BUILD
+			COMMAND "${CMAKE_COMMAND}" -E copy_directory
+				"${datadir}" "$ENV{obsInstallerTempDir}/${OBS_DATA_DESTINATION}/${datadest}"
+			VERBATIM)
+	endif()
+endfunction()
+
 function(install_obs_data_file target datafile datadest)
 	install(FILES ${datafile}
 		DESTINATION "${OBS_DATA_DESTINATION}/${datadest}")
@@ -544,6 +550,10 @@ function(install_obs_datatarget target datadest)
 				"$<TARGET_FILE:${target}>"
 				"$ENV{obsInstallerTempDir}/${OBS_DATA_DESTINATION}/${datadest}/$<TARGET_FILE_NAME:${target}>"
 			VERBATIM)
+	endif()
+
+	if(MSVC)
+		obs_debug_copy_helper(${target} "${OBS_OUTPUT_DIR}/$<CONFIGURATION>/data/${datadest}")
 	endif()
 endfunction()
 

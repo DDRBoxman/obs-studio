@@ -13,7 +13,7 @@
   <property name="windowTitle">
    <string notr="true"/>
   </property>
-  <layout class="QHBoxLayout" name="horizontalLayout_3">
+  <layout class="QHBoxLayout" name="autoConfigHorizontalLayout">
    <property name="leftMargin">
     <number>0</number>
    </property>
@@ -92,7 +92,8 @@
        <action name="actionAddService">
         <property name="icon">
          <iconset>
-          <normaloff>:/res/images/plus.svg</normaloff>:/res/images/plus.svg</iconset>
+          <normaloff>:/res/images/plus.svg</normaloff>:/res/images/plus.svg
+         </iconset>
         </property>
         <property name="text">
          <string>Add</string>
@@ -104,7 +105,8 @@
        <action name="actionRemoveService">
         <property name="icon">
          <iconset>
-          <normaloff>:/res/images/minus.svg</normaloff>:/res/images/minus.svg</iconset>
+          <normaloff>:/res/images/minus.svg</normaloff>:/res/images/minus.svg
+         </iconset>
         </property>
         <property name="text">
          <string>Remove</string>
@@ -116,7 +118,8 @@
        <action name="actionScrollUp">
         <property name="icon">
          <iconset>
-          <normaloff>:/res/images/up.svg</normaloff>:/res/images/up.svg</iconset>
+          <normaloff>:/res/images/up.svg</normaloff>:/res/images/up.svg
+         </iconset>
         </property>
         <property name="text">
          <string>Scroll Up</string>
@@ -128,7 +131,8 @@
        <action name="actionScrollDown">
         <property name="icon">
          <iconset>
-          <normaloff>:/res/images/down.svg</normaloff>:/res/images/down.svg</iconset>
+          <normaloff>:/res/images/down.svg</normaloff>:/res/images/down.svg
+         </iconset>
         </property>
         <property name="text">
          <string>Scroll Down</string>
@@ -162,7 +166,7 @@
    <item>
     <layout class="QVBoxLayout" name="verticalLayout">
      <property name="spacing">
-      <number>10</number>
+      <number>0</number>
      </property>
      <property name="leftMargin">
       <number>0</number>
@@ -177,7 +181,7 @@
       <number>0</number>
      </property>
      <item>
-      <widget class="QWidget" name="widget" native="true">
+      <widget class="QWidget" name="widget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
          <horstretch>0</horstretch>
@@ -210,6 +214,16 @@
           </property>
          </spacer>
         </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="streamNameLabel">
+          <property name="text">
+           <string>Stream Name</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLineEdit" name="streamName"/>
+        </item>
         <item row="2" column="0">
          <widget class="QLabel" name="serviceLabel">
           <property name="text">
@@ -221,24 +235,45 @@
          </widget>
         </item>
         <item row="2" column="1">
-         <widget class="QComboBox" name="service">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
+         <widget class="QWidget" name="serviceWidget">
+          <layout class="QHBoxLayout" name="serviceWidgetLayout">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QComboBox" name="service"/>
+           </item>
+           <item>
+            <widget class="UrlPushButton" name="moreInfoButton">
+             <property name="text">
+              <string>Basic.AutoConfig.StreamPage.MoreInfo</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </widget>
         </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="streamNameLabel">
-          <property name="text">
-           <string>Stream Name</string>
+        <item row="3" column="1">
+         <spacer name="verticalSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
           </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QLineEdit" name="streamName"/>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>12</width>
+            <height>12</height>
+           </size>
+          </property>
+         </spacer>
         </item>
        </layout>
       </widget>
@@ -359,12 +394,6 @@
             <number>0</number>
            </property>
            <widget class="QWidget" name="servicePage">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
             <layout class="QHBoxLayout" name="horizontalLayout_2">
              <property name="leftMargin">
               <number>0</number>
@@ -379,19 +408,12 @@
               <number>0</number>
              </property>
              <item>
-              <widget class="QComboBox" name="server">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-              </widget>
+              <widget class="QComboBox" name="server"/>
              </item>
             </layout>
            </widget>
            <widget class="QWidget" name="customPage">
-            <layout class="QHBoxLayout" name="streamSettingLayout">
+            <layout class="QHBoxLayout" name="horizontalLayout_3">
              <property name="leftMargin">
               <number>0</number>
              </property>
@@ -425,19 +447,7 @@
           </widget>
          </item>
          <item row="1" column="1">
-          <widget class="QWidget" name="streamKeyWidget" native="true">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>30</height>
-            </size>
-           </property>
+          <widget class="QWidget" name="streamKeyWidget">
            <layout class="QHBoxLayout" name="horizontalLayout_4">
             <property name="leftMargin">
              <number>0</number>
@@ -453,18 +463,6 @@
             </property>
             <item>
              <widget class="QLineEdit" name="key">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="minimumSize">
-               <size>
-                <width>200</width>
-                <height>0</height>
-               </size>
-              </property>
               <property name="inputMask">
                <string notr="true"/>
               </property>
@@ -493,7 +491,7 @@
            </layout>
           </widget>
          </item>
-         <item row="3" column="0">
+         <item row="2" column="0">
           <widget class="QLabel" name="bitrateLabel">
            <property name="text">
             <string>Basic.Settings.Output.VideoBitrate</string>
@@ -503,7 +501,7 @@
            </property>
           </widget>
          </item>
-         <item row="3" column="1">
+         <item row="2" column="1">
           <widget class="QSpinBox" name="bitrate">
            <property name="suffix">
             <string notr="true"/>
@@ -519,10 +517,11 @@
            </property>
           </widget>
          </item>
-         <item row="4" column="1">
+         <item row="3" column="1">
           <widget class="QCheckBox" name="preferHardware">
            <property name="toolTip">
-            <string>Basic.AutoConfig.StreamPage.PreferHardwareEncoding.ToolTip</string>
+            <string>Basic.AutoConfig.StreamPage.PreferHardwareEncoding.ToolTip
+            </string>
            </property>
            <property name="text">
             <string>Basic.AutoConfig.StreamPage.PreferHardwareEncoding</string>
@@ -532,7 +531,7 @@
            </property>
           </widget>
          </item>
-         <item row="5" column="1">
+         <item row="4" column="1">
           <widget class="QCheckBox" name="doBandwidthTest">
            <property name="text">
             <string>Basic.AutoConfig.StreamPage.PerformBandwidthTest</string>
@@ -542,14 +541,8 @@
            </property>
           </widget>
          </item>
-         <item row="7" column="1">
+         <item row="6" column="1">
           <widget class="QGroupBox" name="region">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
            <property name="title">
             <string>BandwidthTest.Region</string>
            </property>
@@ -585,21 +578,21 @@
            </layout>
           </widget>
          </item>
-         <item row="8" column="1">
+         <item row="7" column="1">
           <widget class="QPushButton" name="connectAccount2">
            <property name="text">
             <string>Basic.AutoConfig.StreamPage.ConnectAccount</string>
            </property>
           </widget>
          </item>
-         <item row="9" column="1">
+         <item row="8" column="1">
           <widget class="QPushButton" name="disconnectAccount">
            <property name="text">
             <string>Basic.AutoConfig.StreamPage.DisconnectAccount</string>
            </property>
           </widget>
          </item>
-         <item row="6" column="1">
+         <item row="5" column="1">
           <spacer name="verticalSpacer_2">
            <property name="orientation">
             <enum>Qt::Vertical</enum>
@@ -611,23 +604,6 @@
             </size>
            </property>
           </spacer>
-         </item>
-         <item row="2" column="0">
-          <widget class="QLabel" name="outputLabel">
-           <property name="text">
-            <string>Output</string>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="1">
-          <widget class="QComboBox" name="output">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-          </widget>
          </item>
         </layout>
        </widget>

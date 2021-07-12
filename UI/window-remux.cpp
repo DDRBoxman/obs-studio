@@ -21,7 +21,6 @@
 
 #include <QCloseEvent>
 #include <QDirIterator>
-#include <QFileDialog>
 #include <QItemDelegate>
 #include <QLineEdit>
 #include <QMessageBox>
@@ -34,6 +33,7 @@
 #include <QTimer>
 
 #include "qt-wrappers.hpp"
+#include "window-basic-main.hpp"
 
 #include <memory>
 #include <cmath>
@@ -101,7 +101,7 @@ QWidget *RemuxEntryPathItemDelegate::createEditor(
 		};
 
 		QHBoxLayout *layout = new QHBoxLayout();
-		layout->setMargin(0);
+		layout->setContentsMargins(0, 0, 0, 0);
 		layout->setSpacing(0);
 
 		QLineEdit *text = new QLineEdit();
@@ -216,9 +216,9 @@ void RemuxEntryPathItemDelegate::handleBrowse(QWidget *container)
 
 	bool isSet = false;
 	if (isOutput) {
-		QString newPath = QFileDialog::getSaveFileName(
-			container, QTStr("Remux.SelectTarget"), currentPath,
-			OutputPattern);
+		QString newPath = SaveFile(container,
+					   QTStr("Remux.SelectTarget"),
+					   currentPath, OutputPattern);
 
 		if (!newPath.isEmpty()) {
 			container->setProperty(PATH_LIST_PROP,
@@ -226,7 +226,7 @@ void RemuxEntryPathItemDelegate::handleBrowse(QWidget *container)
 			isSet = true;
 		}
 	} else {
-		QStringList paths = QFileDialog::getOpenFileNames(
+		QStringList paths = OpenFiles(
 			container, QTStr("Remux.SelectRecording"), currentPath,
 			QTStr("Remux.OBSRecording") + QString(" ") +
 				InputPattern);
@@ -928,6 +928,11 @@ void OBSRemux::remuxFinished(bool success)
 
 	if (autoRemux && autoRemuxFile != "") {
 		QTimer::singleShot(3000, this, SLOT(close()));
+
+		OBSBasic *main = OBSBasic::Get();
+		main->ShowStatusBarMessage(
+			QTStr("Basic.StatusBar.AutoRemuxedTo")
+				.arg(autoRemuxFile));
 	}
 
 	remuxNextEntry();

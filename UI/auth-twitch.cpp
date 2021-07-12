@@ -285,9 +285,9 @@ void TwitchAuth::LoadSecondaryUIPanes()
 
 	/* ----------------------------------- */
 
-	url = "https://www.twitch.tv/popout/";
+	url = "https://dashboard.twitch.tv/popout/u/";
 	url += name;
-	url += "/dashboard/live/stream-info";
+	url += "/stream-manager/edit-stream-info";
 
 	info.reset(new BrowserDock());
 	info->setObjectName("twitchInfo");
@@ -325,9 +325,9 @@ void TwitchAuth::LoadSecondaryUIPanes()
 
 	/* ----------------------------------- */
 
-	url = "https://www.twitch.tv/popout/";
+	url = "https://dashboard.twitch.tv/popout/u/";
 	url += name;
-	url += "/dashboard/live/activity-feed";
+	url += "/stream-manager/activity-feed";
 
 	feed.reset(new BrowserDock());
 	feed->setObjectName("twitchFeed");
@@ -441,7 +441,6 @@ std::shared_ptr<Auth> TwitchAuth::Login(QWidget *parent, int id)
 		return nullptr;
 	}
 
-	std::string error;
 	if (auth->GetChannelInfo()) {
 		return auth;
 	}

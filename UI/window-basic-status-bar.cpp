@@ -16,8 +16,8 @@ OBSBasicStatusBar::OBSBasicStatusBar(QWidget *parent)
 	  multipleDroppedFrames(new QWidget(this)),
 	  streamIcon(new QLabel),
 	  streamTime(new QLabel),
-	  recordIcon(new QLabel),
 	  recordTime(new QLabel),
+	  recordIcon(new QLabel),
 	  cpuUsage(new QLabel),
 	  transparentPixmap(20, 20),
 	  greenPixmap(20, 20),
@@ -161,7 +161,7 @@ void OBSBasicStatusBar::Deactivate()
 		totalRecordSeconds = 0;
 	}
 
-	if (!main->outputHandler->Active()) {
+	if (main->outputHandler && !main->outputHandler->Active()) {
 		delete refreshTimer;
 
 		delayInfo->setText("");
@@ -607,9 +607,8 @@ void OBSBasicStatusBar::RecordingStopped()
 
 void OBSBasicStatusBar::RecordingPaused()
 {
-	QString text = QStringLiteral("REC: PAUSED");
+	QString text = recordTime->text() + QStringLiteral(" (PAUSED)");
 	recordTime->setText(text);
-	recordTime->setMinimumWidth(recordTime->width());
 
 	if (recordOutput) {
 		recordIcon->setPixmap(recordingPausePixmap);

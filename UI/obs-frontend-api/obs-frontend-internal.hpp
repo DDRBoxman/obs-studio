@@ -23,6 +23,9 @@ struct obs_frontend_callbacks {
 	obs_frontend_set_current_transition(obs_source_t *transition) = 0;
 	virtual int obs_frontend_get_transition_duration(void) = 0;
 	virtual void obs_frontend_set_transition_duration(int duration) = 0;
+	virtual void obs_frontend_release_tbar(void) = 0;
+	virtual void obs_frontend_set_tbar_position(int position) = 0;
+	virtual int obs_frontend_get_tbar_position(void) = 0;
 
 	virtual void obs_frontend_get_scene_collections(
 		std::vector<std::string> &strings) = 0;
@@ -128,6 +131,17 @@ struct obs_frontend_callbacks {
 	virtual void on_preload(obs_data_t *settings) = 0;
 	virtual void on_save(obs_data_t *settings) = 0;
 	virtual void on_event(enum obs_frontend_event event) = 0;
+
+	virtual void obs_frontend_take_screenshot() = 0;
+	virtual void
+	obs_frontend_take_source_screenshot(obs_source_t *source) = 0;
+
+	virtual obs_output_t *obs_frontend_get_virtualcam_output(void) = 0;
+	virtual void obs_frontend_start_virtualcam(void) = 0;
+	virtual void obs_frontend_stop_virtualcam(void) = 0;
+	virtual bool obs_frontend_virtualcam_active(void) = 0;
+
+	virtual void obs_frontend_reset_video(void) = 0;
 };
 
 EXPORT void

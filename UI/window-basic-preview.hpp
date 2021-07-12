@@ -90,7 +90,9 @@ private:
 
 	static vec3 GetSnapOffset(const vec3 &tl, const vec3 &br);
 
-	void GetStretchHandleData(const vec2 &pos);
+	void GetStretchHandleData(const vec2 &pos, bool ignoreGroup);
+
+	void UpdateCursor(uint32_t &flags);
 
 	void SnapStretchingToScreen(vec3 &tl, vec3 &br);
 	void ClampAspect(vec3 &tl, vec3 &br, vec2 &size, const vec2 &baseSize);
@@ -104,8 +106,12 @@ private:
 
 	void ProcessClick(const vec2 &pos);
 
+	obs_data_t *wrapper = NULL;
+	bool changed;
+
 public:
-	OBSBasicPreview(QWidget *parent, Qt::WindowFlags flags = 0);
+	OBSBasicPreview(QWidget *parent,
+			Qt::WindowFlags flags = Qt::WindowFlags());
 	~OBSBasicPreview();
 
 	static OBSBasicPreview *Get();
