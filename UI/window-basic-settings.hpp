@@ -292,6 +292,7 @@ private slots:
 	void RecreateOutputResolutionWidget();
 	void UpdateResFPSLimits();
 	void UpdateMoreInfoLink();
+        void ShowHideServicesList();
 	void DisplayEnforceWarning(bool checked);
 	void on_show_clicked();
 	void on_authPwShow_clicked();

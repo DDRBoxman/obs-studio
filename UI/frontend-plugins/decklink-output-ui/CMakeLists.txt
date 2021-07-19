@@ -13,6 +13,7 @@ endif()
 
 set(decklink-ouput-ui_HEADERS
 	${decklink-ouput-ui_HEADERS}
+	../../qt-wrappers.hpp
 	../../properties-view.hpp
 	../../properties-view.moc.hpp
 	../../vertical-scroll-area.hpp
@@ -25,6 +26,7 @@ set(decklink-ouput-ui_HEADERS
 	)
 set(decklink-ouput-ui_SOURCES
 	${decklink-ouput-ui_SOURCES}
+	../../qt-wrappers.cpp
 	../../properties-view.cpp
 	../../vertical-scroll-area.cpp
 	../../double-slider.cpp
@@ -64,6 +66,7 @@ target_link_libraries(decklink-ouput-ui
 	obs-frontend-api
 	Qt5::Widgets
 	libobs)
+
 set_target_properties(decklink-ouput-ui PROPERTIES FOLDER "frontend")
 
 install_obs_plugin_with_data(decklink-ouput-ui data)

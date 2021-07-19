@@ -1259,8 +1259,7 @@ bool OBSBasic::LoadService()
 	if (!serviceData)
 		return false;
 
-	obs_data_set_default_string(data, "type", "rtmp_common");
-	type = obs_data_get_string(data, "type");
+	obs_data_set_default_string(serviceData, "type", "rtmp_common");
 
 	OBSDataArray loadedServices =
 		obs_data_get_array(serviceData, "services");
@@ -2025,13 +2024,13 @@ void OBSBasic::OBSInit()
 
 	blog(LOG_INFO, STARTUP_SEPARATOR);
 
-	ResetOutputs();
-	CreateHotkeys();
-
 	if (!InitService())
 		throw "Failed to initialize services";
 	if (!InitStreamOutputs())
 		throw "Failed to initialize outputs";
+
+	ResetOutputs();
+	CreateHotkeys();
 
 	InitPrimitives();
 
@@ -6201,11 +6200,6 @@ void OBSBasic::StartStreaming()
 		return;
 	if (disableOutputsRef)
 		return;
-
-	if (!outputHandler->SetupStreaming(service)) {
-		DisplayStreamStartError();
-		return;
-	}
 
 	if (api)
 		api->on_event(OBS_FRONTEND_EVENT_STREAMING_STARTING);

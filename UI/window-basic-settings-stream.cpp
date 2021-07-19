@@ -60,6 +60,11 @@ void OBSBasicSettings::InitStreamPage()
 
 	LoadServices(false);
 
+	bool multipleServicesEnabled =
+		config_get_bool(main->Config(), "Stream1", "MultipleServicesEnabled");
+	ui->multiServicesEnabled->setChecked(multipleServicesEnabled);
+	ui->servicesWidget->setVisible(multipleServicesEnabled);
+
 	ui->twitchAddonDropdown->addItem(
 		QTStr("Basic.Settings.Stream.TTVAddon.None"));
 	ui->twitchAddonDropdown->addItem(
@@ -105,6 +110,8 @@ void OBSBasicSettings::InitStreamPage()
 
 	connect(ui->serviceNameInput, SIGNAL(textEdited(QString)),
 		ui->servicesList, SLOT(UpdateItemName(QString)));
+	connect(ui->multiServicesEnabled, SIGNAL(toggled(bool)), this,
+		SLOT(ShowHideServicesList()));
 }
 
 OBSData OBSBasicSettings::ServiceToSettingData(const OBSService &service)
@@ -219,6 +226,7 @@ void OBSBasicSettings::SaveStream1Settings()
 	main->LoadAuthUIs();
 
 	SaveCheckBox(ui->ignoreRecommended, "Stream1", "IgnoreRecommended");
+	SaveCheckBox(ui->multiServicesEnabled, "Stream1", "MultipleServicesEnabled");
 }
 
 void OBSBasicSettings::UpdateMoreInfoLink()
@@ -248,6 +256,10 @@ void OBSBasicSettings::UpdateMoreInfoLink()
 		ui->moreInfoButton->show();
 	}
 	obs_properties_destroy(props);
+}
+
+void OBSBasicSettings::ShowHideServicesList() {
+	ui->servicesWidget->setVisible(ui->multiServicesEnabled->isChecked());
 }
 
 void OBSBasicSettings::UpdateKeyLink()
@@ -755,9 +767,6 @@ void OBSBasicSettings::PopulateStreamSettingsForm(int id)
 
 		idx = config_get_int(main->Config(), "Twitch", "AddonChoice");
 		ui->twitchAddonDropdown->setCurrentIndex(idx);
-
-		idx = config_get_int(main->Config(), "Mixer", "AddonChoice");
-		ui->mixerAddonDropdown->setCurrentIndex(idx);
 	}
 
 	UpdateServerList();
@@ -788,7 +797,6 @@ void OBSBasicSettings::PopulateStreamSettingsForm(int id)
 	bool ignoreRecommended =
 		config_get_bool(main->Config(), "Stream1", "IgnoreRecommended");
 	ui->ignoreRecommended->setChecked(ignoreRecommended);
-
 	loading = false;
 
 	QMetaObject::invokeMethod(this, "UpdateResFPSLimits",

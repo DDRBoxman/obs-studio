@@ -58,9 +58,10 @@ static HMODULE kernel32(void)
 static inline HANDLE open_process(DWORD desired_access, bool inherit_handle,
 				  DWORD process_id)
 {
-	static HANDLE(WINAPI * open_process_proc)(DWORD, BOOL, DWORD) = NULL;
+	typedef HANDLE(WINAPI * PFN_OpenProcess)(DWORD, BOOL, DWORD);
+	static PFN_OpenProcess open_process_proc = NULL;
 	if (!open_process_proc)
-		open_process_proc = get_obfuscated_func(
+		open_process_proc = (PFN_OpenProcess)get_obfuscated_func(
 			kernel32(), "B}caZyah`~q", 0x2D5BEBAF6DDULL);
 
 	return open_process_proc(desired_access, inherit_handle, process_id);
@@ -363,7 +364,7 @@ void fill_window_list(obs_property_t *p, enum window_search_mode mode,
 
 static int window_rating(HWND window, enum window_priority priority,
 			 const char *class, const char *title, const char *exe,
-			 bool uwp_window)
+			 bool generic_class)
 {
 	struct dstr cur_class = {0};
 	struct dstr cur_title = {0};
@@ -379,8 +380,8 @@ static int window_rating(HWND window, enum window_priority priority,
 	bool exe_matches = dstr_cmpi(&cur_exe, exe) == 0;
 	int title_val = abs(dstr_cmpi(&cur_title, title));
 
-	/* always match by name with UWP windows */
-	if (uwp_window) {
+	/* always match by name if class is generic */
+	if (generic_class) {
 		if (priority == WINDOW_PRIORITY_EXE && !exe_matches)
 			val = 0x7FFFFFFF;
 		else
@@ -405,6 +406,37 @@ static int window_rating(HWND window, enum window_priority priority,
 	return val;
 }
 
+static const char *generic_class_substrings[] = {
+	"Chrome",
+	NULL,
+};
+
+static const char *generic_classes[] = {
+	"Windows.UI.Core.CoreWindow",
+	NULL,
+};
+
+static bool is_generic_class(const char *current_class)
+{
+	const char **class = generic_class_substrings;
+	while (*class) {
+		if (astrstri(current_class, *class) != NULL) {
+			return true;
+		}
+		class ++;
+	}
+
+	class = generic_classes;
+	while (*class) {
+		if (astrcmpi(current_class, *class) == 0) {
+			return true;
+		}
+		class ++;
+	}
+
+	return false;
+}
+
 HWND find_window(enum window_search_mode mode, enum window_priority priority,
 		 const char *class, const char *title, const char *exe)
 {
@@ -418,11 +450,11 @@ HWND find_window(enum window_search_mode mode, enum window_priority priority,
 	if (!class)
 		return NULL;
 
-	bool uwp_window = strcmp(class, "Windows.UI.Core.CoreWindow") == 0;
+	bool generic_class = is_generic_class(class);
 
 	while (window) {
 		int rating = window_rating(window, priority, class, title, exe,
-					   uwp_window);
+					   generic_class);
 		if (rating < best_rating) {
 			best_rating = rating;
 			best_window = window;
@@ -442,7 +474,7 @@ struct top_level_enum_data {
 	const char *class;
 	const char *title;
 	const char *exe;
-	bool uwp_window;
+	bool generic_class;
 	HWND best_window;
 	int best_rating;
 };
@@ -462,7 +494,7 @@ BOOL CALLBACK enum_windows_proc(HWND window, LPARAM lParam)
 
 	const int rating = window_rating(window, data->priority, data->class,
 					 data->title, data->exe,
-					 data->uwp_window);
+					 data->generic_class);
 	if (rating < data->best_rating) {
 		data->best_rating = rating;
 		data->best_window = window;
@@ -484,7 +516,7 @@ HWND find_window_top_level(enum window_search_mode mode,
 	data.class = class;
 	data.title = title;
 	data.exe = exe;
-	data.uwp_window = strcmp(class, "Windows.UI.Core.CoreWindow") == 0;
+	data.generic_class = is_generic_class(class);
 	data.best_window = NULL;
 	data.best_rating = 0x7FFFFFFF;
 	EnumWindows(enum_windows_proc, (LPARAM)&data);

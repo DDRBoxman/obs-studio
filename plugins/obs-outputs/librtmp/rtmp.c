@@ -348,6 +348,12 @@ RTMP_TLS_LoadCerts(RTMP *r) {
             "/etc/ssl/certs");
         goto error;
     }
+#elif defined(__OpenBSD__)
+    if (mbedtls_x509_crt_parse_file(chain, "/etc/ssl/cert.pem") < 0) {
+        RTMP_Log(RTMP_LOGERROR, "mbedtls_x509_crt_parse_file: Couldn't parse "
+            "/etc/ssl/cert.pem");
+        goto error;
+    }
 #endif
 
     mbedtls_ssl_conf_ca_chain(&r->RTMP_TLS_ctx->conf, chain, NULL);
@@ -457,6 +463,17 @@ RTMP_Init(RTMP *r)
 {
     memset(r, 0, sizeof(RTMP));
     r->m_sb.sb_socket = -1;
+    RTMP_Reset(r);
+
+#ifdef CRYPTO
+    RTMP_TLS_Init(r);
+#endif
+
+}
+
+void
+RTMP_Reset(RTMP *r)
+{
     r->m_inChunkSize = RTMP_DEFAULT_CHUNKSIZE;
     r->m_outChunkSize = RTMP_DEFAULT_CHUNKSIZE;
     r->m_bSendChunkSizeInfo = 1;
@@ -470,11 +487,6 @@ RTMP_Init(RTMP *r)
     r->Link.nStreams = 0;
     r->Link.timeout = 30;
     r->Link.swfAge = 30;
-
-#ifdef CRYPTO
-    RTMP_TLS_Init(r);
-#endif
-
 }
 
 void
@@ -814,8 +826,10 @@ add_addr_info(struct sockaddr_storage *service, socklen_t *addrlen, AVal *host, 
         *socket_error = WSANO_DATA;
 #elif __FreeBSD__
         *socket_error = ENOATTR;
-#else
+#elif defined(ENODATA)
         *socket_error = ENODATA;
+#else
+        *socket_error = EAFNOSUPPORT;
 #endif
 
         RTMP_Log(RTMP_LOGERROR, "Could not resolve server '%s': no valid address found", hostname);
@@ -3064,6 +3078,8 @@ static const AVal av_NetStream_Play_UnpublishNotify =
 static const AVal av_NetStream_Publish_Start = AVC("NetStream.Publish.Start");
 static const AVal av_NetStream_Publish_Rejected = AVC("NetStream.Publish.Rejected");
 static const AVal av_NetStream_Publish_Denied = AVC("NetStream.Publish.Denied");
+static const AVal av_NetStream_Publish_BadName = AVC("NetStream.Publish.BadName");
+
 
 /* Returns 0 for OK/Failed/error, 1 for 'Stop or Complete' */
 static int
@@ -3314,7 +3330,8 @@ HandleInvoke(RTMP *r, const char *body, unsigned int nBodySize)
                 || AVMATCH(&code, &av_NetStream_Play_StreamNotFound)
                 || AVMATCH(&code, &av_NetConnection_Connect_InvalidApp)
                 || AVMATCH(&code, &av_NetStream_Publish_Rejected)
-                || AVMATCH(&code, &av_NetStream_Publish_Denied))
+                || AVMATCH(&code, &av_NetStream_Publish_Denied)
+                || AVMATCH(&code, &av_NetStream_Publish_BadName))
         {
             r->m_stream_id = -1;
             RTMP_Close(r);
@@ -3375,6 +3392,13 @@ HandleInvoke(RTMP *r, const char *body, unsigned int nBodySize)
                 RTMP_SendPause(r, FALSE, r->m_pauseStamp);
                 r->m_pausing = 3;
             }
+        }
+
+        else
+        {
+            RTMP_Log(RTMP_LOGWARNING, "Unhandled: %s:\n%s", r->Link.tcUrl.av_val, code.av_val);
+            if (description.av_len)
+                RTMP_Log(RTMP_LOGDEBUG, "Description: %s", description.av_val);
         }
     }
     else if (AVMATCH(&method, &av_playlist_ready))
@@ -5266,13 +5290,11 @@ fail:
     return total;
 }
 
-static const AVal av_setDataFrame = AVC("@setDataFrame");
-
 int
 RTMP_Write(RTMP *r, const char *buf, int size, int streamIdx)
 {
     RTMPPacket *pkt = &r->m_write;
-    char *pend, *enc;
+    char *enc;
     int s2 = size, ret, num;
 
     pkt->m_nChannel = 0x04;	/* source channel */
@@ -5308,8 +5330,6 @@ RTMP_Write(RTMP *r, const char *buf, int size, int streamIdx)
                     !pkt->m_nTimeStamp) || pkt->m_packetType == RTMP_PACKET_TYPE_INFO)
             {
                 pkt->m_headerType = RTMP_PACKET_SIZE_LARGE;
-                if (pkt->m_packetType == RTMP_PACKET_TYPE_INFO)
-                    pkt->m_nBodySize += 16;
             }
             else
             {
@@ -5322,12 +5342,6 @@ RTMP_Write(RTMP *r, const char *buf, int size, int streamIdx)
                 return FALSE;
             }
             enc = pkt->m_body;
-            pend = enc + pkt->m_nBodySize;
-            if (pkt->m_packetType == RTMP_PACKET_TYPE_INFO)
-            {
-                enc = AMF_EncodeString(enc, pend, &av_setDataFrame);
-                pkt->m_nBytesRead = enc - pkt->m_body;
-            }
         }
         else
         {

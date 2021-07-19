@@ -428,6 +428,7 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	HookWidget(ui->authPw,               EDIT_CHANGED,   STREAM1_CHANGED);
 	HookWidget(ui->streamOutputComboBox, COMBO_CHANGED,  STREAM1_CHANGED);
         HookWidget(ui->ignoreRecommended,    CHECK_CHANGED,  STREAM1_CHANGED);
+	HookWidget(ui->multiServicesEnabled, CHECK_CHANGED,  STREAM1_CHANGED);
 	HookWidget(ui->outputMode,           COMBO_CHANGED,  OUTPUTS_CHANGED);
 	HookWidget(ui->simpleOutputPath,     EDIT_CHANGED,   OUTPUTS_CHANGED);
 	HookWidget(ui->simpleNoSpace,        CHECK_CHANGED,  OUTPUTS_CHANGED);
@@ -944,8 +945,6 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 		this, STREAM_OUTPUT_CHANGED);
 	connect(ui->simpleOutAdvanced, SIGNAL(stateChanged(int)), this,
 		STREAM_OUTPUT_CHANGED);
-	connect(ui->simpleOutEnforce, SIGNAL(stateChanged(int)), this,
-		STREAM_OUTPUT_CHANGED);
 	connect(ui->simpleOutCustom, SIGNAL(textEdited(QString)), this,
 		STREAM_OUTPUT_CHANGED);
 
@@ -961,8 +960,6 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	connect(ui->advOutTrack6, CHECK_CHANGED, this, STREAM_OUTPUT_CHANGED);
 
 	connect(ui->advOutEncoder, COMBO_CHANGED, this, STREAM_OUTPUT_CHANGED);
-	connect(ui->advOutApplyService, CHECK_CHANGED, this,
-		STREAM_OUTPUT_CHANGED);
 	connect(ui->advOutUseRescale, CHECK_CHANGED, this,
 		STREAM_OUTPUT_CHANGED);
 	connect(ui->advOutRescale, COMBO_CHANGED, this, STREAM_OUTPUT_CHANGED);
@@ -1834,7 +1831,6 @@ void OBSBasicSettings::PopulateSimpleStreamOutputForm(int id)
 		       std::to_string(audioBitrate).c_str());
 
 	ui->simpleOutAdvanced->setChecked(advanced);
-	ui->simpleOutEnforce->setChecked(enforceBitrate);
 	ui->simpleOutCustom->setText(custom);
 
 	LoadStreamingEncoderPresets(preset, qsvPreset, nvPreset, amdPreset);
@@ -1905,7 +1901,6 @@ void OBSBasicSettings::PopulateAdvStreamOutputForm(int id)
 		}
 	}
 
-	ui->advOutApplyService->setChecked(applyServiceSettings);
 	ui->advOutUseRescale->setChecked(useRescale);
 	ui->advOutRescale->setEnabled(useRescale);
 	ui->advOutRescale->setCurrentText(rescaleRes);
@@ -5508,7 +5503,6 @@ void OBSBasicSettings::GetSimpleStreamOutputChanges()
 	int videoBitrate = ui->simpleOutputVBitrate->value();
 	int audioBitrate = ui->simpleOutputABitrate->currentText().toInt();
 	bool advanced = ui->simpleOutAdvanced->isChecked();
-	bool enforceBitrate = ui->simpleOutEnforce->isChecked();
 
 	const char *custom = QT_TO_UTF8(ui->simpleOutCustom->text());
 
@@ -5518,7 +5512,6 @@ void OBSBasicSettings::GetSimpleStreamOutputChanges()
 		settings, "stream_encoder",
 		QT_TO_UTF8(ui->simpleOutStrEncoder->currentData().toString()));
 	obs_data_set_bool(settings, "use_advanced", advanced);
-	obs_data_set_bool(settings, "enforce_bitrate", enforceBitrate);
 	obs_data_set_string(settings, "x264Settings", custom);
 
 	QString encoder = ui->simpleOutStrEncoder->currentData().toString();
@@ -5568,8 +5561,6 @@ void OBSBasicSettings::GetAdvStreamOutputChanges()
 	strcpy(vidEncoder,
 	       QT_TO_UTF8(ui->advOutEncoder->currentData().toString()));
 	obs_data_set_string(settings, "adv_stream_encoder", vidEncoder);
-	obs_data_set_bool(settings, "apply_service_settings",
-			  ui->advOutApplyService->isChecked());
 	obs_data_set_bool(settings, "adv_use_rescale",
 			  ui->advOutUseRescale->isChecked());
 	obs_data_set_string(settings, "adv_rescale",

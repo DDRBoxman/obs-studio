@@ -1,4 +1,4 @@
-﻿/******************************************************************************
+/******************************************************************************
 Copyright (C) 2014 by Nibbles
 
 This program is free software: you can redistribute it and/or modify
@@ -70,6 +70,7 @@ static struct obs_source_info freetype2_source_info_v2 = {
 	.video_render = ft2_source_render,
 	.video_tick = ft2_video_tick,
 	.get_properties = ft2_source_properties,
+	.missing_files = ft2_missing_files,
 	.icon_type = OBS_ICON_TYPE_TEXT,
 };
 
@@ -125,14 +126,14 @@ static uint32_t ft2_source_get_width(void *data)
 {
 	struct ft2_source *srcdata = data;
 
-	return srcdata->cx;
+	return srcdata->cx + srcdata->outline_width;
 }
 
 static uint32_t ft2_source_get_height(void *data)
 {
 	struct ft2_source *srcdata = data;
 
-	return srcdata->cy;
+	return srcdata->cy + srcdata->outline_width;
 }
 
 static obs_properties_t *ft2_source_properties(void *unused)
@@ -155,6 +156,9 @@ static obs_properties_t *ft2_source_properties(void *unused)
 
 	obs_properties_add_bool(props, "from_file",
 				obs_module_text("ReadFromFile"));
+
+	obs_properties_add_bool(props, "antialiasing",
+				obs_module_text("Antialiasing"));
 
 	obs_properties_add_bool(props, "log_mode",
 				obs_module_text("ChatLogMode"));
@@ -322,8 +326,16 @@ static void ft2_source_update(void *data, obs_data_t *settings)
 	if (!font_obj)
 		return;
 
+	srcdata->outline_width = 0;
+
 	srcdata->drop_shadow = obs_data_get_bool(settings, "drop_shadow");
 	srcdata->outline_text = obs_data_get_bool(settings, "outline");
+
+	if (srcdata->outline_text && srcdata->drop_shadow)
+		srcdata->outline_width = 6;
+	else if (srcdata->outline_text || srcdata->drop_shadow)
+		srcdata->outline_width = 4;
+
 	word_wrap = obs_data_get_bool(settings, "word_wrap");
 
 	color[0] = (uint32_t)obs_data_get_int(settings, "color1");
@@ -365,6 +377,8 @@ static void ft2_source_update(void *data, obs_data_t *settings)
 	if (ft2_lib == NULL)
 		goto error;
 
+	const size_t texbuf_size = (size_t)texbuf_w * (size_t)texbuf_h;
+
 	if (srcdata->draw_effect == NULL) {
 		char *effect_file = NULL;
 		char *error_string = NULL;
@@ -385,6 +399,16 @@ static void ft2_source_update(void *data, obs_data_t *settings)
 
 	if (srcdata->font_size != font_size || srcdata->from_file != from_file)
 		vbuf_needs_update = true;
+
+	const bool new_aa_setting = obs_data_get_bool(settings, "antialiasing");
+	const bool aa_changed = srcdata->antialiasing != new_aa_setting;
+	if (aa_changed) {
+		srcdata->antialiasing = new_aa_setting;
+		if (srcdata->texbuf != NULL) {
+			memset(srcdata->texbuf, 0, texbuf_size);
+		}
+		cache_standard_glyphs(srcdata);
+	}
 
 	srcdata->file_load_failed = false;
 	srcdata->from_file = from_file;
@@ -422,7 +446,7 @@ static void ft2_source_update(void *data, obs_data_t *settings)
 		bfree(srcdata->texbuf);
 		srcdata->texbuf = NULL;
 	}
-	srcdata->texbuf = bzalloc(texbuf_w * texbuf_h);
+	srcdata->texbuf = bzalloc(texbuf_size);
 
 	if (srcdata->font_face)
 		cache_standard_glyphs(srcdata);
@@ -460,7 +484,7 @@ skip_font_load:
 		}
 	} else {
 		const char *tmp = obs_data_get_string(settings, "text");
-		if (!tmp || !*tmp)
+		if (!tmp)
 			goto error;
 
 		if (srcdata->text != NULL) {
@@ -503,7 +527,14 @@ static void *ft2_source_create(obs_data_t *settings, obs_source_t *source,
 
 	obs_data_set_default_string(font_obj, "face", DEFAULT_FACE);
 	obs_data_set_default_int(font_obj, "size", font_size);
+	obs_data_set_default_int(font_obj, "flags", 0);
+	obs_data_set_default_string(font_obj, "style", "");
 	obs_data_set_default_obj(settings, "font", font_obj);
+
+	obs_data_set_default_bool(settings, "antialiasing", true);
+	obs_data_set_default_bool(settings, "word_wrap", false);
+	obs_data_set_default_bool(settings, "outline", false);
+	obs_data_set_default_bool(settings, "drop_shadow", false);
 
 	obs_data_set_default_int(settings, "log_lines", 6);
 
@@ -525,4 +556,43 @@ static void *ft2_source_create_v1(obs_data_t *settings, obs_source_t *source)
 static void *ft2_source_create_v2(obs_data_t *settings, obs_source_t *source)
 {
 	return ft2_source_create(settings, source, 2);
+}
+
+static void missing_file_callback(void *src, const char *new_path, void *data)
+{
+	struct ft2_source *s = src;
+
+	obs_source_t *source = s->src;
+	obs_data_t *settings = obs_source_get_settings(source);
+	obs_data_set_string(settings, "text_file", new_path);
+	obs_source_update(source, settings);
+	obs_data_release(settings);
+
+	UNUSED_PARAMETER(data);
+}
+
+static obs_missing_files_t *ft2_missing_files(void *data)
+{
+	struct ft2_source *s = data;
+	obs_missing_files_t *files = obs_missing_files_create();
+
+	obs_source_t *source = s->src;
+	obs_data_t *settings = obs_source_get_settings(source);
+
+	bool read = obs_data_get_bool(settings, "from_file");
+	const char *path = obs_data_get_string(settings, "text_file");
+
+	if (read && strcmp(path, "") != 0) {
+		if (!os_file_exists(path)) {
+			obs_missing_file_t *file = obs_missing_file_create(
+				path, missing_file_callback,
+				OBS_MISSING_FILE_SOURCE, s->src, NULL);
+
+			obs_missing_files_add_file(files, file);
+		}
+	}
+
+	obs_data_release(settings);
+
+	return files;
 }

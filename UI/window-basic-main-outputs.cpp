@@ -628,6 +628,7 @@ SimpleOutput::SimpleOutput(OBSBasic *main_,
 			   const std::map<int, OBSData> &outputConfigs)
 	: BasicOutputHandler(main_)
 {
+	blog(LOG_WARNING, "Obinna ... SimpleOutput::SimpleOutput( ... %d", outputConfigs.size());
 
 	for (auto &i : outputConfigs) {
 		const char *videoEncoderType =
@@ -1947,6 +1948,7 @@ AdvancedOutput::AdvancedOutput(OBSBasic *main_,
 			       const std::map<int, OBSData> &outputConfigs)
 	: BasicOutputHandler(main_)
 {
+	blog(LOG_WARNING, "Obinna ... AdvancedOutput::AdvancedOutput( ... %d", outputConfigs.size());
 
 	for (auto &item : outputConfigs) {
 		int id = item.first;
@@ -1975,8 +1977,8 @@ AdvancedOutput::AdvancedOutput(OBSBasic *main_,
 		struct Encoders encoders = {audioEncoder, videoEncoder};
 		streamingEncoders.insert({id, encoders});
 	}
-
-	SetupRecording(outputConfigs.at(0));
+        if(!outputConfigs.empty())
+	        SetupRecording(outputConfigs.at(0));
 }
 
 void AdvancedOutput::UpdateStreamSettings()
