@@ -2024,11 +2024,11 @@ void OBSBasic::OBSInit()
 
 	blog(LOG_INFO, STARTUP_SEPARATOR);
 
-	if (!InitService())
-		throw "Failed to initialize services";
 	if (!InitStreamOutputs())
 		throw "Failed to initialize outputs";
-
+	if (!InitService())
+		throw "Failed to initialize services";
+	
 	ResetOutputs();
 	CreateHotkeys();
 

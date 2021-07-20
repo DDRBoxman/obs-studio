@@ -3227,10 +3227,10 @@ void OBSBasicSettings::LoadSettings(bool changedOnly)
 {
 	if (!changedOnly || generalChanged)
 		LoadGeneralSettings();
-	if (!changedOnly || stream1Changed)
-		LoadStream1Settings();
 	if (!changedOnly || outputsChanged)
 		LoadOutputSettings();
+	if (!changedOnly || stream1Changed)
+		LoadStream1Settings();
 	if (!changedOnly || audioChanged)
 		LoadAudioSettings();
 	if (!changedOnly || videoChanged)
@@ -3846,10 +3846,10 @@ void OBSBasicSettings::SaveSettings()
 {
 	if (generalChanged)
 		SaveGeneralSettings();
-	if (stream1Changed)
-		SaveStream1Settings();
 	if (outputsChanged)
 		SaveOutputSettings();
+	if (stream1Changed)
+		SaveStream1Settings();
 	if (audioChanged)
 		SaveAudioSettings();
 	if (videoChanged)

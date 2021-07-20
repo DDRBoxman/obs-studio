@@ -628,8 +628,6 @@ SimpleOutput::SimpleOutput(OBSBasic *main_,
 			   const std::map<int, OBSData> &outputConfigs)
 	: BasicOutputHandler(main_)
 {
-	blog(LOG_WARNING, "Obinna ... SimpleOutput::SimpleOutput( ... %d", outputConfigs.size());
-
 	for (auto &i : outputConfigs) {
 		const char *videoEncoderType =
 			obs_data_get_string(i.second, "stream_encoder");
@@ -1948,8 +1946,6 @@ AdvancedOutput::AdvancedOutput(OBSBasic *main_,
 			       const std::map<int, OBSData> &outputConfigs)
 	: BasicOutputHandler(main_)
 {
-	blog(LOG_WARNING, "Obinna ... AdvancedOutput::AdvancedOutput( ... %d", outputConfigs.size());
-
 	for (auto &item : outputConfigs) {
 		int id = item.first;
 		OBSData config = item.second;
