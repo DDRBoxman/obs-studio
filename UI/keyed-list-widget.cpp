@@ -5,6 +5,12 @@
 
 void KeyedListWidget::AddNewItem(const QString &alias, int key)
 {
+	auto prev = findItems(alias, Qt::MatchExactly);
+	for(auto& it : prev) {
+		// Duplicate item present.
+		if(it->data(Qt::UserRole) == key) return;
+	}
+
 	QString name = alias;
 	QListWidgetItem *item = new QListWidgetItem(name, this);
 	item->setData(Qt::UserRole, key);

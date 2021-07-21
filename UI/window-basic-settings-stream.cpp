@@ -2,6 +2,7 @@
 #include <QUrl>
 
 #include <algorithm>
+#include <sstream>
 
 #include "window-basic-settings.hpp"
 #include "obs-frontend-api.h"
@@ -131,6 +132,7 @@ OBSData OBSBasicSettings::ServiceToSettingData(const OBSService &service)
 void OBSBasicSettings::LoadStream1Settings()
 {
 	std::vector<OBSService> services = main->GetServices();
+	std::map<std::string, int> service_name_to_index;
 
 	int selectedIndex = -1;
 
@@ -139,6 +141,9 @@ void OBSBasicSettings::LoadStream1Settings()
 
 	for (unsigned i = 0; i < services.size(); i++) {
 		OBSData data = ServiceToSettingData(services[i]);
+		const std::string type = obs_data_get_string(data, "type");
+		const std::string name = obs_data_get_string(data, "name");
+		const std::string key = type + "|" + name;
 
 		if (obs_data_get_bool(data, "connectedAccount")) {
 			int id = obs_data_get_int(data, "id");
@@ -148,13 +153,45 @@ void OBSBasicSettings::LoadStream1Settings()
 			obs_data_set_int(data, "AddonChoice", addon);
 		}
 
-		ui->servicesList->AddNewItem(obs_data_get_string(data, "name"),
-					     obs_data_get_int(data, "id"));
+		if (service_name_to_index.find(key) ==
+		    service_name_to_index.end()) {
+			service_name_to_index[key] =
+				obs_data_get_int(data, "id");
+			ui->servicesList->AddNewItem(
+				obs_data_get_string(data, "name"),
+				obs_data_get_int(data, "id"));
 
-		if (selectedServiceID == obs_data_get_int(data, "id"))
-			selectedIndex = i;
+			if (selectedServiceID == obs_data_get_int(data, "id"))
+				selectedIndex = i;
+			serviceSettings.Add(data);
+		} else {
+			// Update settings url to a list of urls.
+			auto prev = serviceSettings.GetSettings(
+				service_name_to_index.find(key)->second);
 
-		serviceSettings.Add(data);
+			std::string prev_urls =
+				obs_data_get_string(prev, "server");
+			std::string current_url =
+				obs_data_get_string(data, "server");
+
+                        std::istringstream strm(prev_urls);
+                        std::string server;
+			bool found_server = false;
+
+                        while(std::getline(strm, server, ',')) {
+				if(server == current_url) {
+					found_server = true;
+					break;
+				}
+			}
+
+			if(!found_server)
+				obs_data_set_string(
+					prev, "server",
+					(prev_urls + "," + current_url)
+						.c_str());
+		}
+
 		obs_data_release(data);
 	}
 
