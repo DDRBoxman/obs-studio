@@ -1013,16 +1013,6 @@
              </spacer>
             </item>
             <item row="3" column="0">
-             <widget class="QLabel" name="label_45">
-              <property name="text">
-               <string>Stream Name</string>
-              </property>
-              <property name="visible">
-               <bool>false</bool>
-              </property>              
-             </widget>
-            </item>
-            <item row="3" column="1">
              <widget class="QLineEdit" name="serviceNameInput">
               <property name="visible">
                <bool>false</bool>
@@ -2278,7 +2268,7 @@
                          </widget>
                         </item>
                         <item>
-                         <spacer name="verticalSpacer_3">
+                         <spacer name="verticalSpacer_31">
                           <property name="orientation">
                            <enum>Qt::Vertical</enum>
                           </property>
