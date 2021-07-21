@@ -687,7 +687,7 @@ void OBSBasicSettings::AddEmptyServiceSetting(int id, bool isDefault)
 	if (isDefault)
 		sprintf(serviceName, "Default Stream");
 	else
-		sprintf(serviceName, "New Stream %d", id);
+		sprintf(serviceName, "Stream %d", id);
 
 	obs_data_set_int(data, "id", (long long)id);
 	obs_data_set_string(data, "name", serviceName);
