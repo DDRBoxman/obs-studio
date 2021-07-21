@@ -199,27 +199,7 @@ static bool CreateAACEncoder(OBSEncoder &res, string &id, int bitrate,
 	return false;
 }
 
-static OBSEncoder CreateAACEncoder(const char *name, int bitrate, bool isSimple,
-				   size_t idx)
-{
-	char encoderName[128];
-	if (isSimple)
-		sprintf(encoderName, "%s.simple_acc", name);
-	else
-		sprintf(encoderName, "%s.advanced_acc", name);
 
-	const char *id_ = GetAACEncoderForBitrate(bitrate);
-	if (!id_)
-		return nullptr;
-
-	OBSEncoder res =
-		obs_audio_encoder_create(id_, name, nullptr, idx, nullptr);
-
-	if (!res)
-		throw "Failed to create aac streaming encoder (simple output)";
-	obs_encoder_release(res);
-	return res;
-}
 /* ------------------------------------------------------------------------ */
 
 void BasicOutputHandler::DisconnectSignals()
@@ -561,9 +541,14 @@ void SimpleOutput::CreateRecordingOutputs()
 		bool useReplayBuffer = config_get_bool(main->Config(),
 						       "SimpleOutput", "RecRB");
 		if (useReplayBuffer) {
+			obs_data_t *hotkey;
 			const char *str = config_get_string(
 				main->Config(), "Hotkeys", "ReplayBuffer");
-			obs_data_t *hotkey = obs_data_create_from_json(str);
+			if (str)
+				hotkey = obs_data_create_from_json(str);
+			else
+				hotkey = nullptr;
+
 			replayBuffer = obs_output_create("replay_buffer",
 							 Str("ReplayBuffer"),
 							 nullptr, hotkey);
@@ -624,6 +609,8 @@ OBSEncoder SimpleOutput::CreateVideoEncoder(const char *encoderType,
 	return videoEncoder;
 }
 
+#define SIMPLE_ARCHIVE_NAME "simple_archive_aac"
+
 SimpleOutput::SimpleOutput(OBSBasic *main_,
 			   const std::map<int, OBSData> &outputConfigs)
 	: BasicOutputHandler(main_)
@@ -635,8 +622,16 @@ SimpleOutput::SimpleOutput(OBSBasic *main_,
 
 		const int bitrate = obs_data_get_int(i.second, "audio_bitrate");
 
-		OBSEncoder audioEncoder =
-			CreateAACEncoder(name, bitrate, true, 0);
+		OBSEncoder audioEncoder;
+
+		string encName(name);
+	        if (!CreateAACEncoder(audioEncoder, encName, bitrate, "simple_aac", 0))
+		        throw "Failed to create aac streaming encoder (simple output)";
+
+	        if (!CreateAACEncoder(aacArchive, aacArchiveEncID, GetAudioBitrate(),
+		        	      SIMPLE_ARCHIVE_NAME, 1))
+		throw "Failed to create aac arhive encoder (simple output)";
+
 		OBSEncoder videoEncoder =
 			CreateVideoEncoder(videoEncoderType, name);
 
@@ -649,8 +644,6 @@ SimpleOutput::SimpleOutput(OBSBasic *main_,
 	LoadRecordingPreset();
 	CreateRecordingOutputs();
 }
-
-#define SIMPLE_ARCHIVE_NAME "simple_archive_aac"
 
 SimpleOutput::SimpleOutput(OBSBasic *main_) : BasicOutputHandler(main_)
 {
@@ -1254,8 +1247,8 @@ void SimpleOutput::SetupVodTrack(obs_service_t *service)
 	obs_data_t *settings = obs_service_get_settings(service);
 	const char *name = obs_data_get_string(settings, "service");
 
-	const char *id = obs_service_get_id(service);
-	if (strcmp(id, "rtmp_custom") == 0)
+	const char *type = obs_data_get_string(settings, "type");
+	if (strcmp(type, "rtmp_custom") == 0)
 		enable = enableForCustomServer ? enable : false;
 	else
 		enable = advanced && enable && ServiceSupportsVodTrack(name);
@@ -1381,12 +1374,14 @@ bool SimpleOutput::StartStreaming(const std::vector<OBSService> &services,
 		const char *type = obs_service_get_output_type(service);
 		if (!type) {
 			type = "rtmp_output";
-			const char *url = obs_service_get_url(service);
-			if (url != NULL &&
-			    strncmp(url, RTMP_PROTOCOL,
-				    strlen(RTMP_PROTOCOL)) != 0) {
-				type = "ffmpeg_mpegts_muxer";
-			}
+		        const char *url = obs_service_get_url(service);
+		        if (url != NULL &&
+			    strncmp(url, FTL_PROTOCOL, strlen(FTL_PROTOCOL)) == 0) {
+				type = "ftl_output";
+		        } else if (url != NULL && strncmp(url, RTMP_PROTOCOL,
+							  strlen(RTMP_PROTOCOL)) != 0) {
+			        type = "ffmpeg_mpegts_muxer";
+		        }
 		}
 
 		char name[138];
@@ -1407,6 +1402,8 @@ bool SimpleOutput::StartStreaming(const std::vector<OBSService> &services,
 			     type);
 			return false;
 		}
+
+	        SetupVodTrack(service);
 
 		obs_output_release(output);
 
@@ -1868,7 +1865,9 @@ void AdvancedOutput::SetupRecording(const OBSData &config)
 		config_get_string(main->Config(), "AdvOut", "RecType");
 	const char *recordEncoder =
 		config_get_string(main->Config(), "AdvOut", "RecEncoder");
-
+#ifdef __APPLE__
+	translate_macvth264_encoder(recordEncoder);
+#endif
 	ffmpegOutput = astrcmpi(recType, "FFmpeg") == 0;
 	ffmpegRecording =
 		ffmpegOutput &&
@@ -1951,8 +1950,11 @@ AdvancedOutput::AdvancedOutput(OBSBasic *main_,
 		OBSData config = item.second;
 
 		/* Create Video Encoders */
-		const char *encoderType =
+		const char *streamEncoder =
 			obs_data_get_string(config, "adv_stream_encoder");
+#ifdef __APPLE__
+	        translate_macvth264_encoder(streamEncoder);
+#endif
 		OBSData advEncSettings =
 			obs_data_get_obj(config, "adv_encoder_props");
 		obs_data_release(advEncSettings);
@@ -1964,11 +1966,13 @@ AdvancedOutput::AdvancedOutput(OBSBasic *main_,
 		streamTrack = streamTrack < 0 ? 0 : streamTrack;
 
 		OBSEncoder videoEncoder = CreateVideoEncoder(
-			encoderType, outputName, advEncSettings);
+			streamEncoder, outputName, advEncSettings);
 
-		OBSEncoder audioEncoder = CreateAACEncoder(
-			outputName, GetAudioBitrate(streamTrack), false,
-			streamTrack);
+		OBSEncoder audioEncoder;
+		string aacName(outputName);
+		CreateAACEncoder(audioEncoder, aacName,
+				 GetAudioBitrate(streamTrack), "advanced_acc",
+				 streamTrack);
 
 		struct Encoders encoders = {audioEncoder, videoEncoder};
 		streamingEncoders.insert({id, encoders});
@@ -2471,8 +2475,10 @@ inline void AdvancedOutput::SetupVodTrack(obs_service_t *service)
 	bool enableForCustomServer = config_get_bool(
 		GetGlobalConfig(), "General", "EnableCustomServerVodTrack");
 
-	const char *id = obs_service_get_id(service);
-	if (strcmp(id, "rtmp_custom") == 0) {
+        OBSData settings = obs_service_get_settings(service);
+	const char *type = obs_data_get_string(settings, "type");
+
+	if (strcmp(type, "rtmp_custom") == 0) {
 		vodTrackEnabled = enableForCustomServer ? vodTrackEnabled
 							: false;
 	} else {
@@ -2482,6 +2488,8 @@ inline void AdvancedOutput::SetupVodTrack(obs_service_t *service)
 			vodTrackEnabled = false;
 		obs_data_release(settings);
 	}
+
+        obs_data_release(settings);
 
 	if (vodTrackEnabled && streamTrack != vodTrackIndex)
 		obs_output_set_audio_encoder(streamOutput, streamArchiveEnc, 1);
@@ -3019,16 +3027,6 @@ BasicOutputHandler::GetRecordingFilename(const char *path, const char *ext,
 	string dst = GetOutputFilename(path, ext, noSpace, overwrite, format);
 	lastRecordingPath = dst;
 	return dst;
-}
-
-BasicOutputHandler *CreateSimpleOutputHandler(OBSBasic *main)
-{
-	return new SimpleOutput(main);
-}
-
-BasicOutputHandler *CreateAdvancedOutputHandler(OBSBasic *main)
-{
-	return new AdvancedOutput(main);
 }
 
 BasicOutputHandler *
