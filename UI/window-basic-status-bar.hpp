@@ -33,8 +33,8 @@ private:
 	QLabel *delayInfo;
 	QLabel *message;
 	QTimer *messageDuration;
-	QWidget *multipleDroppedFrames;
 	QLabel *droppedFrames;
+	QWidget *multipleDroppedFrames;
 	QLabel *streamIcon;
 	QLabel *streamTime;
 	QLabel *recordTime;

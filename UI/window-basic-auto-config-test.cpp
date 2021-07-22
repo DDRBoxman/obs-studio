@@ -1232,7 +1232,7 @@ QWidget *AutoConfigTestPage::CreateResultWidget(const OBSData &settings,
 
 void AutoConfigTestPage::ClearResults()
 {
-	for (unsigned int i = 0; i < (int)ui->results->count(); i++) {
+	for (int i = 0; i < (int)ui->results->count(); i++) {
 		QWidget *result = ui->results->widget(i);
 		ui->results->removeWidget(result);
 		delete result;
