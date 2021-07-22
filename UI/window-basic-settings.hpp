@@ -181,6 +181,7 @@ private:
 	void PopulateSimpleStreamOutputForm(int id);
 	void PopulateAdvStreamOutputForm(int id);
 	void SaveStreamOutputFormChanges();
+	void SaveOutputFormMiscChanges();
 	void GetSimpleStreamOutputChanges();
 	void GetAdvStreamOutputChanges();
 

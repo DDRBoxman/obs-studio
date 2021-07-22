@@ -3661,6 +3661,7 @@ void OBSBasicSettings::SaveEncoder(QComboBox *combo, const char *section,
 
 void OBSBasicSettings::SaveOutputSettings()
 {
+	SaveOutputFormMiscChanges();
 	SaveStreamOutputFormChanges();
 
 	config_set_string(main->Config(), "Output", "Mode",
@@ -3831,6 +3832,109 @@ void OBSBasicSettings::SaveHotkeySettings()
 				  obs_data_get_json(hotkeys));
 		obs_data_release(hotkeys);
 	}
+}
+
+void OBSBasicSettings::SaveOutputFormMiscChanges() {
+	SaveSpinBox(ui->simpleOutputVBitrate, "SimpleOutput", "VBitrate");
+	SaveComboData(ui->simpleOutStrEncoder, "SimpleOutput", "StreamEncoder");
+	SaveCombo(ui->simpleOutputABitrate, "SimpleOutput", "ABitrate");
+	SaveEdit(ui->simpleOutputPath, "SimpleOutput", "FilePath");
+	SaveCheckBox(ui->simpleNoSpace, "SimpleOutput", "FileNameWithoutSpace");
+	SaveCombo(ui->simpleOutRecFormat, "SimpleOutput", "RecFormat");
+	SaveCheckBox(ui->simpleOutAdvanced, "SimpleOutput", "UseAdvanced");
+	SaveEdit(ui->simpleOutCustom, "SimpleOutput", "x264Settings");
+	SaveComboData(ui->simpleOutRecQuality, "SimpleOutput", "RecQuality");
+	SaveComboData(ui->simpleOutRecEncoder, "SimpleOutput", "RecEncoder");
+	SaveEdit(ui->simpleOutMuxCustom, "SimpleOutput", "MuxerCustom");
+	SaveCheckBox(ui->simpleReplayBuf, "SimpleOutput", "RecRB");
+	SaveSpinBox(ui->simpleRBSecMax, "SimpleOutput", "RecRBTime");
+	SaveSpinBox(ui->simpleRBMegsMax, "SimpleOutput", "RecRBSize");
+
+	curAdvStreamEncoder = GetComboData(ui->advOutEncoder);
+
+	SaveComboData(ui->advOutEncoder, "AdvOut", "Encoder");
+	SaveCheckBox(ui->advOutUseRescale, "AdvOut", "Rescale");
+	SaveCombo(ui->advOutRescale, "AdvOut", "RescaleRes");
+	SaveTrackIndex(main->Config(), "AdvOut", "TrackIndex", ui->advOutTrack1,
+		       ui->advOutTrack2, ui->advOutTrack3, ui->advOutTrack4,
+		       ui->advOutTrack5, ui->advOutTrack6);
+
+	config_set_string(main->Config(), "AdvOut", "RecType",
+			  RecTypeFromIdx(ui->advOutRecType->currentIndex()));
+
+	curAdvRecordEncoder = GetComboData(ui->advOutRecEncoder);
+
+	SaveEdit(ui->advOutRecPath, "AdvOut", "RecFilePath");
+	SaveCheckBox(ui->advOutNoSpace, "AdvOut", "RecFileNameWithoutSpace");
+	SaveCombo(ui->advOutRecFormat, "AdvOut", "RecFormat");
+	SaveComboData(ui->advOutRecEncoder, "AdvOut", "RecEncoder");
+	SaveCheckBox(ui->advOutRecUseRescale, "AdvOut", "RecRescale");
+	SaveCombo(ui->advOutRecRescale, "AdvOut", "RecRescaleRes");
+	SaveEdit(ui->advOutMuxCustom, "AdvOut", "RecMuxerCustom");
+
+	config_set_int(
+		main->Config(), "AdvOut", "RecTracks",
+		(ui->advOutRecTrack1->isChecked() ? (1 << 0) : 0) |
+			(ui->advOutRecTrack2->isChecked() ? (1 << 1) : 0) |
+			(ui->advOutRecTrack3->isChecked() ? (1 << 2) : 0) |
+			(ui->advOutRecTrack4->isChecked() ? (1 << 3) : 0) |
+			(ui->advOutRecTrack5->isChecked() ? (1 << 4) : 0) |
+			(ui->advOutRecTrack6->isChecked() ? (1 << 5) : 0));
+
+	config_set_int(main->Config(), "AdvOut", "FLVTrack", CurrentFLVTrack());
+
+	config_set_bool(main->Config(), "AdvOut", "FFOutputToFile",
+			ui->advOutFFType->currentIndex() == 0 ? true : false);
+	SaveEdit(ui->advOutFFRecPath, "AdvOut", "FFFilePath");
+	SaveCheckBox(ui->advOutFFNoSpace, "AdvOut", "FFFileNameWithoutSpace");
+	SaveEdit(ui->advOutFFURL, "AdvOut", "FFURL");
+	SaveFormat(ui->advOutFFFormat);
+	SaveEdit(ui->advOutFFMCfg, "AdvOut", "FFMCustom");
+	SaveSpinBox(ui->advOutFFVBitrate, "AdvOut", "FFVBitrate");
+	SaveSpinBox(ui->advOutFFVGOPSize, "AdvOut", "FFVGOPSize");
+	SaveCheckBox(ui->advOutFFUseRescale, "AdvOut", "FFRescale");
+	SaveCheckBox(ui->advOutFFIgnoreCompat, "AdvOut", "FFIgnoreCompat");
+	SaveCombo(ui->advOutFFRescale, "AdvOut", "FFRescaleRes");
+	SaveEncoder(ui->advOutFFVEncoder, "AdvOut", "FFVEncoder");
+	SaveEdit(ui->advOutFFVCfg, "AdvOut", "FFVCustom");
+	SaveSpinBox(ui->advOutFFABitrate, "AdvOut", "FFABitrate");
+	SaveEncoder(ui->advOutFFAEncoder, "AdvOut", "FFAEncoder");
+	SaveEdit(ui->advOutFFACfg, "AdvOut", "FFACustom");
+	config_set_int(
+		main->Config(), "AdvOut", "FFAudioMixes",
+		(ui->advOutFFTrack1->isChecked() ? (1 << 0) : 0) |
+			(ui->advOutFFTrack2->isChecked() ? (1 << 1) : 0) |
+			(ui->advOutFFTrack3->isChecked() ? (1 << 2) : 0) |
+			(ui->advOutFFTrack4->isChecked() ? (1 << 3) : 0) |
+			(ui->advOutFFTrack5->isChecked() ? (1 << 4) : 0) |
+			(ui->advOutFFTrack6->isChecked() ? (1 << 5) : 0));
+	SaveCombo(ui->advOutTrack1Bitrate, "AdvOut", "Track1Bitrate");
+	SaveCombo(ui->advOutTrack2Bitrate, "AdvOut", "Track2Bitrate");
+	SaveCombo(ui->advOutTrack3Bitrate, "AdvOut", "Track3Bitrate");
+	SaveCombo(ui->advOutTrack4Bitrate, "AdvOut", "Track4Bitrate");
+	SaveCombo(ui->advOutTrack5Bitrate, "AdvOut", "Track5Bitrate");
+	SaveCombo(ui->advOutTrack6Bitrate, "AdvOut", "Track6Bitrate");
+	SaveEdit(ui->advOutTrack1Name, "AdvOut", "Track1Name");
+	SaveEdit(ui->advOutTrack2Name, "AdvOut", "Track2Name");
+	SaveEdit(ui->advOutTrack3Name, "AdvOut", "Track3Name");
+	SaveEdit(ui->advOutTrack4Name, "AdvOut", "Track4Name");
+	SaveEdit(ui->advOutTrack5Name, "AdvOut", "Track5Name");
+	SaveEdit(ui->advOutTrack6Name, "AdvOut", "Track6Name");
+
+	if (vodTrackCheckbox) {
+		SaveCheckBox(simpleVodTrack, "SimpleOutput", "VodTrackEnabled");
+		SaveCheckBox(vodTrackCheckbox, "AdvOut", "VodTrackEnabled");
+		SaveTrackIndex(main->Config(), "AdvOut", "VodTrackIndex",
+			       vodTrack[0], vodTrack[1], vodTrack[2],
+			       vodTrack[3], vodTrack[4], vodTrack[5]);
+	}
+
+	SaveCheckBox(ui->advReplayBuf, "AdvOut", "RecRB");
+	SaveSpinBox(ui->advRBSecMax, "AdvOut", "RecRBTime");
+	SaveSpinBox(ui->advRBMegsMax, "AdvOut", "RecRBSize");
+
+	WriteJsonData(streamEncoderProps, "streamEncoder.json");
+	WriteJsonData(recordEncoderProps, "recordEncoder.json");
 }
 
 #define MINOR_SEPARATOR "------------------------------------------------"
