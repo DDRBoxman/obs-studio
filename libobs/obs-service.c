@@ -65,7 +65,8 @@ static obs_service_t *obs_service_create_internal(const char *id,
 
 	obs_context_data_insert(&service->context, &obs->data.services_mutex,
 				&obs->data.first_service);
-	obs_service_set_output_id(service, obs_data_get_int(settings, "output_id"));
+	obs_service_set_output_id(service,
+				  obs_data_get_int(settings, "output_id"));
 
 	blog(LOG_DEBUG, "service '%s' (%s) created", name, id);
 	return service;
