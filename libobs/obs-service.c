@@ -46,6 +46,7 @@ static obs_service_t *obs_service_create_internal(const char *id,
 		blog(LOG_ERROR, "Service '%s' not found", id);
 		return NULL;
 	}
+
 	service = bzalloc(sizeof(struct obs_service));
 
 	if (!obs_context_data_init(&service->context, OBS_OBJ_TYPE_SERVICE,
