@@ -13,7 +13,6 @@ class SettingsListContainer {
 
 public:
 	SettingsListContainer() {}
-	SettingsListContainer(std::vector<OBSData> settings);
 
 	std::map<int, OBSData> GetSettings() const { return settings; }
 	OBSData GetSettings(int id) const;

@@ -1,11 +1,5 @@
 #include "settings-list-container.hpp"
 
-SettingsListContainer::SettingsListContainer(std::vector<OBSData> settingsList)
-{
-	for (unsigned i = 0; i < settingsList.size(); i++) {
-		Add(settingsList[i]);
-	}
-}
 OBSData SettingsListContainer::GetSettings(int id) const
 {
 	return settings.at(id);
