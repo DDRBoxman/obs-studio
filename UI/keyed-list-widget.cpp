@@ -27,7 +27,6 @@ void KeyedListWidget::UpdateItemName(const QString &alias)
 void KeyedListWidget::RemoveItem()
 {
 	if (currentRow() == NONE_SELECTED) {
-		// show failure
 		QString message = count() == 0 ? "There are no saved items."
 					       : "No items selected.";
 
