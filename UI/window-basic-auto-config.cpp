@@ -303,15 +303,15 @@ AutoConfigStreamPage::AutoConfigStreamPage(QWidget *parent)
 		SLOT(UpdateOutputConfigForm()));
 
 	connect(ui->actionAddService, SIGNAL(triggered()), this,
-		SLOT(on_actionAddService_trigger()));
+		SLOT(onActionAddServiceTrigger()));
 	connect(ui->actionRemoveService, SIGNAL(triggered()), this,
-		SLOT(on_actionRemoveService_trigger()));
+		SLOT(onActionRemoveServiceTrigger()));
 	connect(ui->actionScrollUp, SIGNAL(triggered()), this,
-		SLOT(on_actionScrollUp_trigger()));
+		SLOT(onActionScrollUpTrigger()));
 	connect(ui->actionScrollDown, SIGNAL(triggered()), this,
-		SLOT(on_actionScrollDown_trigger()));
+		SLOT(onActionScrollDownTrigger()));
 	connect(ui->serviceList, SIGNAL(ItemClicked(int)), this,
-		SLOT(on_serviceList_itemClicked(int)));
+		SLOT(onServiceListItemClicked(int)));
 
 	connect(ui->streamName, SIGNAL(textEdited(QString)), ui->serviceList,
 		SLOT(UpdateItemName(QString)));
@@ -342,7 +342,7 @@ bool AutoConfigStreamPage::isComplete() const
 
 int AutoConfigStreamPage::nextId() const
 {
-	bool test;
+	bool test = false;
 
 	for (auto &service : serviceConfigs) {
 		if (obs_data_get_int(service.second, "output_id") == -1 &&
@@ -366,7 +366,7 @@ bool AutoConfigStreamPage::validatePage()
 		emptyNotice.setIcon(QMessageBox::Critical);
 		emptyNotice.setText("Please create at least one stream.");
 		emptyNotice.exec();
-		on_actionAddService_trigger();
+		onActionAddServiceTrigger();
 		return false;
 	}
 	if (!CheckNameAndKey())
@@ -381,11 +381,10 @@ bool AutoConfigStreamPage::validatePage()
 		if (obs_data_get_int(config.second, "output_id") == -1) {
 			const char *name =
 				obs_data_get_string(config.second, "name");
-			if (obs_data_get_bool(config.second, "bwtest")){
+			if (obs_data_get_bool(config.second, "bwtest")) {
 				testSets += "\n";
 				testSets += name;
-			}
-			else {
+			} else {
 				defaultSets += name;
 				defaultSets += "\n";
 			}
@@ -405,19 +404,24 @@ bool AutoConfigStreamPage::validatePage()
 		QString detailedMessage;
 
 		if (defaultSets.size() != 0) {
-			detailedMessage += "The following services will get default output configurations:\n\n";
+			detailedMessage +=
+				"The following services will get default output configurations:\n\n";
 			detailedMessage += defaultSets;
-			detailedMessage += "\n-------------------------------------";
-			detailedMessage += "\n-------------------------------------\n\n";
+			detailedMessage +=
+				"\n-------------------------------------";
+			detailedMessage +=
+				"\n-------------------------------------\n\n";
 		}
 
 		if (testSets.size() != 0) {
-			detailedMessage += "The following services will get their output configurations from bandwidth tests:\n";
+			detailedMessage +=
+				"The following services will get their output configurations from bandwidth tests:\n";
 			detailedMessage += testSets;
 		}
 
 		QMessageBox testNotice(this);
-		QPushButton *cancelButton = testNotice.addButton(QMessageBox::Cancel);
+		QPushButton *cancelButton =
+			testNotice.addButton(QMessageBox::Cancel);
 		testNotice.addButton(QMessageBox::Ok);
 		testNotice.setWindowTitle("Warning");
 		testNotice.setIcon(QMessageBox::Information);
@@ -447,9 +451,8 @@ void AutoConfigStreamPage::on_show_clicked()
 void AutoConfigStreamPage::OnOAuthStreamKeyConnected()
 {
 #ifdef BROWSER_AVAILABLE
-	OAuthStreamKey *a =
-		reinterpret_cast<OAuthStreamKey *>(
-			serviceAuths.at(selectedServiceID).get());
+	OAuthStreamKey *a = reinterpret_cast<OAuthStreamKey *>(
+		serviceAuths.at(selectedServiceID).get());
 
 	if (a) {
 		bool validKey = !a->key().empty();
@@ -629,8 +632,10 @@ void AutoConfigStreamPage::ServiceChanged()
 		std::map<int, std::shared_ptr<Auth>> auths = main->GetAuths();
 
 		if (auths.find(selectedServiceID) != auths.end() &&
-		    service.find(auths[selectedServiceID]->service()) != std::string::npos) {
-			serviceAuths[selectedServiceID] = auths[selectedServiceID];
+		    service.find(auths[selectedServiceID]->service()) !=
+			    std::string::npos) {
+			serviceAuths[selectedServiceID] =
+				auths[selectedServiceID];
 			OnAuthConnected();
 		}
 	}
@@ -779,7 +784,8 @@ void AutoConfigStreamPage::LoadServices(bool showAll)
 	ui->service->blockSignals(false);
 }
 
-bool AutoConfigStreamPage::CheckNameAndKey() {
+bool AutoConfigStreamPage::CheckNameAndKey()
+{
 	bool emptyKey = ui->key->text().size() == 0;
 	bool emptyName = ui->streamName->text().size() == 0;
 
@@ -802,7 +808,8 @@ bool AutoConfigStreamPage::CheckNameAndKey() {
 	return false;
 }
 
-OBSData AutoConfigStreamPage::ServiceToSettingData(const OBSService& service) {
+OBSData AutoConfigStreamPage::ServiceToSettingData(const OBSService &service)
+{
 	OBSData serviceSetting = obs_service_get_settings(service);
 	obs_data_set_obj(serviceSetting, "hotkey-data",
 			 obs_hotkeys_save_service(service));
@@ -810,7 +817,8 @@ OBSData AutoConfigStreamPage::ServiceToSettingData(const OBSService& service) {
 }
 
 void AutoConfigStreamPage::LoadOutputComboBox(
-				const std::map<int, OBSData>& outputs) {
+	const std::map<int, OBSData> &outputs)
+{
 	bool autoConfigSet = false;
 	std::vector<int> outputIDs;
 
@@ -831,9 +839,11 @@ void AutoConfigStreamPage::LoadOutputComboBox(
 		ui->output->insertItem(0, "Auto-Config Output", -1);
 }
 
-void AutoConfigStreamPage::LoadStreamSettings() {
+void AutoConfigStreamPage::LoadStreamSettings()
+{
 	std::vector<OBSService> services = OBSBasic::Get()->GetServices();
-	std::map<int, OBSData> outputs = OBSBasic::Get()->GetStreamOutputSettings();
+	std::map<int, OBSData> outputs =
+		OBSBasic::Get()->GetStreamOutputSettings();
 
 	ready = true;
 	for (unsigned int i = 0; i < services.size(); i++) {
@@ -842,7 +852,7 @@ void AutoConfigStreamPage::LoadStreamSettings() {
 
 		int id = obs_data_get_int(data, "id");
 		ui->serviceList->AddNewItem(obs_data_get_string(data, "name"),
-					     id);
+					    id);
 		serviceConfigs.insert({id, data});
 		if (i == 0)
 			selectedServiceID = id;
@@ -858,7 +868,8 @@ void AutoConfigStreamPage::LoadStreamSettings() {
 	PopulateStreamSettings();
 }
 
-void AutoConfigStreamPage::PopulateStreamSettings() {
+void AutoConfigStreamPage::PopulateStreamSettings()
+{
 	loading = true;
 	OBSData settings = serviceConfigs.at(selectedServiceID);
 
@@ -871,7 +882,11 @@ void AutoConfigStreamPage::PopulateStreamSettings() {
 	lastService = service;
 
 	int outputIndex = ui->output->findData(outputID);
+	blog(LOG_WARNING,
+	     "Obinna ,....... kajhjdahjhjads  ID %d, index: %d, service: %s, name: %s",
+	     outputID, outputIndex, service, name.toStdString().c_str());
 	ui->output->setCurrentIndex(outputIndex);
+	blog(LOG_WARNING, "Obinna ,....... AFTER, outputID");
 
 	ui->streamName->setText(name);
 	ui->key->setText(key);
@@ -905,23 +920,19 @@ void AutoConfigStreamPage::PopulateStreamSettings() {
 		ui->preferHardware->setChecked(
 			obs_data_get_bool(settings, "preferHardware"));
 	}
-	ui->doBandwidthTest->setChecked(
-			obs_data_get_bool(settings, "bwtest"));
-	ui->regionUS->setChecked(
-			obs_data_get_bool(settings, "regionUS"));
-	ui->regionEU->setChecked(
-			obs_data_get_bool(settings, "regionEU"));
-	ui->regionAsia->setChecked(
-			obs_data_get_bool(settings, "regionAsia"));
-	ui->regionOther->setChecked(
-			obs_data_get_bool(settings, "regionOther"));
+	ui->doBandwidthTest->setChecked(obs_data_get_bool(settings, "bwtest"));
+	ui->regionUS->setChecked(obs_data_get_bool(settings, "regionUS"));
+	ui->regionEU->setChecked(obs_data_get_bool(settings, "regionEU"));
+	ui->regionAsia->setChecked(obs_data_get_bool(settings, "regionAsia"));
+	ui->regionOther->setChecked(obs_data_get_bool(settings, "regionOther"));
 	UpdateKeyLink();
 	UpdateMoreInfoLink();
 	UpdateOutputConfigForm();
 	loading = false;
 }
 
-void AutoConfigStreamPage::ClearStreamSettings() {
+void AutoConfigStreamPage::ClearStreamSettings()
+{
 	ui->streamName->setText("");
 	ui->key->setText("");
 	ui->output->setCurrentIndex(ui->output->findData(-1));
@@ -938,12 +949,13 @@ void AutoConfigStreamPage::ClearStreamSettings() {
 	UpdateOutputConfigForm();
 }
 
-void AutoConfigStreamPage::UpdateOutputConfigForm() {
-	bool enableAutoOutput =
-			strcmp("Auto-Config Output",
-			       QT_TO_UTF8(ui->output->currentText())) == 0;
+void AutoConfigStreamPage::UpdateOutputConfigForm()
+{
+	bool enableAutoOutput = strcmp("Auto-Config Output",
+				       QT_TO_UTF8(ui->output->currentText())) ==
+				0;
 
-	ui->bitrate-> setVisible(false);
+	ui->bitrate->setVisible(false);
 	ui->bitrateLabel->setVisible(false);
 	ui->doBandwidthTest->setVisible(false);
 	ui->region->setVisible(false);
@@ -960,17 +972,17 @@ void AutoConfigStreamPage::UpdateOutputConfigForm() {
 		ui->doBandwidthTest->setVisible(true);
 		bool isTwitch = ui->service->currentText().startsWith("Twitch");
 
-		bool regionBased = isTwitch ||
+		bool regionBased =
+			isTwitch ||
 			ui->service->currentText().startsWith("Smashcast");
 
-		if (isTwitch &&
-		    strcmp(QT_TO_UTF8(ui->server->currentText()), "Auto (Recommended)") == 0)
-		    regionBased = false;
+		if (isTwitch && strcmp(QT_TO_UTF8(ui->server->currentText()),
+				       "Auto (Recommended)") == 0)
+			regionBased = false;
 
 		if (ui->doBandwidthTest->isChecked() && regionBased)
 			ui->region->setVisible(true);
-	}
-	else {
+	} else {
 		ui->doBandwidthTest->setChecked(false);
 	}
 
@@ -989,7 +1001,7 @@ void AutoConfigStreamPage::GetStreamSettings()
 	std::string service = QT_TO_UTF8(ui->service->currentText());
 	obs_data_set_string(service_settings, "service", service.c_str());
 	obs_data_set_string(service_settings, "name",
-				    QT_TO_UTF8(ui->streamName->text()));
+			    QT_TO_UTF8(ui->streamName->text()));
 	obs_data_set_string(service_settings, "key",
 			    QT_TO_UTF8(ui->key->text()));
 	obs_data_set_string(service_settings, "type", serverType);
@@ -1003,20 +1015,22 @@ void AutoConfigStreamPage::GetStreamSettings()
 
 	if (custom) {
 		QString server = ui->customServer->text();
-		obs_data_set_string(service_settings, "server", QT_TO_UTF8(server));
+		obs_data_set_string(service_settings, "server",
+				    QT_TO_UTF8(server));
 	} else {
 		QString server = ui->server->currentData().toString();
-		obs_data_set_string(service_settings, "server", QT_TO_UTF8(server));
+		obs_data_set_string(service_settings, "server",
+				    QT_TO_UTF8(server));
 	}
 
 	obs_data_set_int(service_settings, "output_id",
-					 ui->output->currentData().toInt());
+			 ui->output->currentData().toInt());
 	obs_data_set_bool(service_settings, "bwtest",
 			  ui->doBandwidthTest->isChecked());
 	obs_data_set_int(service_settings, "startingBitrate",
-			  (int)obs_data_get_int(service_settings, "bitrate"));
+			 (int)obs_data_get_int(service_settings, "bitrate"));
 	obs_data_set_int(service_settings, "idealBitrate",
-			  (int)obs_data_get_int(service_settings, "bitrate"));
+			 (int)obs_data_get_int(service_settings, "bitrate"));
 
 	obs_data_set_bool(service_settings, "regionUS",
 			  ui->regionUS->isChecked());
@@ -1029,7 +1043,7 @@ void AutoConfigStreamPage::GetStreamSettings()
 
 	if (ui->preferHardware) {
 		obs_data_set_bool(service_settings, "preferHardware",
-			  	  ui->preferHardware->isChecked());
+				  ui->preferHardware->isChecked());
 	}
 
 	int serviceType = -1;
@@ -1045,7 +1059,8 @@ void AutoConfigStreamPage::GetStreamSettings()
 	ready = true;
 }
 
-int AutoConfig::GetNewSettingID(const std::map<int, OBSData> &map) {
+int AutoConfig::GetNewSettingID(const std::map<int, OBSData> &map)
+{
 	std::vector<int> usedIDs;
 	for (auto &i : map)
 		usedIDs.push_back(i.first);
@@ -1059,12 +1074,13 @@ int AutoConfig::GetNewSettingID(const std::map<int, OBSData> &map) {
 	return usedIDs.size();
 }
 
-void AutoConfigStreamPage::AddEmptyServiceSetting(int id) {
+void AutoConfigStreamPage::AddEmptyServiceSetting(int id)
+{
 	OBSData data = obs_data_create();
 	obs_data_release(data);
 
 	char serviceName[64];
-	sprintf(serviceName, "New Stream %d", id);
+	sprintf(serviceName, "Stream %d", id);
 
 	obs_data_set_int(data, "id", (long long)id);
 	obs_data_set_string(data, "name", serviceName);
@@ -1076,7 +1092,8 @@ void AutoConfigStreamPage::AddEmptyServiceSetting(int id) {
 	ui->serviceList->AddNewItem(serviceName, id);
 }
 
-void AutoConfigStreamPage::on_actionAddService_trigger() {
+void AutoConfigStreamPage::onActionAddServiceTrigger()
+{
 	if (!CheckNameAndKey())
 		return;
 	int newID = AutoConfig::GetNewSettingID(serviceConfigs);
@@ -1088,7 +1105,8 @@ void AutoConfigStreamPage::on_actionAddService_trigger() {
 	PopulateStreamSettings();
 }
 
-void AutoConfigStreamPage::on_actionRemoveService_trigger() {
+void AutoConfigStreamPage::onActionRemoveServiceTrigger()
+{
 	int newSelectedID = -1;
 	if (serviceConfigs.size() == 0)
 		return;
@@ -1098,8 +1116,9 @@ void AutoConfigStreamPage::on_actionRemoveService_trigger() {
 	ui->serviceList->takeItem(row);
 
 	if (serviceConfigs.size() != 0) {
-		newSelectedID = ui->serviceList->currentItem()->
-						    data(Qt::UserRole).toInt();
+		newSelectedID = ui->serviceList->currentItem()
+					->data(Qt::UserRole)
+					.toInt();
 	}
 	selectedServiceID = newSelectedID;
 
@@ -1109,7 +1128,8 @@ void AutoConfigStreamPage::on_actionRemoveService_trigger() {
 		ClearStreamSettings();
 }
 
-void AutoConfigStreamPage::on_actionScrollUp_trigger() {
+void AutoConfigStreamPage::onActionScrollUpTrigger()
+{
 	int currentRow = ui->serviceList->currentRow();
 	if (currentRow <= 0 || ui->serviceList->count() == 0)
 		return;
@@ -1120,13 +1140,14 @@ void AutoConfigStreamPage::on_actionScrollUp_trigger() {
 	GetStreamSettings();
 
 	ui->serviceList->setCurrentRow(--currentRow);
-	selectedServiceID = ui->serviceList->currentItem()->
-						    data(Qt::UserRole).toInt();
+	selectedServiceID =
+		ui->serviceList->currentItem()->data(Qt::UserRole).toInt();
 
 	PopulateStreamSettings();
 }
 
-void AutoConfigStreamPage::on_actionScrollDown_trigger() {
+void AutoConfigStreamPage::onActionScrollDownTrigger()
+{
 	int currentRow = ui->serviceList->currentRow();
 	if (ui->serviceList->count() == 0 ||
 	    ui->serviceList->count() == currentRow + 1)
@@ -1138,13 +1159,14 @@ void AutoConfigStreamPage::on_actionScrollDown_trigger() {
 	GetStreamSettings();
 
 	ui->serviceList->setCurrentRow(++currentRow);
-	selectedServiceID = ui->serviceList->currentItem()->
-						    data(Qt::UserRole).toInt();
+	selectedServiceID =
+		ui->serviceList->currentItem()->data(Qt::UserRole).toInt();
 
 	PopulateStreamSettings();
 }
 
-void AutoConfigStreamPage::on_serviceList_itemClicked(int id) {
+void AutoConfigStreamPage::onServiceListItemClicked(int id)
+{
 	if (!CheckNameAndKey())
 		return;
 
@@ -1206,7 +1228,7 @@ void AutoConfigStreamPage::UpdateCompleted()
 				!ui->key->text().isEmpty();
 		} else {
 			std::string service =
-					QT_TO_UTF8(ui->service->currentText());
+				QT_TO_UTF8(ui->service->currentText());
 			bool regionBased = service == "Twitch" ||
 					   service == "Smashcast";
 
@@ -1214,11 +1236,11 @@ void AutoConfigStreamPage::UpdateCompleted()
 				regionBased = false;
 
 			bool regionsReady = !regionBased ||
-				!ui->doBandwidthTest->isChecked() ||
-				ui->regionUS->isChecked() ||
-				ui->regionEU->isChecked() ||
-				ui->regionAsia->isChecked() ||
-				ui->regionOther->isChecked();
+					    !ui->doBandwidthTest->isChecked() ||
+					    ui->regionUS->isChecked() ||
+					    ui->regionEU->isChecked() ||
+					    ui->regionAsia->isChecked() ||
+					    ui->regionOther->isChecked();
 
 			ready = regionsReady &&
 				!ui->streamName->text().isEmpty() &&
@@ -1360,44 +1382,40 @@ bool AutoConfig::CanTestServer(const char *server)
 	return false;
 }
 
-OBSData AutoConfig::GetDefaultOutput(const char* outputName, int id) {
+OBSData AutoConfig::GetDefaultOutput(const char *outputName, int id)
+{
 	OBSBasic *main = OBSBasic::Get();
-	int videoBitrate =
-		config_get_default_uint(main->Config(), "SimpleOutput", "VBitrate");
+	int videoBitrate = config_get_default_uint(main->Config(),
+						   "SimpleOutput", "VBitrate");
 	const char *streamEnc = config_get_default_string(
 		main->Config(), "SimpleOutput", "StreamEncoder");
-	int audioBitrate =
-		config_get_default_uint(main->Config(), "SimpleOutput", "ABitrate");
-	bool advanced =
-		config_get_default_bool(main->Config(), "SimpleOutput", "UseAdvanced");
-	bool enforceBitrate =
-		config_get_default_bool(main->Config(), "SimpleOutput",
-					"EnforceBitrate");
+	int audioBitrate = config_get_default_uint(main->Config(),
+						   "SimpleOutput", "ABitrate");
+	bool advanced = config_get_default_bool(main->Config(), "SimpleOutput",
+						"UseAdvanced");
+	bool enforceBitrate = config_get_default_bool(
+		main->Config(), "SimpleOutput", "EnforceBitrate");
 
-	const char *custom =
-		config_get_default_string(main->Config(), "SimpleOutput",
-				  "x264Settings");
+	const char *custom = config_get_default_string(
+		main->Config(), "SimpleOutput", "x264Settings");
 
 	bool rescale =
 		config_get_default_bool(main->Config(), "AdvOut", "Rescale");
-	const char *rescaleRes =
-		config_get_default_string(main->Config(), "AdvOut", "RescaleRes");
+	const char *rescaleRes = config_get_default_string(
+		main->Config(), "AdvOut", "RescaleRes");
 	int trackIndex =
 		config_get_default_int(main->Config(), "AdvOut", "TrackIndex");
-	bool applyServiceSettings =
-		config_get_default_bool(main->Config(), "AdvOut",
-					"ApplyServiceSettings");
+	bool applyServiceSettings = config_get_default_bool(
+		main->Config(), "AdvOut", "ApplyServiceSettings");
 
-	const char *curPreset =
-		config_get_default_string(main->Config(), "SimpleOutput", "Preset");
-	const char *curQSVPreset =
-		config_get_default_string(main->Config(), "SimpleOutput",
-					 "QSVPreset");
-	const char *curNVENCPreset =
-		config_get_default_string(main->Config(), "SimpleOutput",
-					   "NVENCPreset");
-	const char *curAMDPreset =
-		config_get_default_string(main->Config(), "SimpleOutput", "AMDPreset");
+	const char *curPreset = config_get_default_string(
+		main->Config(), "SimpleOutput", "Preset");
+	const char *curQSVPreset = config_get_default_string(
+		main->Config(), "SimpleOutput", "QSVPreset");
+	const char *curNVENCPreset = config_get_default_string(
+		main->Config(), "SimpleOutput", "NVENCPreset");
+	const char *curAMDPreset = config_get_default_string(
+		main->Config(), "SimpleOutput", "AMDPreset");
 
 	OBSData newOutput = obs_data_create();
 	obs_data_release(newOutput);
@@ -1423,7 +1441,8 @@ OBSData AutoConfig::GetDefaultOutput(const char* outputName, int id) {
 	obs_data_set_bool(newOutput, "rescale", rescale);
 	obs_data_set_string(newOutput, "rescale_resolution", rescaleRes);
 	obs_data_set_int(newOutput, "track_index", trackIndex);
-	obs_data_set_bool(newOutput, "apply_service_settings", applyServiceSettings);
+	obs_data_set_bool(newOutput, "apply_service_settings",
+			  applyServiceSettings);
 
 	return newOutput;
 }
@@ -1470,16 +1489,18 @@ void AutoConfig::SaveStreamSettings()
 		obs_service_release(service);
 
 		if (obs_data_get_int(config.second, "output_id") == -1) {
-			if (obs_data_get_bool(config.second, "tested") == true) {
-				int outputID = AddTestedOutputData(successfulTests[config.first]);
+			if (obs_data_get_bool(config.second, "tested") ==
+			    true) {
+				int outputID = AddTestedOutputData(
+					successfulTests[config.first]);
 				obs_service_set_output_id(service, outputID);
-			}
-			else {
+			} else {
 				if (defaultOutputID == -1) {
-					defaultOutputID =
-						AddDefaultOutput("Auto-config default");
+					defaultOutputID = AddDefaultOutput(
+						"Auto-config default");
 				}
-				obs_service_set_output_id(service, defaultOutputID);
+				obs_service_set_output_id(service,
+							  defaultOutputID);
 			}
 		}
 
@@ -1496,18 +1517,20 @@ void AutoConfig::SaveStreamSettings()
 	main->LoadAuthUIs();
 }
 
-int AutoConfig::AddDefaultOutput(const char* name) {
+int AutoConfig::AddDefaultOutput(const char *name)
+{
 	int newID = AutoConfig::GetNewSettingID(existingOutputs);
 	OBSData newOutput = AutoConfig::GetDefaultOutput(name, newID);
 	existingOutputs[newID] = newOutput;
 	return newID;
 }
 
-int AutoConfig::AddTestedOutputData(const OBSData &config) {
+int AutoConfig::AddTestedOutputData(const OBSData &config)
+{
 	OBSData output = obs_data_create();
 	obs_data_release(output);
 
-	auto encName = [](int enc) -> const char *{
+	auto encName = [](int enc) -> const char * {
 		QString name;
 		switch (enc) {
 		case (int)AutoConfig::Encoder::x264:
@@ -1531,8 +1554,9 @@ int AutoConfig::AddTestedOutputData(const OBSData &config) {
 
 	obs_data_set_string(output, "name",
 			    obs_data_get_string(config, "name"));
-	obs_data_set_string(output, "stream_encoder",
-			    encName(obs_data_get_int(config, "videoEncoderType")));
+	obs_data_set_string(
+		output, "stream_encoder",
+		encName(obs_data_get_int(config, "videoEncoderType")));
 	obs_data_set_int(output, "track_index", 1);
 	obs_data_set_bool(output, "apply_service_settings", false);
 	obs_data_set_bool(output, "use_advanced", false);
@@ -1540,21 +1564,21 @@ int AutoConfig::AddTestedOutputData(const OBSData &config) {
 
 	int resX = obs_data_get_int(config, "resX");
 	int resY = obs_data_get_int(config, "resY");
-	const char* resString =
+	const char *resString =
 		QString("%1x%2").arg(resX, resY).toStdString().c_str();
 	obs_data_set_string(output, "rescale_resolution", resString);
 	obs_data_set_bool(output, "rescale", true);
 
-
-	obs_data_set_string(output, "stream_encoder",
-			encName(obs_data_get_int(config, "videoEncoderType")));
+	obs_data_set_string(
+		output, "stream_encoder",
+		encName(obs_data_get_int(config, "videoEncoderType")));
 	obs_data_set_int(output, "video_bitrate",
 			 obs_data_get_int(config, "idealBitrate"));
 	obs_data_set_int(output, "audio_bitrate",
 			 obs_data_get_int(config, "audio_bitrate"));
 	obs_data_set_string(output, "x264Settings", "");
 	obs_data_set_string(output, "preset",
-			obs_data_get_string(config, "preset"));
+			    obs_data_get_string(config, "preset"));
 
 	int newID = GetNewSettingID(existingOutputs);
 	obs_data_set_int(output, "id_num", newID);
@@ -1563,7 +1587,8 @@ int AutoConfig::AddTestedOutputData(const OBSData &config) {
 	return newID;
 }
 
-OBSService AutoConfig::ExtractServiceData(const OBSData &config) {
+OBSService AutoConfig::ExtractServiceData(const OBSData &config)
+{
 	const char *type = obs_data_get_string(config, "type");
 	const char *name = obs_data_get_string(config, "name");
 	int id = obs_data_get_int(config, "id");
@@ -1583,7 +1608,7 @@ OBSService AutoConfig::ExtractServiceData(const OBSData &config) {
 	obs_data_set_bool(settings, "bwtest", false);
 	obs_data_set_bool(settings, "connectedAccount",
 			  streamPage->serviceAuths.find(id) !=
-			  	streamPage->serviceAuths.end());
+				  streamPage->serviceAuths.end());
 
 	obs_data_set_int(settings, "id", obs_data_get_int(config, "id"));
 	obs_data_set_int(settings, "output_id",

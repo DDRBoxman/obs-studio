@@ -129,30 +129,26 @@ public:
 	~AutoConfig();
 	bool hasTwitchAuto() { return twitchAuto; }
 	static int GetNewSettingID(const std::map<int, OBSData> &map);
-	static OBSData GetDefaultOutput(const char* outputName, int id);
+	static OBSData GetDefaultOutput(const char *outputName, int id);
 	std::map<int, OBSData> GetExistingOutputs() { return existingOutputs; }
 	OBSData GetExistingOutput(int id) { return existingOutputs[id]; }
-	void SetOutputs(int id, const OBSData &configs) {
+	void SetOutputs(int id, const OBSData &configs)
+	{
 		existingOutputs[id] = configs;
 	}
 	void Lock() { m.lock(); };
 	void Unlock() { m.unlock(); };
-	void AddOutput(int id, OBSData config) { 
-		existingOutputs.insert({id, config}); 
+	void AddOutput(int id, OBSData config)
+	{
+		existingOutputs.insert({id, config});
 	}
 
-	int AddDefaultOutput(const char* name);
+	int AddDefaultOutput(const char *name);
 	int AddTestedOutputData(const OBSData &config);
 	OBSService ExtractServiceData(const OBSData &config);
 	void SetSuccessfulTests(const std::map<int, OBSData> &results);
-	
-	enum Page {
-		StartPage,
-		VideoPage,
-		StreamPage,
-		TestPage,
-		FinalPage
-	};
+
+	enum Page { StartPage, VideoPage, StreamPage, TestPage, FinalPage };
 };
 
 class AutoConfigStartPage : public QWizardPage {
@@ -214,14 +210,15 @@ class AutoConfigStreamPage : public QWizardPage {
 	void LoadServices(bool showAll);
 	inline bool IsCustomService() const;
 	void LoadStreamSettings();
-	OBSData ServiceToSettingData(const OBSService& service);
-	void LoadOutputComboBox(const std::map<int, OBSData>& outputs);
+	OBSData ServiceToSettingData(const OBSService &service);
+	void LoadOutputComboBox(const std::map<int, OBSData> &outputs);
 	void PopulateStreamSettings();
 	void ClearStreamSettings();
 	void GetStreamSettings();
 	bool CheckNameAndKey();
 
 	void AddEmptyServiceSetting(int id);
+
 public:
 	AutoConfigStreamPage(QWidget *parent = nullptr);
 	~AutoConfigStreamPage();
@@ -246,12 +243,11 @@ public slots:
 	void UpdateCompleted();
 	void UpdateOutputConfigForm();
 
-	void on_actionAddService_trigger();
-	void on_actionRemoveService_trigger();
-	void on_actionScrollUp_trigger();
-	void on_actionScrollDown_trigger();
-
-	void on_serviceList_itemClicked(int id);
+	void onActionAddServiceTrigger();
+	void onActionRemoveServiceTrigger();
+	void onActionScrollUpTrigger();
+	void onActionScrollDownTrigger();
+	void onServiceListItemClicked(int id);
 };
 
 struct ServerInfo {
@@ -260,7 +256,7 @@ struct ServerInfo {
 	int bitrate;
 	int ms;
 
-	inline ServerInfo() : bitrate(0) , ms(-1) {}
+	inline ServerInfo() : bitrate(0), ms(-1) {}
 
 	inline ServerInfo(const char *name_, const char *address_)
 		: name(name_), address(address_)
@@ -306,7 +302,8 @@ class AutoConfigTestPage : public QWizardPage {
 	void TestStreamEncoderThread(const OBSData &settings);
 	void TestRecordingEncoderThread(const OBSData &settings);
 
-	QWidget *CreateResultWidget(const OBSData& result, QWidget *parent = nullptr);
+	QWidget *CreateResultWidget(const OBSData &result,
+				    QWidget *parent = nullptr);
 	void ClearResults();
 
 	std::vector<int> completeTests;
@@ -315,6 +312,7 @@ class AutoConfigTestPage : public QWizardPage {
 	Stage stage = Stage::Starting;
 
 	std::vector<ServerInfo> GetServers(const std::string &service);
+
 public:
 	AutoConfigTestPage(QWidget *parent = nullptr);
 	~AutoConfigTestPage();

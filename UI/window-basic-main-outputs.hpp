@@ -88,6 +88,7 @@ struct BasicOutputHandler {
 	}
 
 	inline std::vector<OBSOutput> GetOutputs() { return streamOutputs; }
+
 protected:
 	void SetupAutoRemux(const char *&ext);
 	std::string GetRecordingFilename(const char *path, const char *ext,

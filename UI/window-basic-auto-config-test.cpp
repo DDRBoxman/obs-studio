@@ -278,8 +278,7 @@ void AutoConfigTestPage::TestBandwidthThread(const OBSData &settings)
 
 	/* just use the first server if it only has one alternate server,
 	 * or if using Restream or Nimo TV due to their "auto" servers */
-	if (servers.size() < 3 ||
-	    serviceName.substr(0, 11) == "Restream.io" ||
+	if (servers.size() < 3 || serviceName.substr(0, 11) == "Restream.io" ||
 	    serviceName == "Nimo TV") {
 		servers.resize(1);
 
@@ -470,7 +469,8 @@ void AutoConfigTestPage::TestBandwidthThread(const OBSData &settings)
 	if (!success) {
 		QMetaObject::invokeMethod(this, "Failure",
 					  Q_ARG(QString,
-						QTStr(TEST_BW_CONNECT_FAIL)));		return;
+						QTStr(TEST_BW_CONNECT_FAIL)));
+		return;
 	}
 
 	int bestBitrate = 0;
@@ -1133,11 +1133,12 @@ QWidget *AutoConfigTestPage::CreateResultWidget(const OBSData &settings,
 		if (res_list) {
 			set_closest_res(cx, cy, res_list, res_count);
 			obs_data_set_int(settings, "resX", cx);
-	                obs_data_set_int(settings, "resY", cy);
+			obs_data_set_int(settings, "resY", cy);
 		}
 		if (maxFPS) {
-			double idealFPS = (double)obs_data_get_int(settings, "fpsNum") /
-					  (double)obs_data_get_int(settings, "fpsDen");
+			double idealFPS =
+				(double)obs_data_get_int(settings, "fpsNum") /
+				(double)obs_data_get_int(settings, "fpsDen");
 			if (idealFPS > (double)maxFPS) {
 				wiz->idealFPSNum = maxFPS;
 				wiz->idealFPSDen = 1;

@@ -3834,7 +3834,8 @@ void OBSBasicSettings::SaveHotkeySettings()
 	}
 }
 
-void OBSBasicSettings::SaveOutputFormMiscChanges() {
+void OBSBasicSettings::SaveOutputFormMiscChanges()
+{
 	SaveSpinBox(ui->simpleOutputVBitrate, "SimpleOutput", "VBitrate");
 	SaveComboData(ui->simpleOutStrEncoder, "SimpleOutput", "StreamEncoder");
 	SaveCombo(ui->simpleOutputABitrate, "SimpleOutput", "ABitrate");
@@ -4788,9 +4789,10 @@ void OBSBasicSettings::SimpleStreamingEncoderChanged()
 				    curNVENCPresetChar, curAMDPresetChar);
 }
 
-void OBSBasicSettings::LoadStreamingEncoderPresets(
-	const char *curPreset, const char *curQSVPreset,
-	const char *curNVENCPreset, const char *curAMDPreset)
+void OBSBasicSettings::LoadStreamingEncoderPresets(const char *curPreset,
+						   const char *curQSVPreset,
+						   const char *curNVENCPreset,
+						   const char *curAMDPreset)
 {
 	QString encoder = ui->simpleOutStrEncoder->currentData().toString();
 	QString preset;
@@ -5670,7 +5672,6 @@ void OBSBasicSettings::GetAdvStreamOutputChanges()
 	obs_data_set_string(settings, "adv_rescale",
 			    QT_TO_UTF8(ui->advOutRescale->currentText()));
 }
-
 
 /* Using setEditable(true) on a QComboBox when there's a custom style in use
  * does not work properly, so instead completely recreate the widget, which

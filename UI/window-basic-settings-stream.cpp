@@ -61,8 +61,8 @@ void OBSBasicSettings::InitStreamPage()
 
 	LoadServices(false);
 
-	bool multipleServicesEnabled =
-		config_get_bool(main->Config(), "Stream1", "MultipleServicesEnabled");
+	bool multipleServicesEnabled = config_get_bool(
+		main->Config(), "Stream1", "MultipleServicesEnabled");
 	ui->multiServicesEnabled->setChecked(multipleServicesEnabled);
 	ui->servicesWidget->setVisible(multipleServicesEnabled);
 
@@ -174,22 +174,21 @@ void OBSBasicSettings::LoadStream1Settings()
 			std::string current_url =
 				obs_data_get_string(data, "server");
 
-                        std::istringstream strm(prev_urls);
-                        std::string server;
+			std::istringstream strm(prev_urls);
+			std::string server;
 			bool found_server = false;
 
-                        while(std::getline(strm, server, ',')) {
-				if(server == current_url) {
+			while (std::getline(strm, server, ',')) {
+				if (server == current_url) {
 					found_server = true;
 					break;
 				}
 			}
 
-			if(!found_server)
+			if (!found_server)
 				obs_data_set_string(
 					prev, "server",
-					(prev_urls + "," + current_url)
-						.c_str());
+					(prev_urls + "," + current_url).c_str());
 		}
 
 		obs_data_release(data);
@@ -263,7 +262,8 @@ void OBSBasicSettings::SaveStream1Settings()
 	main->LoadAuthUIs();
 
 	SaveCheckBox(ui->ignoreRecommended, "Stream1", "IgnoreRecommended");
-	SaveCheckBox(ui->multiServicesEnabled, "Stream1", "MultipleServicesEnabled");
+	SaveCheckBox(ui->multiServicesEnabled, "Stream1",
+		     "MultipleServicesEnabled");
 }
 
 void OBSBasicSettings::UpdateMoreInfoLink()
@@ -295,7 +295,8 @@ void OBSBasicSettings::UpdateMoreInfoLink()
 	obs_properties_destroy(props);
 }
 
-void OBSBasicSettings::ShowHideServicesList() {
+void OBSBasicSettings::ShowHideServicesList()
+{
 	ui->servicesWidget->setVisible(ui->multiServicesEnabled->isChecked());
 }
 
@@ -888,25 +889,24 @@ OBSData OBSBasicSettings::GetStreamFormChanges()
 
 	if (accountConnected) {
 		if (strcmp(serviceAuths.at(selectedServiceID)->service(),
-			   "Twitch") == 0){
+			   "Twitch") == 0) {
 			bool choiceExists = config_has_user_value(
 				main->Config(), "Twitch", "AddonChoice");
-			int currentChoice =
-				config_get_int(main->Config(), "Twitch", "AddonChoice");
+			int currentChoice = config_get_int(
+				main->Config(), "Twitch", "AddonChoice");
 			int newChoice = ui->twitchAddonDropdown->currentIndex();
 
 			config_set_int(main->Config(), "Twitch", "AddonChoice",
-			       newChoice);
+				       newChoice);
 
 			if (choiceExists && currentChoice != newChoice)
 				forceAuthReload = true;
 
 			obs_data_set_bool(settings, "bwtest",
-				  ui->bandwidthTestEnable->isChecked());
+					  ui->bandwidthTestEnable->isChecked());
 		} else {
 			obs_data_set_bool(settings, "bwtest", false);
 		}
-
 	}
 
 	obs_data_set_string(settings, "key", QT_TO_UTF8(ui->key->text()));
@@ -930,7 +930,6 @@ void OBSBasicSettings::SaveStreamSettingsChanges(int selectedServiceID)
 	serviceSettings.SetSetting(selectedServiceID, formChanges);
 	obs_data_release(formChanges);
 }
-
 
 void OBSBasicSettings::UpdateVodTrackSetting()
 {
