@@ -1636,128 +1636,55 @@ static void ApplyEncoderDefaults(OBSData &settings,
 
 #define ADV_ARCHIVE_NAME "adv_archive_aac"
 
-AdvancedOutput::AdvancedOutput(OBSBasic *main_) : BasicOutputHandler(main_)
+#ifdef __APPLE__
+static void translate_macvth264_encoder(const char *&encoder)
 {
-	const char *recType =
-		config_get_string(main->Config(), "AdvOut", "RecType");
-	const char *streamEncoder =
-		config_get_string(main->Config(), "AdvOut", "Encoder");
-	const char *recordEncoder =
-		config_get_string(main->Config(), "AdvOut", "RecEncoder");
-
-	ffmpegOutput = astrcmpi(recType, "FFmpeg") == 0;
-	ffmpegRecording =
-		ffmpegOutput &&
-		config_get_bool(main->Config(), "AdvOut", "FFOutputToFile");
-	useStreamEncoder = astrcmpi(recordEncoder, "none") == 0;
-
-	OBSData streamEncSettings = GetDataFromJsonFile("streamEncoder.json");
-	OBSData recordEncSettings = GetDataFromJsonFile("recordEncoder.json");
-
-	if (ffmpegOutput) {
-		fileOutput = obs_output_create(
-			"ffmpeg_output", "adv_ffmpeg_output", nullptr, nullptr);
-		if (!fileOutput)
-			throw "Failed to create recording FFmpeg output "
-			      "(advanced output)";
-		obs_output_release(fileOutput);
-	} else {
-		bool useReplayBuffer =
-			config_get_bool(main->Config(), "AdvOut", "RecRB");
-		if (useReplayBuffer) {
-			const char *str = config_get_string(
-				main->Config(), "Hotkeys", "ReplayBuffer");
-			obs_data_t *hotkey = obs_data_create_from_json(str);
-			replayBuffer = obs_output_create("replay_buffer",
-							 Str("ReplayBuffer"),
-							 nullptr, hotkey);
-
-			obs_data_release(hotkey);
-			if (!replayBuffer)
-				throw "Failed to create replay buffer output "
-				      "(simple output)";
-			obs_output_release(replayBuffer);
-
-			signal_handler_t *signal =
-				obs_output_get_signal_handler(replayBuffer);
-
-			startReplayBuffer.Connect(signal, "start",
-						  OBSStartReplayBuffer, this);
-			stopReplayBuffer.Connect(signal, "stop",
-						 OBSStopReplayBuffer, this);
-			replayBufferStopping.Connect(signal, "stopping",
-						     OBSReplayBufferStopping,
-						     this);
-			replayBufferSaved.Connect(signal, "saved",
-						  OBSReplayBufferSaved, this);
-		}
-
-		fileOutput = obs_output_create(
-			"ffmpeg_muxer", "adv_file_output", nullptr, nullptr);
-		if (!fileOutput)
-			throw "Failed to create recording output "
-			      "(advanced output)";
-		obs_output_release(fileOutput);
-
-		if (!useStreamEncoder) {
-			h264Recording = obs_video_encoder_create(
-				recordEncoder, "recording_h264",
-				recordEncSettings, nullptr);
-			if (!h264Recording)
-				throw "Failed to create recording h264 "
-				      "encoder (advanced output)";
-			obs_encoder_release(h264Recording);
-		}
+	if (strcmp(encoder, "vt_h264_hw") == 0) {
+		encoder = "com.apple.videotoolbox.videoencoder.h264.gva";
+	} else if (strcmp(encoder, "vt_h264_sw") == 0) {
+		encoder = "com.apple.videotoolbox.videoencoder.h264";
 	}
+}
+#endif
 
-	h264Streaming = obs_video_encoder_create(
-		streamEncoder, "streaming_h264", streamEncSettings, nullptr);
-	if (!h264Streaming)
-		throw "Failed to create streaming h264 encoder "
-		      "(advanced output)";
-	obs_encoder_release(h264Streaming);
+AdvancedOutput::AdvancedOutput(OBSBasic *main_,
+			       const std::map<int, OBSData> &outputConfigs)
+	: BasicOutputHandler(main_)
+{
+	for (auto &item : outputConfigs) {
+		int id = item.first;
+		OBSData config = item.second;
 
-	const char *rate_control = obs_data_get_string(
-		useStreamEncoder ? streamEncSettings : recordEncSettings,
-		"rate_control");
-	if (!rate_control)
-		rate_control = "";
-	usesBitrate = astrcmpi(rate_control, "CBR") == 0 ||
-		      astrcmpi(rate_control, "VBR") == 0 ||
-		      astrcmpi(rate_control, "ABR") == 0;
+		/* Create Video Encoders */
+		const char *streamEncoder =
+			obs_data_get_string(config, "adv_stream_encoder");
+#ifdef __APPLE__
+		translate_macvth264_encoder(streamEncoder);
+#endif
+		OBSData advEncSettings =
+			obs_data_get_obj(config, "adv_encoder_props");
+		obs_data_release(advEncSettings);
 
-	for (int i = 0; i < MAX_AUDIO_MIXES; i++) {
-		char name[9];
-		sprintf(name, "adv_aac%d", i);
+		const char *outputName = obs_data_get_string(config, "name");
 
-		if (!CreateAACEncoder(aacTrack[i], aacEncoderID[i],
-				      GetAudioBitrate(i), name, i))
-			throw "Failed to create audio encoder "
-			      "(advanced output)";
+		int streamTrack =
+			obs_data_get_int(config, "adv_audio_track") - 1;
+		streamTrack = streamTrack < 0 ? 0 : streamTrack;
+
+		OBSEncoder videoEncoder = CreateVideoEncoder(
+			streamEncoder, outputName, advEncSettings);
+
+		OBSEncoder audioEncoder;
+		string aacName(outputName);
+		CreateAACEncoder(audioEncoder, aacName,
+				 GetAudioBitrate(streamTrack), "advanced_acc",
+				 streamTrack);
+
+		struct Encoders encoders = {audioEncoder, videoEncoder};
+		streamingEncoders.insert({id, encoders});
 	}
-
-	std::string id;
-	int streamTrack =
-		config_get_int(main->Config(), "AdvOut", "TrackIndex") - 1;
-	if (!CreateAACEncoder(streamAudioEnc, id, GetAudioBitrate(streamTrack),
-			      "adv_stream_aac", streamTrack))
-		throw "Failed to create streaming audio encoder "
-		      "(advanced output)";
-
-	id = "";
-	int vodTrack =
-		config_get_int(main->Config(), "AdvOut", "VodTrackIndex") - 1;
-	if (!CreateAACEncoder(streamArchiveEnc, id, GetAudioBitrate(vodTrack),
-			      ADV_ARCHIVE_NAME, vodTrack))
-		throw "Failed to create archive audio encoder "
-		      "(advanced output)";
-
-	startRecording.Connect(obs_output_get_signal_handler(fileOutput),
-			       "start", OBSStartRecording, this);
-	stopRecording.Connect(obs_output_get_signal_handler(fileOutput), "stop",
-			      OBSStopRecording, this);
-	recordStopping.Connect(obs_output_get_signal_handler(fileOutput),
-			       "stopping", OBSRecordStopping, this);
+	if (!outputConfigs.empty())
+		SetupRecording(outputConfigs.at(0));
 }
 
 OBSEncoder AdvancedOutput::CreateVideoEncoder(const char *type,
@@ -1870,52 +1797,20 @@ void AdvancedOutput::SetupRecording(const OBSData &config)
 			      "(advanced output)";
 	}
 
+	std::string id;
+	int vodTrack =
+		config_get_int(main->Config(), "AdvOut", "VodTrackIndex") - 1;
+	if (!CreateAACEncoder(streamArchiveEnc, id, GetAudioBitrate(vodTrack),
+			      ADV_ARCHIVE_NAME, vodTrack))
+		throw "Failed to create archive audio encoder "
+		      "(advanced output)";
+
 	startRecording.Connect(obs_output_get_signal_handler(fileOutput),
 			       "start", OBSStartRecording, this);
 	stopRecording.Connect(obs_output_get_signal_handler(fileOutput), "stop",
 			      OBSStopRecording, this);
 	recordStopping.Connect(obs_output_get_signal_handler(fileOutput),
 			       "stopping", OBSRecordStopping, this);
-}
-
-AdvancedOutput::AdvancedOutput(OBSBasic *main_,
-			       const std::map<int, OBSData> &outputConfigs)
-	: BasicOutputHandler(main_)
-{
-	for (auto &item : outputConfigs) {
-		int id = item.first;
-		OBSData config = item.second;
-
-		/* Create Video Encoders */
-		const char *streamEncoder =
-			obs_data_get_string(config, "adv_stream_encoder");
-#ifdef __APPLE__
-		translate_macvth264_encoder(streamEncoder);
-#endif
-		OBSData advEncSettings =
-			obs_data_get_obj(config, "adv_encoder_props");
-		obs_data_release(advEncSettings);
-
-		const char *outputName = obs_data_get_string(config, "name");
-
-		int streamTrack =
-			obs_data_get_int(config, "adv_audio_track") - 1;
-		streamTrack = streamTrack < 0 ? 0 : streamTrack;
-
-		OBSEncoder videoEncoder = CreateVideoEncoder(
-			streamEncoder, outputName, advEncSettings);
-
-		OBSEncoder audioEncoder;
-		string aacName(outputName);
-		CreateAACEncoder(audioEncoder, aacName,
-				 GetAudioBitrate(streamTrack), "advanced_acc",
-				 streamTrack);
-
-		struct Encoders encoders = {audioEncoder, videoEncoder};
-		streamingEncoders.insert({id, encoders});
-	}
-	if (!outputConfigs.empty())
-		SetupRecording(outputConfigs.at(0));
 }
 
 void AdvancedOutput::UpdateStreamSettings()
