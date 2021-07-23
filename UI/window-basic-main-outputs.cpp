@@ -354,8 +354,6 @@ bool BasicOutputHandler::VirtualCamActive() const
 /* ------------------------------------------------------------------------ */
 
 struct SimpleOutput : BasicOutputHandler {
-	OBSEncoder aacStreaming;
-	OBSEncoder h264Streaming;
 	std::map<int, struct Encoders> streamingEncoders;
 	OBSEncoder aacRecording;
 	OBSEncoder aacArchive;
@@ -1291,7 +1289,6 @@ struct AdvancedOutput : BasicOutputHandler {
 	OBSEncoder streamAudioEnc;
 	OBSEncoder streamArchiveEnc;
 	OBSEncoder aacTrack[MAX_AUDIO_MIXES];
-	OBSEncoder h264Streaming;
 	std::map<int, struct Encoders> streamingEncoders;
 	OBSEncoder h264Recording;
 
@@ -1557,47 +1554,12 @@ void AdvancedOutput::SetupRecording(const OBSData &config)
 			       "stopping", OBSRecordStopping, this);
 }
 
-void AdvancedOutput::UpdateStreamSettings()
-{
-	bool applyServiceSettings = config_get_bool(main->Config(), "AdvOut",
-						    "ApplyServiceSettings");
-	bool enforceBitrate = !config_get_bool(main->Config(), "Stream1",
-					       "IgnoreRecommended");
-	bool dynBitrate =
-		config_get_bool(main->Config(), "Output", "DynamicBitrate");
-	const char *streamEncoder =
-		config_get_string(main->Config(), "AdvOut", "Encoder");
-
-	OBSData settings = GetDataFromJsonFile("streamEncoder.json");
-	ApplyEncoderDefaults(settings, h264Streaming);
-
-	if (applyServiceSettings) {
-		int bitrate = (int)obs_data_get_int(settings, "bitrate");
-		for (auto &service : main->GetServices()) {
-			obs_service_apply_encoder_settings(service, settings,
-							   nullptr);
-		}
-		if (!enforceBitrate)
-			obs_data_set_int(settings, "bitrate", bitrate);
-	}
-
-	if (dynBitrate && astrcmpi(streamEncoder, "jim_nvenc") == 0)
-		obs_data_set_bool(settings, "lookahead", false);
-
-	video_t *video = obs_get_video();
-	enum video_format format = video_output_get_format(video);
-
-	if (format != VIDEO_FORMAT_NV12 && format != VIDEO_FORMAT_I420)
-		obs_encoder_set_preferred_video_format(h264Streaming,
-						       VIDEO_FORMAT_NV12);
-
-	obs_encoder_update(h264Streaming, settings);
-}
-
 void AdvancedOutput::UpdateStreamSettings(const std::map<int, OBSData> &outputConfig)
 {
 	bool dynBitrate =
 		config_get_bool(main->Config(), "Output", "DynamicBitrate");
+	bool enforceBitrate = !config_get_bool(main->Config(), "Stream1",
+					       "IgnoreRecommended");
 
 	for (auto &encoder : streamingEncoders) {
 		int id = encoder.first;
@@ -1607,27 +1569,33 @@ void AdvancedOutput::UpdateStreamSettings(const std::map<int, OBSData> &outputCo
 			obs_data_get_bool(config, "apply_service_settings");
 		const char *vidEncType =
 			obs_data_get_string(config, "adv_stream_encoder");
-		OBSData encoderProps =
+		OBSData settings =
 			obs_data_get_obj(config, "adv_encoder_props");
-		obs_data_release(encoderProps);
+		obs_data_release(settings);
 
 		if (!vidEncType || strlen(vidEncType) == 0)
 			vidEncType = config_get_string(main->Config(), "AdvOut",
 						       "Encoder");
 
-		ApplyEncoderDefaults(encoderProps, encoder.second.video);
+		ApplyEncoderDefaults(settings, encoder.second.video);
 
 		if (applyServiceSettings) {
+			int bitrate =
+				(int)obs_data_get_int(settings, "bitrate");
 			auto services = main->GetServices();
 			for (auto &service : services) {
 				if (obs_service_get_output_id(service) == id)
 					obs_service_apply_encoder_settings(
-						service, encoderProps, nullptr);
+						service, settings, nullptr);
+
+				if (!enforceBitrate)
+					obs_data_set_int(settings, "bitrate",
+							 bitrate);
 			}
 		}
 
 		if (dynBitrate && astrcmpi(vidEncType, "jim_nvenc") == 0)
-			obs_data_set_bool(encoderProps, "lookahead", false);
+			obs_data_set_bool(settings, "lookahead", false);
 
 		video_t *video = obs_get_video();
 		enum video_format format = video_output_get_format(video);
@@ -1636,7 +1604,7 @@ void AdvancedOutput::UpdateStreamSettings(const std::map<int, OBSData> &outputCo
 			obs_encoder_set_preferred_video_format(
 				encoder.second.video, VIDEO_FORMAT_NV12);
 
-		obs_encoder_update(encoder.second.video, encoderProps);
+		obs_encoder_update(encoder.second.video, settings);
 	}
 }
 
