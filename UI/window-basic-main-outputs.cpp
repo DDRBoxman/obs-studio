@@ -1305,7 +1305,6 @@ struct AdvancedOutput : BasicOutputHandler {
 	AdvancedOutput(OBSBasic *main_,
 		       const std::map<int, OBSData> &outputConfigs);
 
-	void SetupStreaming();
 	void SetupRecording(const OBSData &config);
 	OBSEncoder CreateVideoEncoder(const char *type, const char *name,
 				      const OBSData &settings);
@@ -1667,35 +1666,6 @@ static inline bool ServiceSupportsVodTrack(const char *service)
 	}
 
 	return false;
-}
-
-inline void AdvancedOutput::SetupStreaming()
-{
-	bool rescale = config_get_bool(main->Config(), "AdvOut", "Rescale");
-	const char *rescaleRes =
-		config_get_string(main->Config(), "AdvOut", "RescaleRes");
-	unsigned int cx = 0;
-	unsigned int cy = 0;
-
-	if (rescale && rescaleRes && *rescaleRes) {
-		if (sscanf(rescaleRes, "%ux%u", &cx, &cy) != 2) {
-			cx = 0;
-			cy = 0;
-		}
-	}
-
-	obs_output_set_audio_encoder(streamOutput, streamAudioEnc, 0);
-	obs_encoder_set_scaled_size(h264Streaming, cx, cy);
-	obs_encoder_set_video(h264Streaming, obs_get_video());
-
-	const char *id = obs_service_get_id(main->GetService());
-	if (strcmp(id, "rtmp_custom") == 0) {
-		obs_data_t *settings = obs_data_create();
-		obs_service_apply_encoder_settings(main->GetService(), settings,
-						   nullptr);
-		obs_encoder_update(h264Streaming, settings);
-		obs_data_release(settings);
-	}
 }
 
 inline void
