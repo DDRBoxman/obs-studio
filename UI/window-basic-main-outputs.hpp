@@ -49,8 +49,9 @@ struct BasicOutputHandler {
 
 	virtual ~BasicOutputHandler(){};
 
-	virtual bool SetupStreaming(const std::vector<OBSService> &services,
-				  const std::map<int, OBSData> &outputConfigs) = 0;
+	virtual bool
+	SetupStreaming(const std::vector<OBSService> &services,
+		       const std::map<int, OBSData> &outputConfigs) = 0;
 	virtual bool StartStreaming() = 0;
 	virtual bool StartRecording() = 0;
 	virtual bool StartReplayBuffer() { return false; }
@@ -74,7 +75,8 @@ struct BasicOutputHandler {
 
 	virtual void Update(const std::vector<OBSService> &services,
 			    const std::map<int, OBSData> &outputConfigs) = 0;
-        virtual void SetupOutputs(const std::map<int, OBSData> &outputConfigs) = 0;
+	virtual void
+	SetupOutputs(const std::map<int, OBSData> &outputConfigs) = 0;
 
 	inline bool Active() const
 	{
