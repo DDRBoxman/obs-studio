@@ -2739,7 +2739,7 @@ bool AdvancedOutput::StartRecording()
 
 		obs_data_release(settings);
 	}
-	obs_output_t *x = fileOutput;
+
 	if (!obs_output_start(fileOutput)) {
 		QString error_reason;
 		const char *error = obs_output_get_last_error(fileOutput);
