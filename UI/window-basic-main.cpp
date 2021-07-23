@@ -6194,6 +6194,11 @@ void OBSBasic::StartStreaming()
 	if (disableOutputsRef)
 		return;
 
+	if (!outputHandler->SetupStreaming(services, streamOutputSettings)) {
+		DisplayStreamStartError();
+		return;
+	}
+
 	if (api)
 		api->on_event(OBS_FRONTEND_EVENT_STREAMING_STARTING);
 
@@ -6208,7 +6213,7 @@ void OBSBasic::StartStreaming()
 		sysTrayStream->setText(ui->streamButton->text());
 	}
 
-	if (!outputHandler->StartStreaming(services, streamOutputSettings)) {
+	if (!outputHandler->StartStreaming()) {
 		DisplayStreamStartError();
 		return;
 	}

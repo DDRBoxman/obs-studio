@@ -49,11 +49,9 @@ struct BasicOutputHandler {
 
 	virtual ~BasicOutputHandler(){};
 
-	virtual bool SetupStreaming(obs_service_t *service) = 0;
-	virtual bool StartStreaming(obs_service_t *service) = 0;
-	virtual bool
-	StartStreaming(const std::vector<OBSService> &services,
-		       const std::map<int, OBSData> &outputConfigs) = 0;
+	virtual bool SetupStreaming(const std::vector<OBSService> &services,
+				  const std::map<int, OBSData> &outputConfigs) = 0;
+	virtual bool StartStreaming() = 0;
 	virtual bool StartRecording() = 0;
 	virtual bool StartReplayBuffer() { return false; }
 	virtual bool StartVirtualCam();
