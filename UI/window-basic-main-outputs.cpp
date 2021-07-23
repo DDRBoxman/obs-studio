@@ -1286,7 +1286,6 @@ bool SimpleOutput::ReplayBufferActive() const
 /* ------------------------------------------------------------------------ */
 
 struct AdvancedOutput : BasicOutputHandler {
-	OBSEncoder streamAudioEnc;
 	OBSEncoder streamArchiveEnc;
 	OBSEncoder aacTrack[MAX_AUDIO_MIXES];
 	std::map<int, struct Encoders> streamingEncoders;
@@ -1306,11 +1305,9 @@ struct AdvancedOutput : BasicOutputHandler {
 	OBSEncoder CreateVideoEncoder(const char *type, const char *name,
 				      const OBSData &settings);
 
-	inline void UpdateStreamSettings();
 	inline void
 	UpdateStreamSettings(const std::map<int, OBSData> &outputConfig);
 	inline void UpdateRecordingSettings();
-	inline void UpdateAudioSettings();
 	inline void
 	UpdateAudioSettings(const std::vector<OBSService> &services,
 			    const std::map<int, OBSData> &outputConfig);
@@ -1831,64 +1828,6 @@ static inline void SetEncoderName(obs_encoder_t *encoder, const char *name,
 	obs_encoder_set_name(encoder, (name && *name) ? name : defaultName);
 }
 
-inline void AdvancedOutput::UpdateAudioSettings()
-{
-	bool applyServiceSettings = config_get_bool(main->Config(), "AdvOut",
-						    "ApplyServiceSettings");
-	bool enforceBitrate = !config_get_bool(main->Config(), "Stream1",
-					       "IgnoreRecommended");
-	int streamTrackIndex =
-		config_get_int(main->Config(), "AdvOut", "TrackIndex");
-	int vodTrackIndex =
-		config_get_int(main->Config(), "AdvOut", "VodTrackIndex");
-	obs_data_t *settings[MAX_AUDIO_MIXES];
-
-	for (size_t i = 0; i < MAX_AUDIO_MIXES; i++) {
-		settings[i] = obs_data_create();
-		obs_data_set_int(settings[i], "bitrate", GetAudioBitrate(i));
-	}
-
-	for (size_t i = 0; i < MAX_AUDIO_MIXES; i++) {
-		string cfg_name = "Track";
-		cfg_name += to_string((int)i + 1);
-		cfg_name += "Name";
-		const char *name = config_get_string(main->Config(), "AdvOut",
-						     cfg_name.c_str());
-
-		string def_name = "Track";
-		def_name += to_string((int)i + 1);
-		SetEncoderName(aacTrack[i], name, def_name.c_str());
-	}
-
-	for (size_t i = 0; i < MAX_AUDIO_MIXES; i++) {
-		int track = (int)(i + 1);
-
-		obs_encoder_update(aacTrack[i], settings[i]);
-
-		if (track == streamTrackIndex || track == vodTrackIndex) {
-			if (applyServiceSettings) {
-				int bitrate = (int)obs_data_get_int(settings[i],
-								    "bitrate");
-				for (auto &service : main->GetServices()) {
-					obs_service_apply_encoder_settings(
-						service, nullptr, settings[i]);
-				}
-
-				if (!enforceBitrate)
-					obs_data_set_int(settings[i], "bitrate",
-							 bitrate);
-			}
-		}
-
-		if (track == streamTrackIndex)
-			obs_encoder_update(streamAudioEnc, settings[i]);
-		if (track == vodTrackIndex)
-			obs_encoder_update(streamArchiveEnc, settings[i]);
-
-		obs_data_release(settings[i]);
-	}
-}
-
 inline void
 AdvancedOutput::UpdateAudioSettings(const std::vector<OBSService> &services,
 				    const std::map<int, OBSData> &outputConfig)
@@ -1920,18 +1859,40 @@ AdvancedOutput::UpdateAudioSettings(const std::vector<OBSService> &services,
 		int streamTrackIndex =
 			obs_data_get_int(config, "adv_audio_track") - 1;
 
+		int vodTrack = config_get_int(main->Config(), "AdvOut",
+					      "VodTrackIndex") -
+			       1;
+
 		streamTrackIndex = streamTrackIndex < 0 ? 0 : streamTrackIndex;
+		vodTrack = vodTrack < 0 ? 0 : vodTrack;
 
 		for (auto &service : services) {
+			bool enforceBitrate = !config_get_bool(
+				main->Config(), "Stream1", "IgnoreRecommended");
+			int bitrateSt = (int)obs_data_get_int(
+				settings[streamTrackIndex], "bitrate");
+			int bitrateVt = (int)obs_data_get_int(
+				settings[vodTrack], "bitrate");
+
 			if (obs_service_get_output_id(service) == id) {
 				obs_service_apply_encoder_settings(
 					service, nullptr,
 					settings[streamTrackIndex]);
+				obs_service_apply_encoder_settings(
+					service, nullptr, settings[vodTrack]);
+			}
+
+			if (!enforceBitrate) {
+				obs_data_set_int(settings[streamTrackIndex],
+						 "bitrate", bitrateSt);
+				obs_data_set_int(settings[vodTrack], "bitrate",
+						 bitrateVt);
 			}
 		}
 
 		obs_encoder_update(encoders.second.audio,
 				   settings[streamTrackIndex]);
+		obs_encoder_update(streamArchiveEnc, settings[vodTrack]);
 	}
 
 	for (size_t i = 0; i < MAX_AUDIO_MIXES; i++)
