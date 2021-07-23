@@ -189,7 +189,10 @@ static bool CreateAACEncoder(OBSEncoder &res, string &id, int bitrate,
 		return true;
 
 	id = id_;
-	res = obs_audio_encoder_create(id_, name, nullptr, idx, nullptr);
+
+	char encoderName[128];
+	sprintf(encoderName, "%s.%s", id.c_str(), name);
+	res = obs_audio_encoder_create(id_, encoderName, nullptr, idx, nullptr);
 
 	if (res) {
 		obs_encoder_release(res);
