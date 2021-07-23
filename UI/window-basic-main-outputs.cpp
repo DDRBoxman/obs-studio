@@ -1123,7 +1123,8 @@ void SimpleOutput::UpdateRecording()
 	if (usingRecordingPreset) {
 		if (!ffmpegOutput)
 			UpdateRecordingSettings();
-	} else if (!obs_output_active(streamOutput)) {
+	} else if (streamOutputs.empty() ||
+		   !obs_output_active(streamOutputs.front())) {
 		Update(services, outputConfigs);
 	}
 
@@ -2180,7 +2181,8 @@ bool AdvancedOutput::StartReplayBuffer()
 	if (!useStreamEncoder) {
 		if (!ffmpegOutput)
 			UpdateRecordingSettings();
-	} else if (!obs_output_active(streamOutput)) {
+	} else if (streamOutputs.empty() ||
+		   !obs_output_active(streamOutputs.front())) {
 		UpdateStreamSettings(outputConfigs);
 	}
 

@@ -14,7 +14,7 @@ struct Encoders {
 
 struct BasicOutputHandler {
 	OBSOutput fileOutput;
-	OBSOutput streamOutput; // TODO -- remove this
+	OBSOutput streamOutput;
 	std::vector<OBSOutput> streamOutputs;
 
 	OBSOutput replayBuffer;

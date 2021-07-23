@@ -362,7 +362,10 @@ struct OBSStudioAPI : obs_frontend_callbacks {
 
 	obs_output_t *obs_frontend_get_streaming_output(void) override
 	{
-		OBSOutput output = main->outputHandler->streamOutput;
+		OBSOutput output =
+			main->outputHandler->streamOutputs.empty()
+				? nullptr
+				: main->outputHandler->streamOutputs.front();
 		obs_output_addref(output);
 		return output;
 	}
