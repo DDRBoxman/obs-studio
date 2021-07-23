@@ -396,12 +396,10 @@ struct SimpleOutput : BasicOutputHandler {
 	void LoadRecordingPreset_Lossless();
 	void LoadRecordingPreset();
 
-	void LoadStreamingPreset_h264(const char *encoder);
-
+	OBSEncoder LoadStreamingPreset(const char *encoder, const char *name);
 	virtual OBSEncoder CreateVideoEncoder(const char *encoderType,
 					      const char *name);
 	virtual void CreateRecordingOutputs();
-	OBSEncoder LoadStreamingPreset(const char *encoder, const char *name);
 
 	void UpdateRecording();
 	bool ConfigureRecording(bool useReplayBuffer);
@@ -453,15 +451,6 @@ void SimpleOutput::LoadRecordingPreset_h264(const char *encoderId)
 	if (!h264Recording)
 		throw "Failed to create h264 recording encoder (simple output)";
 	obs_encoder_release(h264Recording);
-}
-
-void SimpleOutput::LoadStreamingPreset_h264(const char *encoderId)
-{
-	h264Streaming = obs_video_encoder_create(
-		encoderId, "simple_h264_stream", nullptr, nullptr);
-	if (!h264Streaming)
-		throw "Failed to create h264 streaming encoder (simple output)";
-	obs_encoder_release(h264Streaming);
 }
 
 OBSEncoder SimpleOutput::LoadStreamingPreset(const char *encoderId,
@@ -1474,6 +1463,7 @@ struct AdvancedOutput : BasicOutputHandler {
 	AdvancedOutput(OBSBasic *main_,
 		       const std::map<int, OBSData> &outputConfigs);
 
+	void SetupStreaming();
 	void SetupRecording(const OBSData &config);
 	OBSEncoder CreateVideoEncoder(const char *type, const char *name,
 				      const OBSData &settings);
@@ -1493,7 +1483,6 @@ struct AdvancedOutput : BasicOutputHandler {
 
 	inline void SetupVodTrack(obs_service_t *service);
 
-	inline void SetupStreaming();
 	inline void SetupStreaming(const std::map<int, OBSData> &outputConfigs);
 	inline void SetupRecording();
 	inline void SetupFFmpeg();
