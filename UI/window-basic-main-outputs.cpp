@@ -1401,9 +1401,9 @@ AdvancedOutput::AdvancedOutput(OBSBasic *main_,
 #ifdef __APPLE__
 		translate_macvth264_encoder(streamEncoder);
 #endif
-		OBSData advEncSettings =
+		OBSData streamEncSettings =
 			obs_data_get_obj(config, "adv_encoder_props");
-		obs_data_release(advEncSettings);
+		obs_data_release(streamEncSettings);
 
 		const char *outputName = obs_data_get_string(config, "name");
 
@@ -1412,7 +1412,7 @@ AdvancedOutput::AdvancedOutput(OBSBasic *main_,
 		streamTrack = streamTrack < 0 ? 0 : streamTrack;
 
 		OBSEncoder videoEncoder = CreateVideoEncoder(
-			streamEncoder, outputName, advEncSettings);
+			streamEncoder, outputName, streamEncSettings);
 
 		OBSEncoder audioEncoder;
 		string aacName(outputName);
@@ -1424,7 +1424,8 @@ AdvancedOutput::AdvancedOutput(OBSBasic *main_,
 		streamingEncoders.insert({id, encoders});
 	}
 	if (!outputConfigs.empty())
-		SetupRecording(outputConfigs.at(0));
+		SetupRecording(obs_data_get_obj(outputConfigs.at(0),
+						"adv_encoder_props"));
 }
 
 OBSEncoder AdvancedOutput::CreateVideoEncoder(const char *type,
