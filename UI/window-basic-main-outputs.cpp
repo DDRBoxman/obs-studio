@@ -362,7 +362,6 @@ struct SimpleOutput : BasicOutputHandler {
 	OBSEncoder h264Recording;
 
 	string aacRecEncID;
-	string aacStreamEncID;
 	string aacArchiveEncID;
 
 	string videoEncoder;
@@ -372,7 +371,6 @@ struct SimpleOutput : BasicOutputHandler {
 	bool ffmpegOutput = false;
 	bool lowCPUx264 = false;
 
-	SimpleOutput(OBSBasic *main_);
 	SimpleOutput(OBSBasic *main_,
 		     const std::map<int, OBSData> &outputConfigs);
 
@@ -641,87 +639,6 @@ SimpleOutput::SimpleOutput(OBSBasic *main_,
 
 	LoadRecordingPreset();
 	CreateRecordingOutputs();
-}
-
-SimpleOutput::SimpleOutput(OBSBasic *main_) : BasicOutputHandler(main_)
-{
-	const char *encoder = config_get_string(main->Config(), "SimpleOutput",
-						"StreamEncoder");
-
-	if (strcmp(encoder, SIMPLE_ENCODER_QSV) == 0) {
-		LoadStreamingPreset_h264("obs_qsv11");
-
-	} else if (strcmp(encoder, SIMPLE_ENCODER_AMD) == 0) {
-		LoadStreamingPreset_h264("amd_amf_h264");
-
-	} else if (strcmp(encoder, SIMPLE_ENCODER_NVENC) == 0) {
-		const char *id = EncoderAvailable("jim_nvenc") ? "jim_nvenc"
-							       : "ffmpeg_nvenc";
-		LoadStreamingPreset_h264(id);
-
-	} else {
-		LoadStreamingPreset_h264("obs_x264");
-	}
-
-	if (!CreateAACEncoder(aacStreaming, aacStreamEncID, GetAudioBitrate(),
-			      "simple_aac", 0))
-		throw "Failed to create aac streaming encoder (simple output)";
-	if (!CreateAACEncoder(aacArchive, aacArchiveEncID, GetAudioBitrate(),
-			      SIMPLE_ARCHIVE_NAME, 1))
-		throw "Failed to create aac arhive encoder (simple output)";
-
-	LoadRecordingPreset();
-
-	if (!ffmpegOutput) {
-		bool useReplayBuffer = config_get_bool(main->Config(),
-						       "SimpleOutput", "RecRB");
-		if (useReplayBuffer) {
-			obs_data_t *hotkey;
-			const char *str = config_get_string(
-				main->Config(), "Hotkeys", "ReplayBuffer");
-			if (str)
-				hotkey = obs_data_create_from_json(str);
-			else
-				hotkey = nullptr;
-
-			replayBuffer = obs_output_create("replay_buffer",
-							 Str("ReplayBuffer"),
-							 nullptr, hotkey);
-
-			obs_data_release(hotkey);
-			if (!replayBuffer)
-				throw "Failed to create replay buffer output "
-				      "(simple output)";
-			obs_output_release(replayBuffer);
-
-			signal_handler_t *signal =
-				obs_output_get_signal_handler(replayBuffer);
-
-			startReplayBuffer.Connect(signal, "start",
-						  OBSStartReplayBuffer, this);
-			stopReplayBuffer.Connect(signal, "stop",
-						 OBSStopReplayBuffer, this);
-			replayBufferStopping.Connect(signal, "stopping",
-						     OBSReplayBufferStopping,
-						     this);
-			replayBufferSaved.Connect(signal, "saved",
-						  OBSReplayBufferSaved, this);
-		}
-
-		fileOutput = obs_output_create(
-			"ffmpeg_muxer", "simple_file_output", nullptr, nullptr);
-		if (!fileOutput)
-			throw "Failed to create recording output "
-			      "(simple output)";
-		obs_output_release(fileOutput);
-	}
-
-	startRecording.Connect(obs_output_get_signal_handler(fileOutput),
-			       "start", OBSStartRecording, this);
-	stopRecording.Connect(obs_output_get_signal_handler(fileOutput), "stop",
-			      OBSStopRecording, this);
-	recordStopping.Connect(obs_output_get_signal_handler(fileOutput),
-			       "stopping", OBSRecordStopping, this);
 }
 
 int SimpleOutput::GetAudioBitrate() const
