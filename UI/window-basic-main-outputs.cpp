@@ -1554,7 +1554,6 @@ struct AdvancedOutput : BasicOutputHandler {
 
 	string aacEncoderID[MAX_AUDIO_MIXES];
 
-	AdvancedOutput(OBSBasic *main_);
 	AdvancedOutput(OBSBasic *main_,
 		       const std::map<int, OBSData> &outputConfigs);
 
