@@ -478,8 +478,8 @@ void SimpleOutput::LoadRecordingPreset()
 	ffmpegOutput = false;
 
 	if (strcmp(quality, "Stream") == 0) {
-		h264Recording = h264Streaming;
-		aacRecording = aacStreaming;
+		h264Recording = streamingEncoders.at(0).video;
+		aacRecording = streamingEncoders.at(0).audio;
 		usingRecordingPreset = false;
 		return;
 
@@ -1746,10 +1746,11 @@ inline void AdvancedOutput::SetupRecording()
 		tracks = config_get_int(main->Config(), "AdvOut", "TrackIndex");
 
 	if (useStreamEncoder) {
-		obs_output_set_video_encoder(fileOutput, h264Streaming);
+		obs_output_set_video_encoder(fileOutput,
+					     streamingEncoders.at(0).video);
 		if (replayBuffer)
-			obs_output_set_video_encoder(replayBuffer,
-						     h264Streaming);
+			obs_output_set_video_encoder(
+				replayBuffer, streamingEncoders.at(0).video);
 	} else {
 		if (rescale && rescaleRes && *rescaleRes) {
 			if (sscanf(rescaleRes, "%ux%u", &cx, &cy) != 2) {
