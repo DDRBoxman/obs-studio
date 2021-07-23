@@ -14,10 +14,8 @@ struct Encoders {
 
 struct BasicOutputHandler {
 	OBSOutput fileOutput;
-	OBSOutput streamOutput;
-
+	OBSOutput streamOutput; // TODO -- remove this
 	std::vector<OBSOutput> streamOutputs;
-	std::map<int, struct Encoders> streamingEncoders;
 
 	OBSOutput replayBuffer;
 	OBSOutput virtualCam;
@@ -76,10 +74,9 @@ struct BasicOutputHandler {
 					bool useDelay, int delaySec,
 					int preserveDelay);
 
-	virtual void Update() = 0;
 	virtual void Update(const std::vector<OBSService> &services,
 			    const std::map<int, OBSData> &outputConfigs) = 0;
-	virtual void SetupOutputs() = 0;
+        virtual void SetupOutputs(const std::map<int, OBSData> &outputConfigs) = 0;
 
 	inline bool Active() const
 	{

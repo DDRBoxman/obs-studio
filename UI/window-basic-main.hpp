@@ -245,8 +245,6 @@ private:
 	bool recordingStopping = false;
 	bool replayBufferStopping = false;
 
-	int maxUsedServiceID = -1;
-
 	gs_vertbuffer_t *box = nullptr;
 	gs_vertbuffer_t *boxLeft = nullptr;
 	gs_vertbuffer_t *boxTop = nullptr;
@@ -782,10 +780,10 @@ public:
 	}
 
 	obs_service_t *GetService();
-	void SetService(obs_service_t *service);
-
-	void SetServices(const std::vector<OBSService> &newServices);
 	std::vector<OBSService> GetServices() const { return services; }
+
+	void SetService(obs_service_t *service);
+	void SetServices(const std::vector<OBSService> &newServices);
 
 	void AddService(obs_service_t *service) { services.push_back(service); }
 	bool RemoveService(obs_service_t *service);
@@ -868,7 +866,6 @@ public:
 	bool LoadStreamOutputs();
 
 	inline Auth *GetAuth() { return auths.begin()->second.get(); }
-	Auth *GetAuth(int id);
 	inline std::map<int, std::shared_ptr<Auth>> GetAuths() { return auths; }
 	inline void SetAuths(const std::map<int, std::shared_ptr<Auth>> &auths_)
 	{

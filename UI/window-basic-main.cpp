@@ -4246,13 +4246,6 @@ obs_service_t *OBSBasic::GetService()
 	return services[0];
 }
 
-Auth *OBSBasic::GetAuth(int id)
-{
-	if (auths.find(id) != auths.end())
-		return auths.at(id).get();
-	return nullptr;
-}
-
 void OBSBasic::LoadAuthUIs()
 {
 	for (auto &item : auths) {

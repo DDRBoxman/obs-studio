@@ -882,11 +882,7 @@ void AutoConfigStreamPage::PopulateStreamSettings()
 	lastService = service;
 
 	int outputIndex = ui->output->findData(outputID);
-	blog(LOG_WARNING,
-	     "Obinna ,....... kajhjdahjhjads  ID %d, index: %d, service: %s, name: %s",
-	     outputID, outputIndex, service, name.toStdString().c_str());
 	ui->output->setCurrentIndex(outputIndex);
-	blog(LOG_WARNING, "Obinna ,....... AFTER, outputID");
 
 	ui->streamName->setText(name);
 	ui->key->setText(key);
