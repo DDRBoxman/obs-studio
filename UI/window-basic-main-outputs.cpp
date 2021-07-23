@@ -1709,20 +1709,40 @@ AdvancedOutput::SetupStreaming(const std::map<int, OBSData> &outputConfigs)
 		bool rescale = obs_data_get_bool(config, "adv_use_rescale");
 		const char *rescaleRes =
 			obs_data_get_string(config, "adv_rescale");
+		unsigned int cx = 0;
+		unsigned int cy = 0;
 
 		if (rescale && rescaleRes && *rescaleRes) {
-			unsigned int cx = 0;
-			unsigned int cy = 0;
-
 			if (sscanf(rescaleRes, "%ux%u", &cx, &cy) != 2) {
 				cx = 0;
 				cy = 0;
 			}
-			obs_encoder_set_scaled_size(encoders.second.video, cx,
-						    cy);
 		}
 
+		// Audio encoder track defaults to 0 in Advanced
+		for (auto &output : streamOutputs) {
+			obs_output_set_audio_encoder(output, encoders.second.audio, 0);
+		}
+		obs_encoder_set_scaled_size(encoders.second.video, cx, cy);
 		obs_encoder_set_video(encoders.second.video, obs_get_video());
+	}
+
+	auto services = main->GetServices();
+	for (auto &service : services) {
+		const char *type = obs_service_get_type(service);
+		for (auto &encoder : streamingEncoders) {
+			int output_id = encoder.first;
+			if (strcmp(type, "rtmp_custom") == 0 &&
+			    obs_service_get_output_id(service) == output_id) {
+				obs_data_t *settings = obs_data_create();
+				obs_service_apply_encoder_settings(
+					service, settings, nullptr);
+
+				obs_encoder_update(encoder.second.video,
+						   settings);
+				obs_data_release(settings);
+			}
+		}
 	}
 }
 
