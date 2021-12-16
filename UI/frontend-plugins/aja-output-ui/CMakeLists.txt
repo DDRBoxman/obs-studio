@@ -32,6 +32,8 @@ if(UNIX AND NOT APPLE)
 	find_package(Qt5X11Extras REQUIRED)
 endif()
 
+include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/plugins/aja")
+
 set(aja-output-ui_HEADERS
 	${aja-output-ui_HEADERS}
 	../../qt-wrappers.hpp
@@ -45,7 +47,9 @@ set(aja-output-ui_HEADERS
 	AJAOutputUI.h
 	aja-ui-main.h
 	../../../plugins/aja/aja-ui-props.hpp
-	../../../plugins/aja/aja-enums.hpp)
+	../../../plugins/aja/aja-enums.hpp
+	../../../plugins/aja/aja-common.hpp
+	../../../plugins/aja/aja-card-manager.hpp)
 
 set(aja-output-ui_SOURCES
 	${aja-output-ui_SOURCES}
@@ -56,6 +60,8 @@ set(aja-output-ui_SOURCES
 	../../slider-ignorewheel.cpp
 	../../combobox-ignorewheel.cpp
 	../../spinbox-ignorewheel.cpp
+	../../../plugins/aja/aja-common.cpp
+	../../../plugins/aja/aja-card-manager.cpp
 	AJAOutputUI.cpp
 	aja-ui-main.cpp)
 

@@ -1,7 +1,8 @@
 #include "aja-ui-main.h"
 #include "AJAOutputUI.h"
 
-#include "../../../plugins/aja/aja-ui-props.hpp"
+#include "aja-ui-props.hpp"
+#include "aja-card-manager.hpp"
 
 #include <obs-module.h>
 #include <obs-frontend-api.h>
@@ -309,14 +310,36 @@ static void OBSEvent(enum obs_frontend_event event, void *)
 	}
 }
 
+static void aja_loaded(void *data, calldata_t *calldata)
+{
+	aja::CardManager *cardManager = nullptr;
+	calldata_get_ptr(calldata, "card_manager", &cardManager);
+
+	auto num = cardManager->NumCardEntries();
+
+	blog(LOG_WARNING,
+	     "manager: %lu", cardManager);
+
+	blog(LOG_WARNING,
+	     "NUM CARDS: %lu", num);
+}
+
 bool obs_module_load(void)
 {
 	CNTV2DeviceScanner scanner;
 	auto numDevices = scanner.GetNumDevices();
 
-	if (numDevices == 0) {
+	/*if (numDevices == 0) {
+		blog(LOG_WARNING,
+		     "No AJA devices found, skipping loading AJA plugin");
 		return false;
-	}
+	}*/
+
+	auto signal_handler = obs_get_signal_handler();
+
+	signal_handler_add(signal_handler, "void aja_loaded(ptr card_manager)");
+
+	signal_handler_connect(signal_handler, "aja_loaded", aja_loaded, nullptr);
 
 	addOutputUI();
 
