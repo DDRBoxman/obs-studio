@@ -144,6 +144,7 @@ Property Object Functions
                           - **OBS_TEXT_DEFAULT** - Single line of text
                           - **OBS_TEXT_PASSWORD** - Single line of text (passworded)
                           - **OBS_TEXT_MULTILINE** - Multi-line text
+                          - **OBS_TEXT_DISPLAY** - Non editable text, for displaying information
 
    :return:               The property
 

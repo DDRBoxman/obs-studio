@@ -286,6 +286,11 @@ QWidget *OBSPropertiesView::AddText(obs_property_t *prop, QFormLayout *layout,
 		connect(edit, SIGNAL(textEdited(const QString &)), info,
 			SLOT(ControlChanged()));
 		return nullptr;
+	} else if (type == OBS_TEXT_DISPLAY) {
+		QLabel* label = new QLabel();
+		label->setText(QT_UTF8(val));
+
+		return NewWidget(prop, label, nullptr);;
 	}
 
 	QLineEdit *edit = new QLineEdit();
