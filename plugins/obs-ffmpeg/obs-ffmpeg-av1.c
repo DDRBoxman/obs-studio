@@ -170,14 +170,32 @@ static void on_first_packet(void *data, AVPacket *pkt, struct darray *da)
 static void *av1_create_internal(obs_data_t *settings, obs_encoder_t *encoder,
 				 const char *enc_lib, const char *enc_name)
 {
+	video_t *video = obs_encoder_video(encoder);
+	const struct video_output_info *voi = video_output_get_info(video);
+	switch (voi->format) {
+	case VIDEO_FORMAT_I010:
+	case VIDEO_FORMAT_P010:
+		break;
+	default:
+		switch (voi->colorspace) {
+		case VIDEO_CS_2100_PQ:
+		case VIDEO_CS_2100_HLG: {
+			const char *const text =
+				obs_module_text("AV1.8bitUnsupportedHdr");
+			obs_encoder_set_last_error(encoder, text);
+			blog(LOG_ERROR, "[AV1 encoder] %s", text);
+			return NULL;
+		}
+		}
+	}
+
 	struct av1_encoder *enc = bzalloc(sizeof(*enc));
 
 	if (strcmp(enc_lib, "libsvtav1") == 0)
 		enc->svtav1 = true;
 
-	if (!ffmpeg_video_encoder_init(&enc->ffve, enc, settings, encoder,
-				       enc_lib, NULL, enc_name, NULL,
-				       on_first_packet))
+	if (!ffmpeg_video_encoder_init(&enc->ffve, enc, encoder, enc_lib, NULL,
+				       enc_name, NULL, on_first_packet))
 		goto fail;
 	if (!av1_update(enc, settings))
 		goto fail;
@@ -254,9 +272,10 @@ obs_properties_t *av1_properties(bool svtav1)
 	obs_properties_add_int(props, "cqp", obs_module_text("NVENC.CQLevel"),
 			       1, 63, 1);
 
-	obs_properties_add_int(props, "keyint_sec",
-			       obs_module_text("KeyframeIntervalSec"), 0, 10,
-			       1);
+	p = obs_properties_add_int(props, "keyint_sec",
+				   obs_module_text("KeyframeIntervalSec"), 0,
+				   10, 1);
+	obs_property_int_set_suffix(p, " s");
 
 	p = obs_properties_add_list(props, "preset", obs_module_text("Preset"),
 				    OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);

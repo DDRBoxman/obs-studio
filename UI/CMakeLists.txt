@@ -6,13 +6,6 @@ if(NOT ENABLE_UI)
   return()
 endif()
 
-if(NOT QT_VERSION)
-  set(QT_VERSION
-      "5"
-      CACHE STRING "OBS Qt version [5, 6]" FORCE)
-  set_property(CACHE QT_VERSION PROPERTY STRINGS 5 6)
-endif()
-
 project(obs)
 
 # Legacy support
@@ -78,16 +71,7 @@ find_package(CURL REQUIRED)
 add_subdirectory(frontend-plugins)
 add_executable(obs)
 
-set(UI_COMPONENTS_WIN "")
-if(QT_VERSION EQUAL 5)
-  set(UI_COMPONENTS_WIN "WinExtras")
-endif()
-
-find_qt(
-  VERSION ${QT_VERSION}
-  COMPONENTS Widgets Network Svg Xml
-  COMPONENTS_WIN ${UI_COMPONENTS_WIN}
-  COMPONENTS_LINUX Gui)
+find_qt(COMPONENTS Widgets Network Svg Xml COMPONENTS_LINUX Gui)
 
 target_link_libraries(obs PRIVATE Qt::Widgets Qt::Svg Qt::Xml Qt::Network)
 
@@ -119,6 +103,7 @@ target_sources(
           forms/OBSBasicSettings.ui
           forms/OBSBasicSourceSelect.ui
           forms/OBSBasicTransform.ui
+          forms/OBSBasicVCamConfig.ui
           forms/OBSExtraBrowsers.ui
           forms/OBSImporter.ui
           forms/OBSLogReply.ui
@@ -152,8 +137,6 @@ target_sources(
           crash-report.cpp
           crash-report.hpp
           display-helpers.hpp
-          streaming-helpers.cpp
-          streaming-helpers.hpp
           platform.hpp
           qt-display.cpp
           qt-display.hpp
@@ -161,6 +144,8 @@ target_sources(
           qt-wrappers.hpp
           ui-validation.cpp
           ui-validation.hpp
+          multiview.cpp
+          multiview.hpp
           ${CMAKE_SOURCE_DIR}/deps/json11/json11.cpp
           ${CMAKE_SOURCE_DIR}/deps/json11/json11.hpp
           ${CMAKE_SOURCE_DIR}/deps/libff/libff/ff-util.c
@@ -201,6 +186,8 @@ target_sources(
           menu-button.cpp
           menu-button.hpp
           mute-checkbox.hpp
+          plain-text-edit.cpp
+          plain-text-edit.hpp
           properties-view.cpp
           properties-view.hpp
           properties-view.moc.hpp
@@ -263,6 +250,7 @@ target_sources(
           window-basic-properties.hpp
           window-basic-settings.cpp
           window-basic-settings.hpp
+          window-basic-settings-a11y.cpp
           window-basic-settings-stream.cpp
           window-basic-source-select.cpp
           window-basic-source-select.hpp
@@ -273,6 +261,8 @@ target_sources(
           window-basic-transform.cpp
           window-basic-transform.hpp
           window-basic-preview.hpp
+          window-basic-vcam-config.cpp
+          window-basic-vcam-config.hpp
           window-dock.cpp
           window-dock.hpp
           window-importer.cpp
@@ -323,6 +313,18 @@ if(TARGET OBS::browser-panels)
   if(RESTREAM_ENABLED)
     target_sources(obs PRIVATE auth-restream.cpp auth-restream.hpp)
   endif()
+
+  if(OS_WINDOWS OR OS_MACOS)
+    set(ENABLE_WHATSNEW
+        ON
+        CACHE INTERNAL "Enable WhatsNew dialog")
+  elseif(OS_LINUX)
+    option(ENABLE_WHATSNEW "Enable WhatsNew dialog" ON)
+  endif()
+
+  if(ENABLE_WHATSNEW)
+    target_compile_definitions(obs PRIVATE WHATSNEW_ENABLED)
+  endif()
 endif()
 
 if(YOUTUBE_ENABLED)
@@ -352,11 +354,12 @@ if(OS_WINDOWS)
             win-update/win-update-helpers.hpp
             ${CMAKE_BINARY_DIR}/obs.rc)
 
-  if(QT_VERSION EQUAL 5)
-    target_link_libraries(obs PRIVATE crypt32 OBS::blake2 Qt::WinExtras)
-  else()
-    target_link_libraries(obs PRIVATE crypt32 OBS::blake2)
+  if(_QT_VERSION EQUAL 5)
+    find_qt(COMPONENTS WinExtras)
+    target_link_libraries(obs PRIVATE Qt::WinExtras)
   endif()
+
+  target_link_libraries(obs PRIVATE crypt32 OBS::blake2)
 
   target_compile_features(obs PRIVATE cxx_std_17)
 
@@ -365,6 +368,7 @@ if(OS_WINDOWS)
                 _CRT_NONSTDC_NO_WARNINGS)
 
   if(MSVC)
+    target_link_options(obs PRIVATE "LINKER:/IGNORE:4098" "LINKER:/IGNORE:4099")
     target_link_libraries(obs PRIVATE OBS::w32-pthreads)
 
     set_source_files_properties(
@@ -416,9 +420,12 @@ elseif(OS_MACOS)
   endif()
 
   find_library(APPKIT Appkit)
-  mark_as_advanced(APPKIT)
+  find_library(AVFOUNDATION AVFoundation)
+  find_library(APPLICATIONSERVICES ApplicationServices)
+  mark_as_advanced(APPKIT AVFOUNDATION APPLICATIONSERVICES)
 
-  target_link_libraries(obs PRIVATE ${APPKIT})
+  target_link_libraries(obs PRIVATE ${APPKIT} ${AVFOUNDATION}
+                                    ${APPLICATIONSERVICES})
 
   if(ENABLE_SPARKLE_UPDATER)
     find_library(SPARKLE Sparkle)
@@ -431,13 +438,30 @@ elseif(OS_MACOS)
   endif()
 
   target_sources(obs PRIVATE platform-osx.mm)
+  target_sources(obs PRIVATE forms/OBSPermissions.ui window-permissions.cpp
+                             window-permissions.hpp)
+
+  if(ENABLE_WHATSNEW)
+    find_library(SECURITY Security)
+    mark_as_advanced(SECURITY)
+    target_link_libraries(obs PRIVATE ${SECURITY} OBS::blake2)
+
+    target_sources(
+      obs
+      PRIVATE nix-update/crypto-helpers.hpp
+              nix-update/crypto-helpers-mac.mm
+              nix-update/nix-update.cpp
+              nix-update/nix-update.hpp
+              nix-update/nix-update-helpers.cpp
+              nix-update/nix-update-helpers.hpp)
+  endif()
 
   set_source_files_properties(platform-osx.mm PROPERTIES COMPILE_FLAGS
                                                          -fobjc-arc)
 
 elseif(OS_POSIX)
   target_sources(obs PRIVATE platform-x11.cpp)
-  target_link_libraries(obs PRIVATE Qt${QT_VERSION}::GuiPrivate)
+  target_link_libraries(obs PRIVATE Qt::GuiPrivate)
 
   if(TARGET obspython)
     find_package(Python REQUIRED COMPONENTS Interpreter Development)
@@ -451,6 +475,25 @@ elseif(OS_POSIX)
 
   if(OS_FREEBSD)
     target_link_libraries(obs PRIVATE procstat)
+  endif()
+
+  if(OS_LINUX AND ENABLE_WHATSNEW)
+    find_package(MbedTLS)
+    if(NOT MBEDTLS_FOUND)
+      obs_status(
+        FATAL_ERROR
+        "mbedTLS not found, but required for WhatsNew support on Linux")
+    endif()
+
+    target_sources(
+      obs
+      PRIVATE nix-update/crypto-helpers.hpp
+              nix-update/crypto-helpers-mbedtls.cpp
+              nix-update/nix-update.cpp
+              nix-update/nix-update.hpp
+              nix-update/nix-update-helpers.cpp
+              nix-update/nix-update-helpers.hpp)
+    target_link_libraries(obs PRIVATE Mbedtls::Mbedtls OBS::blake2)
   endif()
 endif()
 

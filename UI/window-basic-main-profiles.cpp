@@ -819,8 +819,10 @@ void OBSBasic::CheckForSimpleModeX264Fallback()
 	bool amd_supported = false;
 	bool nve_supported = false;
 #ifdef ENABLE_HEVC
+	bool amd_hevc_supported = false;
 	bool nve_hevc_supported = false;
 #endif
+	bool apple_supported = false;
 	bool changed = false;
 	size_t idx = 0;
 	const char *id;
@@ -833,9 +835,15 @@ void OBSBasic::CheckForSimpleModeX264Fallback()
 		else if (strcmp(id, "ffmpeg_nvenc") == 0)
 			nve_supported = true;
 #ifdef ENABLE_HEVC
+		else if (strcmp(id, "h265_texture_amf") == 0)
+			amd_hevc_supported = true;
 		else if (strcmp(id, "ffmpeg_hevc_nvenc") == 0)
 			nve_hevc_supported = true;
 #endif
+		else if (strcmp(id,
+				"com.apple.videotoolbox.videoencoder.ave.avc") ==
+			 0)
+			apple_supported = true;
 	}
 
 	auto CheckEncoder = [&](const char *&name) {
@@ -852,6 +860,12 @@ void OBSBasic::CheckForSimpleModeX264Fallback()
 				return false;
 			}
 #ifdef ENABLE_HEVC
+		} else if (strcmp(name, SIMPLE_ENCODER_AMD_HEVC) == 0) {
+			if (!amd_hevc_supported) {
+				changed = true;
+				name = SIMPLE_ENCODER_X264;
+				return false;
+			}
 		} else if (strcmp(name, SIMPLE_ENCODER_NVENC_HEVC) == 0) {
 			if (!nve_hevc_supported) {
 				changed = true;
@@ -861,6 +875,12 @@ void OBSBasic::CheckForSimpleModeX264Fallback()
 #endif
 		} else if (strcmp(name, SIMPLE_ENCODER_AMD) == 0) {
 			if (!amd_supported) {
+				changed = true;
+				name = SIMPLE_ENCODER_X264;
+				return false;
+			}
+		} else if (strcmp(name, SIMPLE_ENCODER_APPLE_H264) == 0) {
+			if (!apple_supported) {
 				changed = true;
 				name = SIMPLE_ENCODER_X264;
 				return false;

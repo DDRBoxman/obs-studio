@@ -284,18 +284,20 @@ static void *nvenc_create_internal(obs_data_t *settings, obs_encoder_t *encoder,
 #ifdef ENABLE_HEVC
 	enc->hevc = hevc;
 	if (hevc) {
-		if (!ffmpeg_video_encoder_init(&enc->ffve, enc, settings,
-					       encoder, "hevc_nvenc",
-					       "nvenc_hevc", ENCODER_NAME_HEVC,
-					       on_init_error, on_first_packet))
+		if (!ffmpeg_video_encoder_init(&enc->ffve, enc, encoder,
+					       "hevc_nvenc", "nvenc_hevc",
+					       ENCODER_NAME_HEVC, on_init_error,
+					       on_first_packet))
 			goto fail;
 	} else
+#else
+	UNUSED_PARAMETER(hevc);
 #endif
 	{
-		if (!ffmpeg_video_encoder_init(&enc->ffve, enc, settings,
-					       encoder, "h264_nvenc",
-					       "nvenc_h264", ENCODER_NAME_H264,
-					       on_init_error, on_first_packet))
+		if (!ffmpeg_video_encoder_init(&enc->ffve, enc, encoder,
+					       "h264_nvenc", "nvenc_h264",
+					       ENCODER_NAME_H264, on_init_error,
+					       on_first_packet))
 			goto fail;
 	}
 
@@ -311,6 +313,30 @@ fail:
 
 static void *h264_nvenc_create(obs_data_t *settings, obs_encoder_t *encoder)
 {
+	video_t *video = obs_encoder_video(encoder);
+	const struct video_output_info *voi = video_output_get_info(video);
+	switch (voi->format) {
+	case VIDEO_FORMAT_I010:
+	case VIDEO_FORMAT_P010: {
+		const char *const text =
+			obs_module_text("NVENC.10bitUnsupported");
+		obs_encoder_set_last_error(encoder, text);
+		blog(LOG_ERROR, "[NVENC encoder] %s", text);
+		return NULL;
+	}
+	default:
+		switch (voi->colorspace) {
+		case VIDEO_CS_2100_PQ:
+		case VIDEO_CS_2100_HLG: {
+			const char *const text =
+				obs_module_text("NVENC.8bitUnsupportedHdr");
+			obs_encoder_set_last_error(encoder, text);
+			blog(LOG_ERROR, "[NVENC encoder] %s", text);
+			return NULL;
+		}
+		}
+	}
+
 	bool psycho_aq = obs_data_get_bool(settings, "psycho_aq");
 	void *enc = nvenc_create_internal(settings, encoder, psycho_aq, false);
 	if ((enc == NULL) && psycho_aq) {
@@ -326,6 +352,31 @@ static void *h264_nvenc_create(obs_data_t *settings, obs_encoder_t *encoder)
 #ifdef ENABLE_HEVC
 static void *hevc_nvenc_create(obs_data_t *settings, obs_encoder_t *encoder)
 {
+	video_t *video = obs_encoder_video(encoder);
+	const struct video_output_info *voi = video_output_get_info(video);
+	switch (voi->format) {
+	case VIDEO_FORMAT_I010: {
+		const char *const text =
+			obs_module_text("NVENC.I010Unsupported");
+		obs_encoder_set_last_error(encoder, text);
+		blog(LOG_ERROR, "[NVENC encoder] %s", text);
+		return NULL;
+	}
+	case VIDEO_FORMAT_P010:
+		break;
+	default:
+		switch (voi->colorspace) {
+		case VIDEO_CS_2100_PQ:
+		case VIDEO_CS_2100_HLG: {
+			const char *const text =
+				obs_module_text("NVENC.8bitUnsupportedHdr");
+			obs_encoder_set_last_error(encoder, text);
+			blog(LOG_ERROR, "[NVENC encoder] %s", text);
+			return NULL;
+		}
+		}
+	}
+
 	bool psycho_aq = obs_data_get_bool(settings, "psycho_aq");
 	void *enc = nvenc_create_internal(settings, encoder, psycho_aq, true);
 	if ((enc == NULL) && psycho_aq) {
@@ -431,11 +482,12 @@ obs_properties_t *nvenc_properties_internal(bool hevc, bool ffmpeg)
 	obs_property_int_set_suffix(p, " Kbps");
 
 	obs_properties_add_int(props, "cqp", obs_module_text("NVENC.CQLevel"),
-			       1, 30, 1);
+			       1, 51, 1);
 
-	obs_properties_add_int(props, "keyint_sec",
-			       obs_module_text("KeyframeIntervalSec"), 0, 10,
-			       1);
+	p = obs_properties_add_int(props, "keyint_sec",
+				   obs_module_text("KeyframeIntervalSec"), 0,
+				   10, 1);
+	obs_property_int_set_suffix(p, " s");
 
 	p = obs_properties_add_list(props, "preset", obs_module_text("Preset"),
 				    OBS_COMBO_TYPE_LIST,

@@ -20,6 +20,7 @@ CI_SPARKLE_HASH=$(echo "${WORKFLOW_CONTENT}" | /usr/bin/sed -En "s/[ ]+SPARKLE_H
 CI_QT_VERSION=$(echo "${WORKFLOW_CONTENT}" | /usr/bin/sed -En "s/[ ]+QT_VERSION_MAC: '([0-9\.]+)'/\1/p" | /usr/bin/head -1)
 CI_QT_HASH_X86_64=$(echo "${WORKFLOW_CONTENT}" | /usr/bin/sed -En "s/[ ]+QT_HASH_MAC_X86_64: '([0-9a-f]+)'/\1/p")
 CI_QT_HASH_ARM64=$(echo "${WORKFLOW_CONTENT}" | /usr/bin/sed -En "s/[ ]+QT_HASH_MAC_ARM64: '([0-9a-f]+)'/\1/p")
+CI_QT_HASH_UNIVERSAL=$(echo "${WORKFLOW_CONTENT}" | /usr/bin/sed -En "s/[ ]+QT_HASH_MAC_UNIVERSAL: '([0-9a-f]+)'/\1/p")
 CI_MACOSX_DEPLOYMENT_TARGET_X86_64=$(echo "${WORKFLOW_CONTENT}" | /usr/bin/sed -En "s/[ ]+MACOSX_DEPLOYMENT_TARGET_X86_64: '([0-9\.]+)'/\1/p")
 CI_MACOSX_DEPLOYMENT_TARGET_ARM64=$(echo "${WORKFLOW_CONTENT}" | /usr/bin/sed -En "s/[ ]+MACOSX_DEPLOYMENT_TARGET_ARM64: '([0-9\.]+)'/\1/p")
 CI_MACOS_CEF_VERSION=$(echo "${WORKFLOW_CONTENT}" | /usr/bin/sed -En "s/[ ]+CEF_BUILD_VERSION_MAC: '([0-9]+)'/\1/p")
@@ -156,7 +157,7 @@ read_codesign_ident() {
 #   + Your Apple developer ID is needed for notarization
 #   + An app-specific password is necessary for notarization from CLI
 #   + This password will be stored in your macOS keychain under the identifier
-#     'OBS-Codesign-Password' with access Apple's 'altool' only.
+#     'OBS-Codesign-Password' with access Apple's 'notarytool' only.
 ##############################################################################
 
 read_codesign_pass() {
@@ -173,8 +174,8 @@ read_codesign_pass() {
 
     step "Update notarization keychain..."
 
-    echo -n "${COLOR_ORANGE}"
-    /usr/bin/xcrun altool --store-password-in-keychain-item "OBS-Codesign-Password" -u "${CODESIGN_IDENT_USER}" -p "${CODESIGN_IDENT_PASS}"
-    echo -n "${COLOR_RESET}"
     CODESIGN_IDENT_SHORT=$(echo "${CODESIGN_IDENT}" | /usr/bin/sed -En "s/.+\((.+)\)/\1/p")
+    echo -n "${COLOR_ORANGE}"
+    /usr/bin/xcrun notarytool store-credentials "OBS-Codesign-Password" --apple-id "${CODESIGN_IDENT_USER}" --team-id "${CODESIGN_IDENT_SHORT}" --password "${CODESIGN_IDENT_PASS}"
+    echo -n "${COLOR_RESET}"
 }

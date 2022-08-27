@@ -45,8 +45,11 @@ bool ffmpeg_video_encoder_init_codec(struct ffmpeg_video_encoder *enc)
 	enc->vframe->format = enc->context->pix_fmt;
 	enc->vframe->width = enc->context->width;
 	enc->vframe->height = enc->context->height;
-	enc->vframe->colorspace = enc->context->colorspace;
 	enc->vframe->color_range = enc->context->color_range;
+	enc->vframe->color_primaries = enc->context->color_primaries;
+	enc->vframe->color_trc = enc->context->color_trc;
+	enc->vframe->colorspace = enc->context->colorspace;
+	enc->vframe->chroma_location = enc->context->chroma_sample_location;
 
 	ret = av_frame_get_buffer(enc->vframe, base_get_alignment());
 	if (ret < 0) {
@@ -96,11 +99,13 @@ void ffmpeg_video_encoder_update(struct ffmpeg_video_encoder *enc, int bitrate,
 		enc->context->color_primaries = AVCOL_PRI_BT2020;
 		enc->context->color_trc = AVCOL_TRC_SMPTE2084;
 		enc->context->colorspace = AVCOL_SPC_BT2020_NCL;
+		enc->context->chroma_sample_location = AVCHROMA_LOC_TOPLEFT;
 		break;
 	case VIDEO_CS_2100_HLG:
 		enc->context->color_primaries = AVCOL_PRI_BT2020;
 		enc->context->color_trc = AVCOL_TRC_ARIB_STD_B67;
 		enc->context->colorspace = AVCOL_SPC_BT2020_NCL;
+		enc->context->chroma_sample_location = AVCHROMA_LOC_TOPLEFT;
 	}
 
 	if (keyint_sec)
@@ -142,9 +147,8 @@ void ffmpeg_video_encoder_free(struct ffmpeg_video_encoder *enc)
 }
 
 bool ffmpeg_video_encoder_init(struct ffmpeg_video_encoder *enc, void *parent,
-			       obs_data_t *settings, obs_encoder_t *encoder,
-			       const char *enc_lib, const char *enc_lib2,
-			       const char *enc_name,
+			       obs_encoder_t *encoder, const char *enc_lib,
+			       const char *enc_lib2, const char *enc_name,
 			       init_error_cb on_init_error,
 			       first_packet_cb on_first_packet)
 {
@@ -216,7 +220,7 @@ bool ffmpeg_video_encode(struct ffmpeg_video_encoder *enc,
 {
 	AVPacket av_pkt = {0};
 	bool timeout = false;
-	int64_t cur_ts = (int64_t)os_gettime_ns();
+	const int64_t cur_ts = (int64_t)os_gettime_ns();
 	int got_packet;
 	int ret;
 
@@ -256,17 +260,17 @@ bool ffmpeg_video_encode(struct ffmpeg_video_encoder *enc,
 		packet->keyframe = !!(av_pkt.flags & AV_PKT_FLAG_KEY);
 		*received_packet = true;
 
-		uint64_t recv_ts_nsec =
-			util_mul_div64((uint64_t)av_pkt.pts,
-				       (uint64_t)SEC_TO_NSEC,
-				       (uint64_t)enc->context->time_base.den) +
+		const int64_t recv_ts_nsec =
+			(int64_t)util_mul_div64(
+				(uint64_t)av_pkt.pts, (uint64_t)SEC_TO_NSEC,
+				(uint64_t)enc->context->time_base.den) +
 			enc->start_ts;
 
 #if 0
 		debug("cur: %lld, packet: %lld, diff: %lld", cur_ts,
 		      recv_ts_nsec, cur_ts - recv_ts_nsec);
 #endif
-		if (llabs(cur_ts - recv_ts_nsec) > TIMEOUT_MAX_NSEC) {
+		if ((cur_ts - recv_ts_nsec) > TIMEOUT_MAX_NSEC) {
 			char timeout_str[16];
 			snprintf(timeout_str, sizeof(timeout_str), "%d",
 				 TIMEOUT_MAX_SEC);

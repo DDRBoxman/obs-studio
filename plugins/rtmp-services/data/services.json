@@ -204,6 +204,10 @@
             "common": false,
             "more_info_link": "https://developers.google.com/youtube/v3/live/guides/ingestion-protocol-comparison",
             "stream_key_link": "https://www.youtube.com/live_dashboard",
+            "supported video codecs": [
+                "h264",
+                "hevc"
+            ],
             "servers": [
                 {
                     "name": "Primary YouTube ingest server",
@@ -346,21 +350,6 @@
                 "max video bitrate": 8000,
                 "max audio bitrate": 320,
                 "x264opts": "scenecut=0"
-            }
-        },
-        {
-            "name": "Mobcrush",
-            "servers": [
-                {
-                    "name": "Primary",
-                    "url": "rtmp://live.mobcrush.net/mob"
-                }
-            ],
-            "recommended": {
-                "keyint": 2,
-                "profile": "main",
-                "max video bitrate": 6000,
-                "max audio bitrate": 160
             }
         },
         {
@@ -1033,6 +1022,41 @@
             }
         },
         {
+            "name": "WpStream",
+            "more_info_link": "https://wpstream.net/obs-more-info",
+            "stream_key_link": "https://wpstream.net/obs-get-stream-key",
+            "servers": [
+                {
+                    "name": "Closest server - Automatic",
+                    "url": "rtmp://ingest.wpstream.net/golive"
+                },
+                {
+                    "name": "North America",
+                    "url": "rtmp://ingest-na.wpstream.net/golive"
+                },
+                {
+                    "name": "Europe",
+                    "url": "rtmp://ingest-eu.wpstream.net/golive"
+                },
+                {
+                    "name": "Asia",
+                    "url": "rtmp://ingest-as.wpstream.net/golive"
+                },
+                {
+                    "name": "South America",
+                    "url": "rtmp://ingest-sa.wpstream.net/golive"
+                },
+                {
+                    "name": "Australia & Oceania",
+                    "url": "rtmp://ingest-au.wpstream.net/golive"
+                }
+            ],
+            "recommended": {
+                "keyint": 2,
+                "max audio bitrate": 160
+            }
+        },
+        {
             "name": "Twitter",
             "common": true,
             "stream_key_link": "https://studio.twitter.com/producer/sources",
@@ -1104,65 +1128,50 @@
             "servers": [
                 {
                     "name": "Global Zone (geo based)",
-                    "url": "rtmp://ingest-global-a.switchboard.zone/live"
+                    "url": "rtmp://ingest-global.switchboard.zone/live"
                 },
                 {
                     "name": "US Zone (geo based)",
                     "url": "rtmp://ingest-us.switchboard.zone/live"
                 },
                 {
-                    "name": "US West 1 (South)",
-                    "url": "rtmp://ingest-us-west.a.switchboard.zone/live"
+                    "name": "US West",
+                    "url": "rtmp://ingest-us-west.switchboard.zone/live"
                 },
                 {
-                    "name": "US West 2 (North)",
-                    "url": "rtmp://ingest-us-west.b.switchboard.zone/live"
+                    "name": "US East",
+                    "url": "rtmp://ingest-us-east.switchboard.zone/live"
                 },
                 {
-                    "name": "US East 1 (North)",
-                    "url": "rtmp://ingest-us-east.a.switchboard.zone/live"
+                    "name": "US Central",
+                    "url": "rtmp://ingest-us-central.switchboard.zone/live"
                 },
                 {
-                    "name": "US East 2 (South)",
-                    "url": "rtmp://ingest-us-east.b.switchboard.zone/live"
+                    "name": "South America",
+                    "url": "rtmp://ingest-sa.switchboard.zone/live"
                 },
                 {
-                    "name": "US Central (North)",
-                    "url": "rtmp://ingest-us-central.a.switchboard.zone/live"
+                    "name": "EU (auto)",
+                    "url": "rtmp://ingest-eu.switchboard.zone/live"
                 },
                 {
-                    "name": "South America East (São Paulo, BR)",
-                    "url": "rtmp://ingest-sa-east.a.switchboard.zone/live"
+                    "name": "Australia",
+                    "url": "rtmp://ingest-au.switchboard.zone/live"
                 },
                 {
-                    "name": "Europe West (London, UK)",
-                    "url": "rtmp://ingest-eu-west.a.switchboard.zone/live"
+                    "name": "APAC (auto)",
+                    "url": "rtmp://ingest-asia.switchboard.zone/live"
                 },
                 {
-                    "name": "Europe North (Hamina, FI)",
-                    "url": "rtmp://ingest-eu-north.a.switchboard.zone/live"
-                },
-                {
-                    "name": "Australia Southeast (Sydney, AU)",
-                    "url": "rtmp://ingest-au-southeast.a.switchboard.zone/live"
-                },
-                {
-                    "name": "Asia East (Changhua County, TW)",
-                    "url": "rtmp://ingest-as-east.a.switchboard.zone/live"
-                },
-                {
-                    "name": "Asia Northeast (Tokyo, JP)",
-                    "url": "rtmp://ingest-as-northeast.a.switchboard.zone/live"
-                },
-                {
-                    "name": "Asia South (Mumbai, IN)",
-                    "url": "rtmp://ingest-as-south.a.switchboard.zone/live"
+                    "name": "UK",
+                    "url": "rtmp://ingest-uk.switchboard.zone/live"
                 }
             ],
             "recommended": {
                 "keyint": 2,
-                "max audio bitrate": 128,
-                "max video bitrate": 10000
+                "profile": "high",
+                "max audio bitrate": 160,
+                "max video bitrate": 6000
             }
         },
         {
@@ -1490,6 +1499,9 @@
         {
             "name": "YouNow",
             "common": false,
+            "supported audio codecs": [
+                "opus"
+            ],
             "servers": [
                 {
                     "name": "younow.com",
@@ -1863,6 +1875,9 @@
         {
             "name": "Glimesh",
             "stream_key_link": "https://glimesh.tv/users/settings/stream",
+            "supported audio codecs": [
+                "opus"
+            ],
             "servers": [
                 {
                     "name": "North America - Chicago, United States",
@@ -2377,6 +2392,24 @@
                 "max video bitrate": 6000,
                 "max audio bitrate": 160
             }
+        },
+        {
+            "name": "StreamVi",
+            "stream_key_link": "https://streamvi.ru/settings",
+            "servers": [
+                {
+                    "name": "Default",
+                    "url": "rtmp://live-default.streamvi.ru/live"
+                },
+                {
+                    "name": "Russia (Moscow)",
+                    "url": "rtmp://live-msk.streamvi.ru/live"
+                },
+                {
+                    "name": "EU Central: Germany",
+                    "url": "rtmp://live1.streamvi.ru/live"
+                }
+            ]
         }
     ]
 }

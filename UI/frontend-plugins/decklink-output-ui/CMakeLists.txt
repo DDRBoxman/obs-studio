@@ -7,10 +7,7 @@ endif()
 add_library(decklink-output-ui MODULE)
 add_library(OBS::decklink-output-ui ALIAS decklink-output-ui)
 
-find_qt(
-  VERSION ${QT_VERSION}
-  COMPONENTS Widgets
-  COMPONENTS_LINUX Gui)
+find_qt(COMPONENTS Widgets COMPONENTS_LINUX Gui)
 
 set_target_properties(
   decklink-output-ui
@@ -29,6 +26,8 @@ target_sources(
           decklink-ui-main.h
           ${CMAKE_SOURCE_DIR}/UI/double-slider.cpp
           ${CMAKE_SOURCE_DIR}/UI/double-slider.hpp
+          ${CMAKE_SOURCE_DIR}/UI/plain-text-edit.hpp
+          ${CMAKE_SOURCE_DIR}/UI/plain-text-edit.cpp
           ${CMAKE_SOURCE_DIR}/UI/properties-view.hpp
           ${CMAKE_SOURCE_DIR}/UI/properties-view.cpp
           ${CMAKE_SOURCE_DIR}/UI/properties-view.moc.hpp
@@ -63,8 +62,7 @@ elseif(OS_MACOS)
 
 elseif(OS_POSIX)
   find_package(X11 REQUIRED)
-  target_link_libraries(decklink-output-ui PRIVATE X11::X11
-                                                   Qt${QT_VERSION}::GuiPrivate)
+  target_link_libraries(decklink-output-ui PRIVATE X11::X11 Qt::GuiPrivate)
 endif()
 
 get_target_property(_SOURCES decklink-output-ui SOURCES)

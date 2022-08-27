@@ -9,7 +9,7 @@ find_package(LibAJANTV2 REQUIRED)
 add_library(aja-output-ui MODULE)
 add_library(OBS::aja-output-ui ALIAS aja-output-ui)
 
-find_qt(VERSION ${QT_VERSION} COMPONENTS Widgets)
+find_qt(COMPONENTS Widgets COMPONENTS_LINUX Gui)
 
 set_target_properties(
   aja-output-ui
@@ -44,6 +44,8 @@ target_sources(
           ${CMAKE_SOURCE_DIR}/plugins/aja/aja-widget-io.hpp
           ${CMAKE_SOURCE_DIR}/UI/double-slider.cpp
           ${CMAKE_SOURCE_DIR}/UI/double-slider.hpp
+          ${CMAKE_SOURCE_DIR}/UI/plain-text-edit.hpp
+          ${CMAKE_SOURCE_DIR}/UI/plain-text-edit.cpp
           ${CMAKE_SOURCE_DIR}/UI/properties-view.hpp
           ${CMAKE_SOURCE_DIR}/UI/properties-view.cpp
           ${CMAKE_SOURCE_DIR}/UI/properties-view.moc.hpp
@@ -72,12 +74,13 @@ elseif(OS_WINDOWS)
                  aja-output-ui.rc)
   target_sources(aja-output-ui PRIVATE aja-output-ui.rc)
 
+  target_compile_options(aja-output-ui PRIVATE /wd4996)
   target_link_libraries(aja-output-ui PRIVATE ws2_32.lib setupapi.lib Winmm.lib
                                               netapi32.lib Shlwapi.lib)
+  target_link_options(aja-output-ui PRIVATE "LINKER:/IGNORE:4099")
 else()
   find_package(X11 REQUIRED)
-  target_link_libraries(aja-output-ui PRIVATE X11::X11
-                                              Qt${QT_VERSION}::GuiPrivate)
+  target_link_libraries(aja-output-ui PRIVATE X11::X11 Qt::GuiPrivate)
 endif()
 
 set_target_properties(aja-output-ui PROPERTIES FOLDER "frontend" PREFIX "")

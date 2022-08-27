@@ -28,7 +28,6 @@
 
 #include <obs.hpp>
 
-#include "streaming-helpers.hpp"
 #include "auth-base.hpp"
 
 class OBSBasic;
@@ -41,8 +40,6 @@ class OBSPropertiesView;
 class OBSHotkeyWidget;
 
 #include "ui_OBSBasicSettings.h"
-
-#include <json11.hpp>
 
 #define VOLUME_METER_DECAY_FAST 23.53
 #define VOLUME_METER_DECAY_MEDIUM 11.76
@@ -100,6 +97,8 @@ class OBSBasicSettings : public QDialog {
 			   DESIGNABLE true)
 	Q_PROPERTY(QIcon hotkeysIcon READ GetHotkeysIcon WRITE SetHotkeysIcon
 			   DESIGNABLE true)
+	Q_PROPERTY(QIcon accessibilityIcon READ GetAccessibilityIcon WRITE
+			   SetAccessibilityIcon DESIGNABLE true)
 	Q_PROPERTY(QIcon advancedIcon READ GetAdvancedIcon WRITE SetAdvancedIcon
 			   DESIGNABLE true)
 
@@ -116,6 +115,7 @@ private:
 	bool audioChanged = false;
 	bool videoChanged = false;
 	bool hotkeysChanged = false;
+	bool a11yChanged = false;
 	bool advancedChanged = false;
 	int pageIndex = 0;
 	bool loading = true;
@@ -123,11 +123,15 @@ private:
 	std::string savedTheme;
 	int sampleRateIndex = 0;
 	int channelIndex = 0;
+	bool llBufferingEnabled = false;
 
 	int lastSimpleRecQualityIdx = 0;
 	int lastServiceIdx = -1;
 	int lastIgnoreRecommended = -1;
 	int lastChannelSetupIdx = 0;
+
+	static constexpr uint32_t ENCODER_HIDE_FLAGS =
+		(OBS_ENCODER_CAP_DEPRECATED | OBS_ENCODER_CAP_INTERNAL);
 
 	OBSFFFormatDesc formats;
 
@@ -162,8 +166,6 @@ private:
 	uint32_t outputCX = 0;
 	uint32_t outputCY = 0;
 
-	StreamSettingsUI streamUi;
-
 	QPointer<QCheckBox> simpleVodTrack;
 
 	QPointer<QCheckBox> vodTrackCheckbox;
@@ -195,7 +197,7 @@ private:
 	{
 		return generalChanged || outputsChanged || stream1Changed ||
 		       audioChanged || videoChanged || advancedChanged ||
-		       hotkeysChanged;
+		       hotkeysChanged || a11yChanged;
 	}
 
 	inline void EnableApplyButton(bool en)
@@ -211,6 +213,7 @@ private:
 		audioChanged = false;
 		videoChanged = false;
 		hotkeysChanged = false;
+		a11yChanged = false;
 		advancedChanged = false;
 		EnableApplyButton(false);
 	}
@@ -225,9 +228,10 @@ private:
 
 	bool QueryChanges();
 
-	void LoadEncoderTypes();
+	void ResetEncoders(bool streamOnly = false);
 	void LoadColorRanges();
 	void LoadColorSpaces();
+	void LoadColorFormats();
 	void LoadFormats();
 	void ReloadCodecs(const ff_format_desc *formatDesc);
 
@@ -240,6 +244,7 @@ private:
 	void LoadVideoSettings();
 	void
 	LoadHotkeySettings(obs_hotkey_id ignoreKey = OBS_INVALID_HOTKEY_ID);
+	void LoadA11ySettings(bool presetChange = false);
 	void LoadAdvancedSettings();
 	void LoadSettings(bool changedOnly);
 
@@ -253,15 +258,21 @@ private:
 
 	/* stream */
 	void InitStreamPage();
+	inline bool IsCustomService() const;
+	void LoadServices(bool showAll);
 	void OnOAuthStreamKeyConnected();
 	void OnAuthConnected();
+	QString lastService;
 	int prevLangIndex;
 	bool prevBrowserAccel;
 private slots:
+	void UpdateServerList();
+	void UpdateKeyLink();
 	void UpdateVodTrackSetting();
 	void UpdateServiceRecommendations();
 	void RecreateOutputResolutionWidget();
 	void UpdateResFPSLimits();
+	void UpdateMoreInfoLink();
 	void DisplayEnforceWarning(bool checked);
 	void on_show_clicked();
 	void on_authPwShow_clicked();
@@ -300,12 +311,29 @@ private:
 	void LoadResolutionLists();
 	void LoadFPSData();
 
+	/* a11y */
+	void UpdateA11yColors();
+	void SetDefaultColors();
+	void ResetDefaultColors();
+	QColor GetColor(uint32_t colorVal, QString label);
+	uint32_t preset = 0;
+	uint32_t selectRed = 0x0000FF;
+	uint32_t selectGreen = 0x00FF00;
+	uint32_t selectBlue = 0xFF7F00;
+	uint32_t mixerGreen = 0x267f26;
+	uint32_t mixerYellow = 0x267f7f;
+	uint32_t mixerRed = 0x26267f;
+	uint32_t mixerGreenActive = 0x4cff4c;
+	uint32_t mixerYellowActive = 0x4cffff;
+	uint32_t mixerRedActive = 0x4c4cff;
+
 	void SaveGeneralSettings();
 	void SaveStream1Settings();
 	void SaveOutputSettings();
 	void SaveAudioSettings();
 	void SaveVideoSettings();
 	void SaveHotkeySettings();
+	void SaveA11ySettings();
 	void SaveAdvancedSettings();
 	void SaveSettings();
 
@@ -316,7 +344,6 @@ private:
 	void UpdateAdvOutStreamDelayEstimate();
 
 	void FillSimpleRecordingValues();
-	void FillSimpleStreamingValues();
 	void FillAudioMonitoringDevices();
 
 	void RecalcOutputResPixels(const char *resText);
@@ -329,6 +356,7 @@ private:
 	QIcon audioIcon;
 	QIcon videoIcon;
 	QIcon hotkeysIcon;
+	QIcon accessibilityIcon;
 	QIcon advancedIcon;
 
 	QIcon GetGeneralIcon() const;
@@ -337,11 +365,17 @@ private:
 	QIcon GetAudioIcon() const;
 	QIcon GetVideoIcon() const;
 	QIcon GetHotkeysIcon() const;
+	QIcon GetAccessibilityIcon() const;
 	QIcon GetAdvancedIcon() const;
 
 	int CurrentFLVTrack();
 
 	OBSService GetStream1Service();
+
+	bool IsServiceOutputHasNetworkFeatures();
+
+	bool ServiceAndCodecCompatible();
+	bool ServiceSupportsCodecCheck();
 
 private slots:
 	void on_theme_activated(int idx);
@@ -361,14 +395,25 @@ private slots:
 	void on_advOutFFVEncoder_currentIndexChanged(int idx);
 	void on_advOutFFType_currentIndexChanged(int idx);
 
-	void on_colorFormat_currentIndexChanged(const QString &text);
-	void on_colorSpace_currentIndexChanged(const QString &text);
+	void on_colorFormat_currentIndexChanged(int idx);
+	void on_colorSpace_currentIndexChanged(int idx);
 
 	void on_filenameFormatting_textEdited(const QString &text);
 	void on_outputResolution_editTextChanged(const QString &text);
 	void on_baseResolution_editTextChanged(const QString &text);
 
 	void on_disableOSXVSync_clicked();
+
+	void on_choose1_clicked();
+	void on_choose2_clicked();
+	void on_choose3_clicked();
+	void on_choose4_clicked();
+	void on_choose5_clicked();
+	void on_choose6_clicked();
+	void on_choose7_clicked();
+	void on_choose8_clicked();
+	void on_choose9_clicked();
+	void on_colorPreset_currentIndexChanged(int idx);
 
 	void GeneralChanged();
 	void HideOBSWindowWarning(int state);
@@ -377,6 +422,8 @@ private slots:
 	void ReloadAudioSources();
 	void SurroundWarning(int idx);
 	void SpeakerLayoutChanged(int idx);
+	void LowLatencyBufferingChanged(bool checked);
+	void UpdateAudioWarnings();
 	void OutputsChanged();
 	void Stream1Changed();
 	void VideoChanged();
@@ -385,6 +432,7 @@ private slots:
 	void HotkeysChanged();
 	bool ScanDuplicateHotkeys(QFormLayout *layout);
 	void ReloadHotkeys(obs_hotkey_id ignoreKey = OBS_INVALID_HOTKEY_ID);
+	void A11yChanged();
 	void AdvancedChanged();
 	void AdvancedChangedRestart();
 
@@ -414,6 +462,7 @@ private slots:
 	void SetAudioIcon(const QIcon &icon);
 	void SetVideoIcon(const QIcon &icon);
 	void SetHotkeysIcon(const QIcon &icon);
+	void SetAccessibilityIcon(const QIcon &icon);
 	void SetAdvancedIcon(const QIcon &icon);
 
 	void UseStreamKeyAdvClicked();

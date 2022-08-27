@@ -266,7 +266,6 @@ gl_x11_egl_windowinfo_create(const struct gs_init_data *info)
 
 static void gl_x11_egl_windowinfo_destroy(struct gl_windowinfo *info)
 {
-	UNUSED_PARAMETER(info);
 	bfree(info);
 }
 
@@ -417,9 +416,20 @@ static bool gl_x11_egl_platform_init_swapchain(struct gs_swap_chain *swap)
 	xcb_create_colormap(xcb_conn, XCB_COLORMAP_ALLOC_NONE, colormap, parent,
 			    visual);
 
-	xcb_create_window(xcb_conn, 24 /* Hardcoded? */, wid, parent, 0, 0,
-			  geometry->width, geometry->height, 0, 0, visual, mask,
-			  mask_values);
+	xcb_void_cookie_t window_cookie = xcb_create_window_checked(
+		xcb_conn, 24 /* Hardcoded? */, wid, parent, 0, 0,
+		geometry->width, geometry->height, 0, 0, visual, mask,
+		mask_values);
+	xcb_generic_error_t *err = xcb_request_check(xcb_conn, window_cookie);
+	if (err != NULL) {
+		char text[512];
+		XGetErrorText(display, err->error_code, text, sizeof(text));
+		blog(LOG_ERROR,
+		     "Swapchain window creation failed: %s"
+		     ", Major opcode: %d, Minor opcode: %d",
+		     text, err->major_code, err->minor_code);
+		goto fail_window_surface;
+	}
 
 	const EGLSurface surface =
 		eglCreateWindowSurface(plat->edisplay, plat->config, wid, 0);

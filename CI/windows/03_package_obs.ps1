@@ -57,7 +57,7 @@ function Package-OBS {
         $CompressVars = @{
             Path = "${CheckoutDir}/build/install/*"
             CompressionLevel = "Optimal"
-            DestinationPath = "${FileName}-Win-x86+x64.zip"
+            DestinationPath = "${FileName}-x86+x64.zip"
         }
 
         Write-Step "Creating zip archive..."
@@ -73,7 +73,7 @@ function Package-OBS {
         $CompressVars = @{
             Path = "${CheckoutDir}/build64/install/bin", "${CheckoutDir}/build64/install/data", "${CheckoutDir}/build64/install/obs-plugins"
             CompressionLevel = "Optimal"
-            DestinationPath = "${FileName}-Win-x64.zip"
+            DestinationPath = "${FileName}-x64.zip"
         }
 
         Write-Step "Creating zip archive..."
@@ -89,7 +89,7 @@ function Package-OBS {
         $CompressVars = @{
             Path = "${CheckoutDir}/build32/install/bin", "${CheckoutDir}/build32/install/data", "${CheckoutDir}/build32/install/obs-plugins"
             CompressionLevel = "Optimal"
-            DestinationPath = "${FileName}-Win-x86.zip"
+            DestinationPath = "${FileName}-x86.zip"
         }
 
         Write-Step "Creating zip archive..."
@@ -107,8 +107,10 @@ function Package-OBS-Standalone {
 
     . ${CheckoutDir}/CI/include/build_support_windows.ps1
 
-    Write-Step "Fetch OBS tags..."
-    $null = git fetch origin --tags
+    if (!(Test-Path Env:CI)) {
+        Write-Step "Fetch OBS tags..."
+        $null = git fetch --tags origin
+    }
 
     Ensure-Directory ${CheckoutDir}
     $GitBranch = git rev-parse --abbrev-ref HEAD
@@ -123,7 +125,7 @@ function Package-OBS-Standalone {
         $VersionString = "${GitTag}-${GitHash}"
     }
 
-    $FileName = "${ProductName}-${VersionString}"
+    $FileName = "obs-studio-${VersionString}-windows"
 
     Package-OBS
 }

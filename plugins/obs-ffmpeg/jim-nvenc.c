@@ -12,6 +12,9 @@
 #include <obs-hevc.h>
 #endif
 
+/* TODO: Use new preset scheme */
+#pragma warning(disable : 4996)
+
 /* ========================================================================= */
 
 #define EXTRA_BUFFERS 5
@@ -778,11 +781,17 @@ static bool init_encoder_hevc(struct nvenc_data *enc, obs_data_t *settings,
 		vui_params->colourPrimaries = 9;
 		vui_params->transferCharacteristics = 16;
 		vui_params->colourMatrix = 9;
+		vui_params->chromaSampleLocationFlag = 1;
+		vui_params->chromaSampleLocationTop = 2;
+		vui_params->chromaSampleLocationBot = 2;
 		break;
 	case VIDEO_CS_2100_HLG:
 		vui_params->colourPrimaries = 9;
 		vui_params->transferCharacteristics = 18;
 		vui_params->colourMatrix = 9;
+		vui_params->chromaSampleLocationFlag = 1;
+		vui_params->chromaSampleLocationTop = 2;
+		vui_params->chromaSampleLocationBot = 2;
 	}
 
 	enc->bframes = bf;
@@ -940,11 +949,8 @@ static bool init_textures(struct nvenc_data *enc)
 static void nvenc_destroy(void *data);
 
 static bool init_specific_encoder(struct nvenc_data *enc, bool hevc,
-				  obs_data_t *settings, obs_encoder_t *encoder,
-				  int bf, bool psycho_aq)
+				  obs_data_t *settings, int bf, bool psycho_aq)
 {
-	bool init = false;
-
 #ifdef ENABLE_HEVC
 	if (hevc)
 		return init_encoder_hevc(enc, settings, bf, psycho_aq);
@@ -954,7 +960,7 @@ static bool init_specific_encoder(struct nvenc_data *enc, bool hevc,
 }
 
 static bool init_encoder(struct nvenc_data *enc, bool hevc,
-			 obs_data_t *settings, obs_encoder_t *encoder)
+			 obs_data_t *settings)
 {
 	const int bf = (int)obs_data_get_int(settings, "bf");
 	const bool psycho_aq = obs_data_get_bool(settings, "psycho_aq");
@@ -976,20 +982,36 @@ static bool init_encoder(struct nvenc_data *enc, bool hevc,
 		return false;
 	}
 
+	video_t *video = obs_encoder_video(enc->encoder);
+	const struct video_output_info *voi = video_output_get_info(video);
+	switch (voi->format) {
+	case VIDEO_FORMAT_I010:
+	case VIDEO_FORMAT_P010:
+		break;
+	default:
+		switch (voi->colorspace) {
+		case VIDEO_CS_2100_PQ:
+		case VIDEO_CS_2100_HLG:
+			NV_FAIL(obs_module_text("NVENC.8bitUnsupportedHdr"));
+			return false;
+		}
+	}
+
 	if (bf > bf_max) {
 		NV_FAIL(obs_module_text("NVENC.TooManyBFrames"), bf, bf_max);
 		return false;
 	}
 
-	if (!init_specific_encoder(enc, hevc, settings, encoder, bf,
-				   psycho_aq)) {
+	if (!init_specific_encoder(enc, hevc, settings, bf, psycho_aq)) {
 		if (!psycho_aq)
 			return false;
 
 		blog(LOG_WARNING, "[jim-nvenc] init_specific_encoder failed, "
 				  "trying again without Psycho Visual Tuning");
-		if (!init_specific_encoder(enc, hevc, settings, encoder, bf,
-					   psycho_aq)) {
+		nv.nvEncDestroyEncoder(enc->session);
+		enc->session = NULL;
+		if (!init_session(enc) ||
+		    !init_specific_encoder(enc, hevc, settings, bf, false)) {
 			return false;
 		}
 	}
@@ -1017,7 +1039,7 @@ static void *nvenc_create_internal(bool hevc, obs_data_t *settings,
 	if (!init_session(enc)) {
 		goto fail;
 	}
-	if (!init_encoder(enc, hevc, settings, encoder)) {
+	if (!init_encoder(enc, hevc, settings)) {
 		goto fail;
 	}
 	if (!init_bitstreams(enc)) {

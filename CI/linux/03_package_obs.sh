@@ -37,20 +37,23 @@ package-obs-standalone() {
     source "${CHECKOUT_DIR}/CI/include/build_support.sh"
     source "${CHECKOUT_DIR}/CI/include/build_support_linux.sh"
 
-    step "Fetch OBS tags..."
-    git fetch origin --tags
+    if [ -z "${CI}" ]; then
+        step "Fetch OBS tags..."
+        git fetch --tags origin
+    fi
 
     GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
     GIT_HASH=$(git rev-parse --short=9 HEAD)
     GIT_TAG=$(git describe --tags --abbrev=0)
+    UBUNTU_VERSION=$(lsb_release -sr)
 
-    if [ "${BUILD_FOR_DISTRIBUTION}" ]; then
+    if [ "${BUILD_FOR_DISTRIBUTION}" = "true" ]; then
         VERSION_STRING="${GIT_TAG}"
     else
         VERSION_STRING="${GIT_TAG}-${GIT_HASH}"
     fi
 
-    FILE_NAME="obs-studio-${VERSION_STRING}-Linux.deb"
+    FILE_NAME="obs-studio-${VERSION_STRING}-ubuntu-${UBUNTU_VERSION}.deb"
     package_obs
 }
 

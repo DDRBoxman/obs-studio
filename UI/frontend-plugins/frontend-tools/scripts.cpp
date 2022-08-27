@@ -2,9 +2,9 @@
 #include "scripts.hpp"
 #include "../../properties-view.hpp"
 #include "../../qt-wrappers.hpp"
+#include "../../plain-text-edit.hpp"
 
 #include <QFileDialog>
-#include <QPlainTextEdit>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QScrollBar>
@@ -81,18 +81,14 @@ struct ScriptData {
 static ScriptData *scriptData = nullptr;
 static ScriptsTool *scriptsWindow = nullptr;
 static ScriptLogWindow *scriptLogWindow = nullptr;
-static QPlainTextEdit *scriptLogWidget = nullptr;
+static OBSPlainTextEdit *scriptLogWidget = nullptr;
 
 /* ----------------------------------------------------------------- */
 
 ScriptLogWindow::ScriptLogWindow() : QWidget(nullptr)
 {
-	const QFont fixedFont =
-		QFontDatabase::systemFont(QFontDatabase::FixedFont);
-
-	QPlainTextEdit *edit = new QPlainTextEdit();
+	OBSPlainTextEdit *edit = new OBSPlainTextEdit();
 	edit->setReadOnly(true);
-	edit->setFont(fixedFont);
 	edit->setWordWrapMode(QTextOption::NoWrap);
 
 	QHBoxLayout *buttonLayout = new QHBoxLayout();
@@ -651,6 +647,22 @@ extern "C" void InitScripts()
 	config_t *config = obs_frontend_get_global_config();
 	const char *python_path =
 		config_get_string(config, "Python", "Path" ARCH_NAME);
+
+#ifdef __APPLE__
+	if (python_path && *python_path) {
+		std::string _python_path(python_path);
+		std::size_t pos =
+			_python_path.find("/Python.framework/Versions");
+
+		if (pos != std::string::npos) {
+			std::string _temp = _python_path.substr(0, pos);
+			config_set_string(config, "Python", "Path" ARCH_NAME,
+					  _temp.c_str());
+			config_save(config);
+			python_path = _temp.c_str();
+		}
+	}
+#endif
 
 	if (!obs_scripting_python_loaded() && python_path && *python_path)
 		obs_scripting_load_python(python_path);

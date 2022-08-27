@@ -28,30 +28,6 @@
 #include <libavutil/channel_layout.h>
 #include <libavutil/mastering_display_metadata.h>
 
-struct ffmpeg_output {
-	obs_output_t *output;
-	volatile bool active;
-	struct ffmpeg_data ff_data;
-
-	bool connecting;
-	pthread_t start_thread;
-
-	uint64_t total_bytes;
-
-	uint64_t audio_start_ts;
-	uint64_t video_start_ts;
-	uint64_t stop_ts;
-	volatile bool stopping;
-
-	bool write_thread_active;
-	pthread_mutex_t write_mutex;
-	pthread_t write_thread;
-	os_sem_t *write_sem;
-	os_event_t *stop_event;
-
-	DARRAY(AVPacket *) packets;
-};
-
 /* ------------------------------------------------------------------------- */
 
 static void ffmpeg_output_set_last_error(struct ffmpeg_data *data,
@@ -79,7 +55,8 @@ void ffmpeg_log_error(int log_level, struct ffmpeg_data *data,
 }
 
 static bool new_stream(struct ffmpeg_data *data, AVStream **stream,
-		       AVCodec **codec, enum AVCodecID id, const char *name)
+		       const AVCodec **codec, enum AVCodecID id,
+		       const char *name)
 {
 	*codec = (!!name && *name) ? avcodec_find_encoder_by_name(name)
 				   : avcodec_find_encoder(id);
@@ -175,6 +152,10 @@ static bool open_video_codec(struct ffmpeg_data *data)
 	data->vframe->color_primaries = data->config.color_primaries;
 	data->vframe->color_trc = data->config.color_trc;
 	data->vframe->colorspace = data->config.colorspace;
+	data->vframe->chroma_location =
+		(data->config.colorspace == AVCOL_SPC_BT2020_NCL)
+			? AVCHROMA_LOC_TOPLEFT
+			: AVCHROMA_LOC_LEFT;
 
 	ret = av_frame_get_buffer(data->vframe, base_get_alignment());
 	if (ret < 0) {
@@ -281,6 +262,10 @@ static bool create_video_stream(struct ffmpeg_data *data)
 	context->color_primaries = data->config.color_primaries;
 	context->color_trc = data->config.color_trc;
 	context->colorspace = data->config.colorspace;
+	context->chroma_sample_location =
+		(data->config.colorspace == AVCOL_SPC_BT2020_NCL)
+			? AVCHROMA_LOC_TOPLEFT
+			: AVCHROMA_LOC_LEFT;
 	context->thread_count = 0;
 
 	data->video->time_base = context->time_base;
@@ -418,7 +403,7 @@ static bool create_audio_stream(struct ffmpeg_data *data, int idx)
 
 static inline bool init_streams(struct ffmpeg_data *data)
 {
-	AVOutputFormat *format = data->output->oformat;
+	const AVOutputFormat *format = data->output->oformat;
 
 	if (format->video_codec != AV_CODEC_ID_NONE)
 		if (!create_video_stream(data))
@@ -439,7 +424,7 @@ static inline bool init_streams(struct ffmpeg_data *data)
 
 static inline bool open_output_file(struct ffmpeg_data *data)
 {
-	AVOutputFormat *format = data->output->oformat;
+	const AVOutputFormat *format = data->output->oformat;
 	int ret;
 
 	AVDictionary *dict = NULL;
@@ -566,7 +551,7 @@ static inline const char *safe_str(const char *s)
 
 static enum AVCodecID get_codec_id(const char *name, int id)
 {
-	AVCodec *codec;
+	const AVCodec *codec;
 
 	if (id != 0)
 		return (enum AVCodecID)id;
@@ -1026,19 +1011,17 @@ static uint64_t get_packet_sys_dts(struct ffmpeg_output *output,
 
 static int process_packet(struct ffmpeg_output *output)
 {
-	AVPacket *packet;
-	bool new_packet = false;
-	int ret;
+	AVPacket *packet = NULL;
+	int ret = 0;
 
 	pthread_mutex_lock(&output->write_mutex);
 	if (output->packets.num) {
 		packet = output->packets.array[0];
 		da_erase(output->packets, 0);
-		new_packet = true;
 	}
 	pthread_mutex_unlock(&output->write_mutex);
 
-	if (!new_packet)
+	if (!packet)
 		return 0;
 
 	/*blog(LOG_DEBUG, "size = %d, flags = %lX, stream = %d, "
@@ -1048,22 +1031,24 @@ static int process_packet(struct ffmpeg_output *output)
 
 	if (stopping(output)) {
 		uint64_t sys_ts = get_packet_sys_dts(output, packet);
-		if (sys_ts >= output->stop_ts)
-			return 0;
+		if (sys_ts >= output->stop_ts) {
+			ret = 0;
+			goto end;
+		}
 	}
 
 	output->total_bytes += packet->size;
 
 	ret = av_interleaved_write_frame(output->ff_data.output, packet);
 	if (ret < 0) {
-		av_packet_free(&packet);
 		ffmpeg_log_error(LOG_WARNING, &output->ff_data,
 				 "process_packet: Error writing packet: %s",
 				 av_err2str(ret));
-		return ret;
 	}
 
-	return 0;
+end:
+	av_packet_free(&packet);
+	return ret;
 }
 
 static void *write_thread(void *data)

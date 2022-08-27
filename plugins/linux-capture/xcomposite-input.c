@@ -1,6 +1,7 @@
 #include <obs-module.h>
 #include <obs-nix-platform.h>
 #include <glad/glad.h>
+#include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xlib-xcb.h>
 #include <xcb/xcb.h>
@@ -381,6 +382,14 @@ static enum gs_color_format gs_format_from_tex()
 	}
 }
 
+static int silence_x11_errors(Display *display, XErrorEvent *err)
+{
+	UNUSED_PARAMETER(display);
+	UNUSED_PARAMETER(err);
+
+	return 0;
+}
+
 void xcomp_create_pixmap(xcb_connection_t *conn, struct xcompcap *s,
 			 int log_level)
 {
@@ -422,9 +431,11 @@ void xcomp_create_pixmap(xcb_connection_t *conn, struct xcompcap *s,
 		return;
 	}
 
+	XErrorHandler prev = XSetErrorHandler(silence_x11_errors);
 	s->gltex = gs_texture_create_from_pixmap(s->width, s->height,
 						 GS_BGRA_UNORM, GL_TEXTURE_2D,
 						 (void *)s->pixmap);
+	XSetErrorHandler(prev);
 }
 
 struct reg_item {
@@ -615,7 +626,7 @@ static void xcompcap_video_tick(void *data, float seconds)
 
 	// Reacquire window after interval or immediately if reconfigured.
 	s->window_check_time += seconds;
-	bool window_lost = !xcomp_window_exists(conn, s->win);
+	bool window_lost = !xcomp_window_exists(conn, s->win) || !s->gltex;
 	if ((window_lost && s->window_check_time > FIND_WINDOW_INTERVAL) ||
 	    s->window_changed) {
 		watcher_unregister(conn, s);
@@ -706,10 +717,12 @@ static obs_properties_t *xcompcap_props(void *unused)
 	UNUSED_PARAMETER(unused);
 
 	obs_properties_t *props = obs_properties_create();
+	obs_property_t *prop;
 
-	obs_property_t *wins = obs_properties_add_list(
-		props, "capture_window", obs_module_text("Window"),
-		OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+	prop = obs_properties_add_list(props, "capture_window",
+				       obs_module_text("Window"),
+				       OBS_COMBO_TYPE_LIST,
+				       OBS_COMBO_FORMAT_STRING);
 
 	DARRAY(struct WindowInfo) window_strings = {0};
 	struct darray windows = xcomp_top_level_windows(conn);
@@ -741,7 +754,7 @@ static obs_properties_t *xcompcap_props(void *unused)
 		struct WindowInfo *s = (struct WindowInfo *)darray_item(
 			sizeof(struct WindowInfo), &window_strings.da, i);
 
-		obs_property_list_add_string(wins, s->name.array,
+		obs_property_list_add_string(prop, s->name.array,
 					     s->desc.array);
 
 		dstr_free(&s->name_lower);
@@ -750,14 +763,21 @@ static obs_properties_t *xcompcap_props(void *unused)
 	}
 	da_free(window_strings);
 
-	obs_properties_add_int(props, "cut_top", obs_module_text("CropTop"), 0,
-			       4096, 1);
-	obs_properties_add_int(props, "cut_left", obs_module_text("CropLeft"),
-			       0, 4096, 1);
-	obs_properties_add_int(props, "cut_right", obs_module_text("CropRight"),
-			       0, 4096, 1);
-	obs_properties_add_int(props, "cut_bot", obs_module_text("CropBottom"),
-			       0, 4096, 1);
+	prop = obs_properties_add_int(props, "cut_top",
+				      obs_module_text("CropTop"), 0, 4096, 1);
+	obs_property_int_set_suffix(prop, " px");
+
+	prop = obs_properties_add_int(props, "cut_left",
+				      obs_module_text("CropLeft"), 0, 4096, 1);
+	obs_property_int_set_suffix(prop, " px");
+
+	prop = obs_properties_add_int(props, "cut_right",
+				      obs_module_text("CropRight"), 0, 4096, 1);
+	obs_property_int_set_suffix(prop, " px");
+
+	prop = obs_properties_add_int(
+		props, "cut_bot", obs_module_text("CropBottom"), 0, 4096, 1);
+	obs_property_int_set_suffix(prop, " px");
 
 	obs_properties_add_bool(props, "swap_redblue",
 				obs_module_text("SwapRedBlue"));

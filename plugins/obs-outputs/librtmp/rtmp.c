@@ -85,7 +85,16 @@ static const char *my_dhm_G = "4";
 #include <openssl/bio.h>
 #include <openssl/buffer.h>
 #endif
+#endif
 
+#if defined(TCP_USER_TIMEOUT)
+#define SOCKET_LEVEL IPPROTO_TCP
+#define SOCKET_TIMEOUT_OPT TCP_USER_TIMEOUT
+#define SOCKET_TIMEOUT_VAR(tv, s) int tv = s*1000
+#else
+#define SOCKET_LEVEL SOL_SOCKET
+#define SOCKET_TIMEOUT_OPT SO_SNDTIMEO
+#define SOCKET_TIMEOUT_VAR(tv, s) SET_RCVTIMEO(tv, s)
 #endif
 
 #define RTMP_SIG_SIZE 1536
@@ -420,7 +429,7 @@ RTMP_TLS_Init(RTMP *r)
 
 void
 RTMP_TLS_Free(RTMP *r) {
-#ifdef USE_MBEDTLS
+#if defined(CRYPTO) && defined(USE_MBEDTLS)
 
     if (!r->RTMP_TLS_ctx)
         return;
@@ -451,9 +460,7 @@ RTMP_Alloc()
 void
 RTMP_Free(RTMP *r)
 {
-#if defined(CRYPTO) && defined(USE_MBEDTLS)
     RTMP_TLS_Free(r);
-#endif
     free(r);
 }
 
@@ -463,11 +470,7 @@ RTMP_Init(RTMP *r)
     memset(r, 0, sizeof(RTMP));
     r->m_sb.sb_socket = -1;
     RTMP_Reset(r);
-
-#ifdef CRYPTO
     RTMP_TLS_Init(r);
-#endif
-
 }
 
 void
@@ -937,13 +940,14 @@ RTMP_Connect0(RTMP *r, struct sockaddr * service, socklen_t addrlen)
                      __FUNCTION__, r->Link.receiveTimeout);
         }
 
-        SET_RCVTIMEO(tvs, r->Link.sendTimeout);
-        if (setsockopt
-                (r->m_sb.sb_socket, SOL_SOCKET, SO_SNDTIMEO, (char *)&tvs, sizeof(tvs)))
+#if defined(SOCKET_TIMEOUT_OPT)
+		SOCKET_TIMEOUT_VAR(to, r->Link.sendTimeout);
+		if (setsockopt(r->m_sb.sb_socket, SOCKET_LEVEL, SOCKET_TIMEOUT_OPT, &to, sizeof(to)))
         {
-                RTMP_Log(RTMP_LOGERROR, "%s, Setting socket send timeout to %ds failed!",
+                RTMP_Log(RTMP_LOGERROR, "%s, Setting socket SOCKET_TIMEOUT_OPT to %ds failed!",
                      __FUNCTION__, r->Link.sendTimeout);
         }
+#endif
     }
 
     if(!r->m_bUseNagle)

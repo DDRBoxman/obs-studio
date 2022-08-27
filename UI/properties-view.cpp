@@ -14,7 +14,6 @@
 #include <QStandardItem>
 #include <QFileDialog>
 #include <QColorDialog>
-#include <QPlainTextEdit>
 #include <QDialogButtonBox>
 #include <QMenu>
 #include <QMessageBox>
@@ -29,6 +28,7 @@
 #include "qt-wrappers.hpp"
 #include "properties-view.hpp"
 #include "properties-view.moc.hpp"
+#include "plain-text-edit.hpp"
 #include "obs-app.hpp"
 
 #include <cstdlib>
@@ -116,6 +116,7 @@ void OBSPropertiesView::RefreshProperties()
 		widget->deleteLater();
 
 	widget = new QWidget();
+	widget->setObjectName("PropertiesContainer");
 
 	QFormLayout *layout = new QFormLayout;
 	layout->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
@@ -264,21 +265,13 @@ QWidget *OBSPropertiesView::AddText(obs_property_t *prop, QFormLayout *layout,
 {
 	const char *name = obs_property_name(prop);
 	const char *val = obs_data_get_string(settings, name);
-	const bool monospace = obs_property_text_monospace(prop);
+	bool monospace = obs_property_text_monospace(prop);
 	obs_text_type type = obs_property_text_type(prop);
 
 	if (type == OBS_TEXT_MULTILINE) {
-		QPlainTextEdit *edit = new QPlainTextEdit(QT_UTF8(val));
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
+		OBSPlainTextEdit *edit = new OBSPlainTextEdit(this, monospace);
+		edit->setPlainText(QT_UTF8(val));
 		edit->setTabStopDistance(40);
-#else
-		edit->setTabStopWidth(40);
-#endif
-		if (monospace) {
-			QFont f("Courier");
-			f.setStyleHint(QFont::Monospace);
-			edit->setFont(f);
-		}
 		return NewWidget(prop, edit, SIGNAL(textChanged()));
 
 	} else if (type == OBS_TEXT_PASSWORD) {
@@ -541,30 +534,30 @@ static void AddComboItem(QComboBox *combo, obs_property_t *prop,
 template<long long get_int(obs_data_t *, const char *),
 	 double get_double(obs_data_t *, const char *),
 	 const char *get_string(obs_data_t *, const char *)>
-static string from_obs_data(obs_data_t *data, const char *name,
-			    obs_combo_format format)
+static QVariant from_obs_data(obs_data_t *data, const char *name,
+			      obs_combo_format format)
 {
 	switch (format) {
 	case OBS_COMBO_FORMAT_INT:
-		return to_string(get_int(data, name));
+		return QVariant::fromValue(get_int(data, name));
 	case OBS_COMBO_FORMAT_FLOAT:
-		return to_string(get_double(data, name));
+		return QVariant::fromValue(get_double(data, name));
 	case OBS_COMBO_FORMAT_STRING:
-		return get_string(data, name);
+		return QByteArray(get_string(data, name));
 	default:
-		return "";
+		return QVariant();
 	}
 }
 
-static string from_obs_data(obs_data_t *data, const char *name,
-			    obs_combo_format format)
+static QVariant from_obs_data(obs_data_t *data, const char *name,
+			      obs_combo_format format)
 {
 	return from_obs_data<obs_data_get_int, obs_data_get_double,
 			     obs_data_get_string>(data, name, format);
 }
 
-static string from_obs_data_autoselect(obs_data_t *data, const char *name,
-				       obs_combo_format format)
+static QVariant from_obs_data_autoselect(obs_data_t *data, const char *name,
+					 obs_combo_format format)
 {
 	return from_obs_data<obs_data_get_autoselect_int,
 			     obs_data_get_autoselect_double,
@@ -590,13 +583,13 @@ QWidget *OBSPropertiesView::AddList(obs_property_t *prop, bool &warning)
 	combo->setMaxVisibleItems(40);
 	combo->setToolTip(QT_UTF8(obs_property_long_description(prop)));
 
-	string value = from_obs_data(settings, name, format);
+	QVariant value = from_obs_data(settings, name, format);
 
 	if (format == OBS_COMBO_FORMAT_STRING &&
 	    type == OBS_COMBO_TYPE_EDITABLE) {
-		combo->lineEdit()->setText(QT_UTF8(value.c_str()));
+		combo->lineEdit()->setText(value.toString());
 	} else {
-		idx = combo->findData(QByteArray(value.c_str()));
+		idx = combo->findData(value);
 	}
 
 	if (type == OBS_COMBO_TYPE_EDITABLE)
@@ -607,9 +600,9 @@ QWidget *OBSPropertiesView::AddList(obs_property_t *prop, bool &warning)
 		combo->setCurrentIndex(idx);
 
 	if (obs_data_has_autoselect_value(settings, name)) {
-		string autoselect =
+		QVariant autoselect =
 			from_obs_data_autoselect(settings, name, format);
-		int id = combo->findData(QT_UTF8(autoselect.c_str()));
+		int id = combo->findData(autoselect);
 
 		if (id != -1 && id != idx) {
 			QString actual = combo->itemText(id);
@@ -903,7 +896,7 @@ static bool matches_ranges(media_frames_per_second &best_match,
 	for (auto &pair : fps_ranges) {
 		auto max_ = convert_fn(pair.first);
 		auto min_ = convert_fn(pair.second);
-		/*blog(LOG_INFO, "%lg ≤ %lg ≤ %lg? %s %s %s",
+		/*blog(LOG_INFO, "%lg <= %lg <= %lg? %s %s %s",
 				min_, val, max_,
 				fabsl(min_ - val) < epsilon ? "true" : "false",
 				min_ <= val && val <= max_  ? "true" : "false",
@@ -1728,7 +1721,8 @@ void WidgetInfo::TextChanged(const char *setting)
 	obs_text_type type = obs_property_text_type(property);
 
 	if (type == OBS_TEXT_MULTILINE) {
-		QPlainTextEdit *edit = static_cast<QPlainTextEdit *>(widget);
+		OBSPlainTextEdit *edit =
+			static_cast<OBSPlainTextEdit *>(widget);
 		obs_data_set_string(view->settings, setting,
 				    QT_TO_UTF8(edit->toPlainText()));
 		return;

@@ -181,7 +181,9 @@ struct gs_texture *gl_egl_create_texture_from_eglimage(
 	EGLDisplay egl_display, uint32_t width, uint32_t height,
 	enum gs_color_format color_format, EGLint target, EGLImage image)
 {
+	UNUSED_PARAMETER(egl_display);
 	UNUSED_PARAMETER(target);
+
 	struct gs_texture *texture = NULL;
 	texture = gs_texture_create(width, height, color_format, 1, NULL,
 				    GS_DYNAMIC);
@@ -252,7 +254,7 @@ gl_egl_create_texture_from_pixmap(EGLDisplay egl_display, uint32_t width,
 					EGL_NATIVE_PIXMAP_KHR, pixmap,
 					pixmap_attrs);
 	if (image == EGL_NO_IMAGE) {
-		blog(LOG_ERROR, "Cannot create EGLImage: %s",
+		blog(LOG_DEBUG, "Cannot create EGLImage: %s",
 		     gl_egl_error_to_string(eglGetError()));
 		return NULL;
 	}

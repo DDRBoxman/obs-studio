@@ -15,6 +15,12 @@ if(OS_WINDOWS AND MSVC)
     )
   endif()
 
+  # CMake 3.24 introduces a bug mistakenly interpreting MSVC as supporting
+  # `-pthread`
+  if(${CMAKE_VERSION} VERSION_EQUAL "3.24.0")
+    set(THREADS_HAVE_PTHREAD_ARG OFF)
+  endif()
+
   # Check for Win SDK version 10.0.20348 or above
   obs_status(
     STATUS "Windows API version is ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}")
@@ -48,6 +54,7 @@ if(OS_WINDOWS AND MSVC)
   add_compile_options(
     /MP
     /W3
+    /WX
     /wd4127
     /wd4201
     /wd4456
@@ -64,6 +71,7 @@ if(OS_WINDOWS AND MSVC)
 
   add_link_options(
     "LINKER:/OPT:REF"
+    "LINKER:/WX"
     "$<$<NOT:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>>:LINKER\:/SAFESEH\:NO>"
     "$<$<CONFIG:DEBUG>:LINKER\:/INCREMENTAL\:NO>"
     "$<$<CONFIG:RELWITHDEBINFO>:LINKER\:/INCREMENTAL\:NO;/OPT:ICF>")
