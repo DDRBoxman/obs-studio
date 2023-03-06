@@ -62,7 +62,8 @@ UIValidation::StreamSettingsConfirmation(QWidget *parent, OBSService service)
 	// Custom services can user API key in URL or user/pass combo.
 	// So only check there is a URL
 	char const *serviceType = obs_service_get_type(service);
-	bool isCustomUrlService = (strcmp(serviceType, "rtmp_custom") == 0);
+	bool isCustomUrlService = (strcmp(serviceType, "rtmp_custom") == 0)
+	|| (strcmp(serviceType, "whip") == 0);
 
 	char const *streamUrl = obs_service_get_url(service);
 	char const *streamKey = obs_service_get_key(service);
