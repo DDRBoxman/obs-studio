@@ -126,7 +126,7 @@ void main(){
 }
 )";
 
-string test_hlsl = R"(
+string _test_hlsl = R"(
 uniform float4x4 ViewProj;
 uniform float4 color = {1.0, 1.0, 1.0, 1.0};
 
@@ -136,7 +136,9 @@ struct SolidVertInOut {
 
 float4 PSSolid(SolidVertInOut vert_in) : TARGET
 {
-    return color;
+    float4 fragColor;
+    mainImage(fragColor, pos.xy);
+    return fragColor;
 }
 
 SolidVertInOut VSSolid(SolidVertInOut vert_in)
@@ -195,6 +197,174 @@ technique Solid
 
 )";
 
+string test_hlsl = R"(
+struct type_10 {
+    float4 FragColor : SV_Target0;
+};
+
+uniform float4 iMouse;
+uniform float4 iDate;
+uniform float3 iResolution;
+uniform float iTime;
+uniform float3 iChannelResolution[4];
+uniform float iTimeDelta;
+uniform int iFrame;
+uniform float iFramerate;
+uniform float2 pos_1;
+uniform float4 FragColor;
+
+struct FragmentInput_main {
+    float2 pos_2 : LOC0;
+};
+
+float3 palette(float t)
+{
+    float t_1 = float(0);
+    float3 a = float3(0.5, 0.5, 0.5);
+    float3 b = float3(0.5, 0.5, 0.5);
+    float3 c = float3(1.0, 1.0, 1.0);
+    float3 d = float3(0.263, 0.416, 0.557);
+
+    t_1 = t;
+    float3 _expr30 = a;
+    float3 _expr31 = b;
+    float3 _expr33 = c;
+    float _expr34 = t_1;
+    float3 _expr36 = d;
+    float3 _expr40 = c;
+    float _expr41 = t_1;
+    float3 _expr43 = d;
+    return (_expr30 + (_expr31 * cos((6.28318 * ((_expr40 * _expr41) + _expr43)))));
+}
+
+void mainImage(inout float4 fragColor, float2 fragCoord)
+{
+    float2 fragCoord_1 = float2(0);
+    float2 uv = float2(0);
+    float2 uv0_ = float2(0);
+    float3 finalColor = float3(0);
+    float i = float(0.0);
+    float d_1 = float(0);
+    float3 col = float3(0);
+
+    fragCoord_1 = fragCoord;
+    float2 _expr11 = fragCoord_1;
+    float3 _expr14 = iResolution;
+    float3 _expr17 = iResolution;
+    uv = (((_expr11 * 2.0) - _expr14.xy) / (_expr17.y).xx);
+    float2 _expr22 = uv;
+    uv0_ = _expr22;
+    bool loop_init = true;
+    while(true) {
+        if (!loop_init) {
+            float _expr33 = i;
+            i = (_expr33 + 1.0);
+        }
+        loop_init = false;
+        float _expr29 = i;
+        if (!((_expr29 < 4.0))) {
+            break;
+        }
+        {
+            float2 _expr36 = uv;
+            float2 _expr39 = uv;
+            uv = (frac((_expr39 * 1.5)) - (0.5).xx);
+            float2 _expr47 = uv;
+            float2 _expr50 = uv0_;
+            float2 _expr54 = uv0_;
+            d_1 = (length(_expr47) * exp(-(length(_expr54))));
+            float2 _expr61 = uv0_;
+            float _expr63 = i;
+            float _expr67 = iTime;
+            float2 _expr72 = uv0_;
+            float _expr74 = i;
+            float _expr78 = iTime;
+            const float3 _e82 = float3(0);
+            _e82 = palette(((length(_expr72) + (_expr74 * 0.4)) + (_expr78 * 0.4)));
+            col = _e82;
+            float _expr84 = d_1;
+            float _expr87 = iTime;
+            float _expr89 = d_1;
+            float _expr92 = iTime;
+            d_1 = (sin(((_expr89 * 8.0) + _expr92)) / 8.0);
+            float _expr98 = d_1;
+            d_1 = abs(_expr98);
+            float _expr101 = d_1;
+            float _expr105 = d_1;
+            d_1 = pow((0.01 / _expr105), 1.2);
+            //float3 _expr109 = finalColor;
+            //float3 _expr110 = col;
+            //float _expr111 = d_1;
+            finalColor = (finalColor + (col * d_1));
+        }
+    }
+    float3 _expr114 = finalColor;
+    fragColor = float4(_expr114.x, _expr114.y, _expr114.z, 1.0);
+    return;
+}
+
+void main_1()
+{
+    float4 local = float4(0);
+
+    float2 _expr14 = float2(pos_1);
+    mainImage(local, _expr14);
+    float4 _expr15 = local;
+    FragColor = _expr15;
+    return;
+}
+
+type_10 Constructtype_10(float4 arg0) {
+    type_10 ret = 0;
+    ret.FragColor = arg0;
+    return ret;
+}
+
+type_10 main(FragmentInput_main fragmentinput_main)
+{
+    float2 pos = fragmentinput_main.pos_2;
+    pos_1 = pos;
+    main_1();
+    float4 _expr23 = FragColor;
+    const type_10 type_10_ = Constructtype_10(_expr23);
+    return type_10_;
+}
+
+
+
+)";
+
+string entry_hlsl = R"(
+uniform float4x4 ViewProj;
+
+struct SolidVertInOut {
+    float4 pos : POSITION;
+};
+
+float4 PSSolid(SolidVertInOut vert_in) : TARGET
+{
+    float4 fragColor;
+    mainImage(fragColor, vert_in.pos.xy);
+    return fragColor;
+}
+
+SolidVertInOut VSSolid(SolidVertInOut vert_in)
+{
+    SolidVertInOut vert_out;
+    vert_out.pos = mul(float4(vert_in.pos.xyz, 1.0), ViewProj);
+    return vert_out;
+}
+
+technique Solid
+{
+    pass
+    {
+        vertex_shader = VSSolid(vert_in);
+        pixel_shader  = PSSolid(vert_in);
+    }
+}
+)";
+
 class Shadertoy {
 public:
     Shadertoy(obs_source_t *source) : mSource{source} {
@@ -209,11 +379,11 @@ public:
         
         char* error;
         
-        effect = gs_effect_create(simple_hlsl.c_str(), NULL, &error);
+        effect = gs_effect_create((test_hlsl + entry_hlsl).c_str(), NULL, &error);
         
         
         blog(LOG_DEBUG,
-             "error %s",
+             "effect error %s",
              error);
         
         bfree(error);

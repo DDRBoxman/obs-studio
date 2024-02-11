@@ -21,6 +21,8 @@
 #include "effect-parser.h"
 #include "effect.h"
 
+#define _DEBUG_SHADERS
+
 typedef DARRAY(struct dstr) dstr_array_t;
 
 static inline bool ep_parse_param_assign(struct effect_parser *ep,
@@ -1259,26 +1261,26 @@ static void debug_get_default_value(struct gs_effect_param *param, char *buffer,
 
 	switch (param->type) {
 	case GS_SHADER_PARAM_STRING:
-		snprintf(buffer, buf_size, "'%.*s'", param->default_val.num,
+		snprintf(buffer, buf_size, "'%.*s'", (int)param->default_val.num,
 			 param->default_val.array);
 		break;
 	case GS_SHADER_PARAM_INT:
-		snprintf(buffer, buf_size, "%ld",
+            snprintf(buffer, buf_size, "%d",
 			 *(int *)(param->default_val.array + 0));
 		break;
 	case GS_SHADER_PARAM_INT2:
-		snprintf(buffer, buf_size, "%ld,%ld",
+		snprintf(buffer, buf_size, "%d,%d",
 			 *(int *)(param->default_val.array + 0),
 			 *(int *)(param->default_val.array + 4));
 		break;
 	case GS_SHADER_PARAM_INT3:
-		snprintf(buffer, buf_size, "%ld,%ld,%ld",
+		snprintf(buffer, buf_size, "%d,%d,%d",
 			 *(int *)(param->default_val.array + 0),
 			 *(int *)(param->default_val.array + 4),
 			 *(int *)(param->default_val.array + 8));
 		break;
 	case GS_SHADER_PARAM_INT4:
-		snprintf(buffer, buf_size, "%ld,%ld,%ld,%ld",
+            snprintf(buffer, buf_size, "%d,%d,%d,%d",
 			 *(int *)(param->default_val.array + 0),
 			 *(int *)(param->default_val.array + 4),
 			 *(int *)(param->default_val.array + 8),
@@ -1343,6 +1345,9 @@ static void debug_param(struct gs_effect_param *param,
 			struct ep_param *param_in, unsigned long long idx,
 			const char *offset)
 {
+    
+    UNUSED_PARAMETER(param_in);
+    
 	char _debug_type[4096];
 	switch (param->type) {
 	case GS_SHADER_PARAM_STRING:
@@ -1390,13 +1395,13 @@ static void debug_param(struct gs_effect_param *param,
 	debug_get_default_value(param, _debug_buf, sizeof(_debug_buf));
 	if (param->annotations.num > 0) {
 		blog(LOG_DEBUG,
-		     "%s[%4lld] %.*s '%s' with value %.*s and %lld annotations:",
-		     offset, idx, sizeof(_debug_type), _debug_type, param->name,
-		     sizeof(_debug_buf), _debug_buf, param->annotations.num);
+		     "%s[%4lld] %.*s '%s' with value %.*s and %ld annotations:",
+		     offset, idx, (int)sizeof(_debug_type), _debug_type, param->name,
+		     (int)sizeof(_debug_buf), _debug_buf, param->annotations.num);
 	} else {
 		blog(LOG_DEBUG, "%s[%4lld] %.*s '%s' with value %.*s.", offset,
-		     idx, sizeof(_debug_type), _debug_type, param->name,
-		     sizeof(_debug_buf), _debug_buf);
+		     idx, (int)sizeof(_debug_type), _debug_type, param->name,
+		     (int)sizeof(_debug_buf), _debug_buf);
 	}
 }
 
@@ -1407,11 +1412,12 @@ static void debug_param_annotation(struct gs_effect_param *param,
 	char _debug_buf[4096];
 	debug_get_default_value(param, _debug_buf, sizeof(_debug_buf));
 	blog(LOG_DEBUG, "%s[%4lld] %s '%s' with value %.*s", offset, idx,
-	     param_in->type, param->name, sizeof(_debug_buf), _debug_buf);
+	     param_in->type, param->name, (int)sizeof(_debug_buf), _debug_buf);
 }
 
 static void debug_print_string(const char *offset, const char *str)
 {
+    UNUSED_PARAMETER(offset);
 	// Bypass 4096 limit in def_log_handler.
 	char const *begin = str;
 	unsigned long long line = 1;
@@ -1432,13 +1438,13 @@ static void debug_print_string(const char *offset, const char *str)
 		}
 
 		if (is_line) {
-			blog(LOG_DEBUG, "\t\t\t\t[%4lld] %.*s", line, len, str);
+			blog(LOG_DEBUG, "\t\t\t\t[%4lld] %.*s", line, (int)len, str);
 			line++;
 		}
 	}
 	if (begin[0] != '\0') {
 		// Final line was not written.
-		blog(LOG_DEBUG, "\t\t\t\t[%4lld] %*s", line, strlen(begin),
+		blog(LOG_DEBUG, "\t\t\t\t[%4lld] %*s", line, (int)strlen(begin),
 		     begin);
 	}
 }
@@ -2014,7 +2020,7 @@ static bool ep_compile_pass(struct effect_parser *ep,
 	pass->section = EFFECT_PASS;
 
 #if defined(_DEBUG) && defined(_DEBUG_SHADERS)
-	blog(LOG_DEBUG, "\t\t[%4lld] Pass '%s':", idx, pass->name);
+	blog(LOG_DEBUG, "\t\t[%4ld] Pass '%s':", idx, pass->name);
 #endif
 
 	if (!ep_compile_pass_shader(ep, tech, pass, pass_in, idx,
@@ -2049,7 +2055,7 @@ static inline bool ep_compile_technique(struct effect_parser *ep, size_t idx)
 	da_resize(tech->passes, tech_in->passes.num);
 
 #if defined(_DEBUG) && defined(_DEBUG_SHADERS)
-	blog(LOG_DEBUG, "\t[%4lld] Technique '%s' has %lld passes:", idx,
+	blog(LOG_DEBUG, "\t[%4ld] Technique '%s' has %ld passes:", idx,
 	     tech->name, tech->passes.num);
 #endif
 
@@ -2072,14 +2078,14 @@ static bool ep_compile(struct effect_parser *ep)
 	da_resize(ep->effect->techniques, ep->techniques.num);
 
 #if defined(_DEBUG) && defined(_DEBUG_SHADERS)
-	blog(LOG_DEBUG, "Shader has %lld parameters:", ep->params.num);
+	blog(LOG_DEBUG, "Shader has %ld parameters:", ep->params.num);
 #endif
 
 	for (i = 0; i < ep->params.num; i++)
 		ep_compile_param(ep, i);
 
 #if defined(_DEBUG) && defined(_DEBUG_SHADERS)
-	blog(LOG_DEBUG, "Shader has %lld techniques:", ep->techniques.num);
+	blog(LOG_DEBUG, "Shader has %ld techniques:", ep->techniques.num);
 #endif
 
 	for (i = 0; i < ep->techniques.num; i++) {
