@@ -7,3 +7,6 @@
 [submodule "plugins/obs-websocket"]
 	path = plugins/obs-websocket
 	url = https://github.com/obsproject/obs-websocket.git
+[submodule "plugins/obs-vst3/vst3_sdk"]
+	path = plugins/obs-vst3/vst3_sdk
+	url = https://github.com/steinbergmedia/vst3sdk.git
