@@ -1,8 +1,6 @@
 #include <obs-module.h>
+#include "VST3Manager.h"
 #include "VST3Filter.h"
-
-#include "public.sdk/source/vst/hosting/hostclasses.h"
-#include "public.sdk/source/vst/hosting/plugprovider.h"
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("obs-vst3", "en-US")
@@ -27,10 +25,14 @@ void destroy(void *data)
 	delete static_cast<VST3Filter *>(data);
 }
 
-void update(void *, obs_data_t *) {}
+void update(void *, obs_data_t *) {
 
-struct obs_audio_data *filter_audio(void *, struct obs_audio_data *audio_data)
+}
+
+struct obs_audio_data *filter_audio(void *data, struct obs_audio_data *audio_data)
 {
+	auto vst3Filter = static_cast<VST3Filter *>(data);
+	vst3Filter->filterAudio(audio_data);
 	return audio_data;
 }
 
@@ -41,22 +43,8 @@ obs_properties_t *get_properties(void *)
 
 void save(void *, obs_data_t *) {}
 
-void testLoad()
-{
-	auto paths = VST3::Hosting::Module::getModulePaths();
-	if (paths.empty()) {
-		blog(LOG_DEBUG, "No Plug-ins found.");
-		return;
-	}
-	for (const auto &path : paths) {
-		blog(LOG_DEBUG, "VST3 PATH: %s", path.c_str());
-	}
-}
-
 bool obs_module_load()
 {
-	testLoad();
-
 	struct obs_source_info vst3_filter = {};
 	vst3_filter.id = "vst3_filter";
 	vst3_filter.type = OBS_SOURCE_TYPE_FILTER;
@@ -71,4 +59,15 @@ bool obs_module_load()
 
 	obs_register_source(&vst3_filter);
 	return true;
+}
+
+static VST3Manager *vst3Manager = nullptr;
+
+void obs_module_post_load()
+{
+	// todo: should we do this here or in module load?
+	vst3Manager = new VST3Manager();
+
+	// todo: if you have a ton of modules does this block?
+	vst3Manager->findModules();
 }
