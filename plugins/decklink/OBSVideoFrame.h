@@ -4,7 +4,7 @@
 #include "obs.hpp"
 #include <atomic>
 
-class OBSVideoFrame : public IDeckLinkMutableVideoFrame {
+class OBSVideoFrame : public IDeckLinkMutableVideoFrame, public IDeckLinkVideoBuffer {
 private:
 	BMDFrameFlags flags = bmdFrameFlagDefault;
 	BMDPixelFormat pixelFormat = bmdFormat8BitYUV;
@@ -33,6 +33,8 @@ public:
 
 	HRESULT STDMETHODCALLTYPE SetTimecodeUserBits(BMDTimecodeFormat format, BMDTimecodeUserBits userBits) override;
 
+	HRESULT STDMETHODCALLTYPE SetInterfaceProvider(REFIID iid, IUnknown *iface) override;
+
 	long STDMETHODCALLTYPE GetWidth() override;
 
 	long STDMETHODCALLTYPE GetHeight() override;
@@ -44,6 +46,12 @@ public:
 	BMDFrameFlags STDMETHODCALLTYPE GetFlags() override;
 
 	HRESULT STDMETHODCALLTYPE GetBytes(void **buffer) override;
+
+	HRESULT STDMETHODCALLTYPE GetSize(uint64_t *size) override;
+
+	HRESULT STDMETHODCALLTYPE StartAccess(BMDBufferAccessFlags flags) override;
+
+	HRESULT STDMETHODCALLTYPE EndAccess(BMDBufferAccessFlags flags) override;
 
 	//Dummy implementations of remaining virtual methods
 	virtual HRESULT STDMETHODCALLTYPE GetTimecode(/* in */ BMDTimecodeFormat format,
@@ -60,13 +68,8 @@ public:
 		return E_NOINTERFACE;
 	};
 
-	// IUnknown interface (dummy implementation)
-	virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, LPVOID *ppv) override
-	{
-		UNUSED_PARAMETER(iid);
-		UNUSED_PARAMETER(ppv);
-		return E_NOINTERFACE;
-	}
+	// IUnknown interface
+	virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, LPVOID *ppv) override;
 	virtual ULONG STDMETHODCALLTYPE AddRef() override { return 1; }
 	virtual ULONG STDMETHODCALLTYPE Release() override { return 1; }
 };
@@ -90,7 +93,7 @@ public:
 	{
 		return m_videoFrame->GetFlags() | bmdFrameContainsHDRMetadata;
 	}
-	virtual HRESULT STDMETHODCALLTYPE GetBytes(void **buffer) { return m_videoFrame->GetBytes(buffer); }
+	virtual HRESULT STDMETHODCALLTYPE GetBytes(void **buffer);
 	virtual HRESULT STDMETHODCALLTYPE GetTimecode(BMDTimecodeFormat format, IDeckLinkTimecode **timecode)
 	{
 		return m_videoFrame->GetTimecode(format, timecode);

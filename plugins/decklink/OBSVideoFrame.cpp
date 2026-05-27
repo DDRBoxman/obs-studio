@@ -54,6 +54,13 @@ HRESULT OBSVideoFrame::SetTimecodeUserBits(BMDTimecodeFormat format, BMDTimecode
 	return 0;
 }
 
+HRESULT OBSVideoFrame::SetInterfaceProvider(REFIID iid, IUnknown *iface)
+{
+	UNUSED_PARAMETER(iid);
+	UNUSED_PARAMETER(iface);
+	return E_NOINTERFACE;
+}
+
 long OBSVideoFrame::GetWidth()
 {
 	return width;
@@ -86,6 +93,60 @@ HRESULT OBSVideoFrame::GetBytes(void **buffer)
 }
 
 #define CompareREFIID(iid1, iid2) (memcmp(&iid1, &iid2, sizeof(REFIID)) == 0)
+
+HRESULT OBSVideoFrame::GetSize(uint64_t *size)
+{
+	if (size == nullptr)
+		return E_INVALIDARG;
+
+	*size = (uint64_t)rowBytes * (uint64_t)height;
+	return S_OK;
+}
+
+HRESULT OBSVideoFrame::StartAccess(BMDBufferAccessFlags flags)
+{
+	UNUSED_PARAMETER(flags);
+	return S_OK;
+}
+
+HRESULT OBSVideoFrame::EndAccess(BMDBufferAccessFlags flags)
+{
+	UNUSED_PARAMETER(flags);
+	return S_OK;
+}
+
+HRESULT OBSVideoFrame::QueryInterface(REFIID iid, LPVOID *ppv)
+{
+	if (ppv == nullptr)
+		return E_INVALIDARG;
+
+	CFUUIDBytes unknown = CFUUIDGetUUIDBytes(IUnknownUUID);
+	if (CompareREFIID(iid, unknown))
+		*ppv = static_cast<IDeckLinkMutableVideoFrame *>(this);
+	else if (CompareREFIID(iid, IID_IDeckLinkVideoFrame))
+		*ppv = static_cast<IDeckLinkMutableVideoFrame *>(this);
+	else if (CompareREFIID(iid, IID_IDeckLinkMutableVideoFrame))
+		*ppv = static_cast<IDeckLinkMutableVideoFrame *>(this);
+	else if (CompareREFIID(iid, IID_IDeckLinkVideoBuffer))
+		*ppv = static_cast<IDeckLinkVideoBuffer *>(this);
+	else {
+		*ppv = nullptr;
+		return E_NOINTERFACE;
+	}
+
+	AddRef();
+	return S_OK;
+}
+
+HRESULT HDRVideoFrame::GetBytes(void **buffer)
+{
+	ComPtr<IDeckLinkVideoBuffer> videoBuffer;
+	HRESULT result = m_videoFrame->QueryInterface(IID_IDeckLinkVideoBuffer, (void **)videoBuffer.Assign());
+	if (FAILED(result))
+		return result;
+
+	return videoBuffer->GetBytes(buffer);
+}
 
 HDRVideoFrame::HDRVideoFrame(IDeckLinkMutableVideoFrame *frame) : m_videoFrame(frame), m_refCount(1) {}
 

@@ -108,6 +108,16 @@ static inline audio_repack_mode_t ConvertRepackFormat(speaker_layout format, boo
 	}
 }
 
+static inline HRESULT GetVideoFrameBytes(IDeckLinkVideoFrame *frame, void **bytes)
+{
+	ComPtr<IDeckLinkVideoBuffer> videoBuffer;
+	HRESULT result = frame->QueryInterface(IID_IDeckLinkVideoBuffer, (void **)videoBuffer.Assign());
+	if (FAILED(result))
+		return result;
+
+	return videoBuffer->GetBytes(bytes);
+}
+
 DeckLinkDeviceInstance::DeckLinkDeviceInstance(DecklinkBase *decklink_, DeckLinkDevice *device_)
 	: currentFrame(),
 	  currentPacket(),
@@ -205,7 +215,7 @@ void DeckLinkDeviceInstance::HandleVideoFrame(IDeckLinkVideoInputFrame *videoFra
 	}
 
 	void *bytes;
-	if (frame->GetBytes(&bytes) != S_OK) {
+	if (GetVideoFrameBytes(frame, &bytes) != S_OK) {
 		LOG(LOG_WARNING, "Failed to get video frame data");
 		return;
 	}
@@ -654,7 +664,7 @@ void DeckLinkDeviceInstance::UpdateVideoFrame(video_data *frame)
 void DeckLinkDeviceInstance::ScheduleVideoFrame(IDeckLinkVideoFrame *frame)
 {
 	void *bytes;
-	if (SUCCEEDED(frame->GetBytes(&bytes))) {
+	if (SUCCEEDED(GetVideoFrameBytes(frame, &bytes))) {
 		uint8_t *blob = frameQueueObsToDecklink.pop();
 		if (blob) {
 			if (activeBlob)
